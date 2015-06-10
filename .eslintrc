@@ -1,0 +1,34 @@
+{
+  "env": {
+    "browser": true,
+    "node": false
+  },
+  "rules": {
+    "semi": 2,
+    "quotes":[1, "single"],
+    "eol-last": 0,
+    "no-console": 0,
+    "curly": [0],
+    "no-alert": 0,
+    "consistent-return": 0,
+    "no-duplicate-case": 0, // doesn't detect variable cases so had to disable
+    "no-irregular-whitespace": 0,
+    "no-trailing-spaces": 0,
+    "no-use-before-define": [1, "nofunc"],
+    "space-unary-ops": 0,
+    "no-unused-expressions": 0,
+    "no-undef": 0
+  },
+  "globals": {
+    "Peerio": true,
+    "nacl":true,
+    "Base58": true,
+    "miniLock": true,
+    "scrypt": true,
+    "BLAKE2s": true,
+    "describe": true,
+    "it": true,
+    "expect": true
+
+  }
+}

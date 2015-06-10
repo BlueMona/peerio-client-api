@@ -1,0 +1,32 @@
+{
+  "name": "peerio-client-api",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "dependencies": {
+    "jasmine": "^2.3.1"
+  },
+  "devDependencies": {
+    "jasmine": "^2.3.1",
+    "jasmine-core": "^2.3.3",
+    "karma": "^0.12.31",
+    "karma-chrome-launcher": "^0.1.10",
+    "karma-coverage": "^0.3.1",
+    "karma-jasmine": "^0.3.5",
+    "karma-nyan-reporter": "0.0.60",
+    "karma-safari-launcher": "^0.1.1"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/PeerioTechnologies/peerio-client-api.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/PeerioTechnologies/peerio-client-api/issues"
+  },
+  "homepage": "https://github.com/PeerioTechnologies/peerio-client-api#readme"
+}
