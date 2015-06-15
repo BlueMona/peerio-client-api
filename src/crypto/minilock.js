@@ -1,9 +1,9 @@
-var miniLock
+//var miniLock
 
 (function() {
 'use strict';
 
-miniLock = {}
+window.miniLock = {}
 
 // -----------------------
 // Settings

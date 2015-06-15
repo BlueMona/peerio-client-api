@@ -4,7 +4,7 @@
  * Requires network connection
  */
 
-describe('Peerio network protocol', function () {
+xdescribe('Peerio network protocol', function () {
   'use strict';
 
   beforeAll(function () {
