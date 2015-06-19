@@ -128,22 +128,26 @@ describe('Crypto', function () {
   });
 
   it('encrypts and decrypts file', function (done) {
-    pending('finish this test');
-    var file = new File([1, 2, 3], 'test');
+    var file = new Blob([1, 2, 3]);
+    file.name = 'test';
     var id;
 
     C.encryptFile(file, [testUser.username], testUser.username, testUser.miniLockID, testUser.keyPair, contacts,
       function (filename) {
         expect(filename).toBeDefined();
-        id = filename;
+        id = nacl.util.encodeBase64(filename.subarray(4));
       },
       function (header, chunks) {
         expect(header).toBeDefined();
         expect(chunks).toBeDefined();
-       // C.decryptFile(id, chunks[0], header, {sender: username}, miniLockID, keyPair, contacts,
-       //   function (decrypted) {
-       //     done();
-       //   });
+        var blob = new Blob(chunks, {type: 'application/octet-stream'});
+
+        C.decryptFile(id, blob, header, {sender: testUser.username}, testUser.miniLockID, testUser.keyPair, contacts,
+          function (decrypted) {
+            expect(decrypted).toBeDefined();
+            expect(file.size).toBe(decrypted.size);
+            done();
+          });
       });
   });
 
