@@ -1,6 +1,6 @@
 /*!
  * Fast "async" scrypt implementation in JavaScript.
- * Copyright (c) 2013-2014 Dmitry Chestnykh | BSD License
+ * Copyright (c) 2013-2015 Dmitry Chestnykh | BSD License
  * https://github.com/dchest/scrypt-async-js
  */
 
@@ -9,19 +9,25 @@
  */
 
 /**
- * scrypt(password, salt, logN, r, dkLen, interruptStep, callback, encoding)
+ * scrypt(password, salt, logN, r, dkLen, [interruptStep], callback, [encoding])
  *
  * Derives a key from password and salt and calls callback
  * with derived key as the only argument.
  *
+ * Calculations are interrupted with zero setTimeout at the given
+ * interruptSteps to avoid freezing the browser. If interruptStep is not given,
+ * it defaults to 1000. If it's zero, the callback is called immediately after
+ * calculation, avoiding setTimeout.
+ *
  * @param {string|Array.<number>} password Password.
  * @param {string|Array.<number>} salt Salt.
- * @param {number} logN  CPU/memory cost parameter (1 to 31).
- * @param {number} r     Block size parameter.
- * @param {number} dkLen Length of derived key.
- * @param {number} interruptStep Steps to split calculation with timeouts (default 1000).
- * @param {function(string)} callback Callback function.
- * @param {string?} encoding Result encoding ("base64", "hex", or null).
+ * @param {number}  logN  CPU/memory cost parameter (1 to 31).
+ * @param {number}  r     Block size parameter.
+ * @param {number}  dkLen Length of derived key.
+ * @param {number?} interruptStep (optional) Steps to split calculation with timeouts (default 1000).
+ * @param {function(string|Array.<number>)} callback Callback function.
+ * @param {string?} encoding (optional) Result encoding ("base64", "hex", or null).
+ *
  */
 function scrypt(password, salt, logN, r, dkLen, interruptStep, callback, encoding) {
   'use strict';
@@ -44,19 +50,19 @@ function scrypt(password, salt, logN, r, dkLen, interruptStep, callback, encodin
     ];
 
     var h0 = 0x6a09e667, h1 = 0xbb67ae85, h2 = 0x3c6ef372, h3 = 0xa54ff53a,
-        h4 = 0x510e527f, h5 = 0x9b05688c, h6 = 0x1f83d9ab, h7 = 0x5be0cd19,
-        w = new Array(64);
+      h4 = 0x510e527f, h5 = 0x9b05688c, h6 = 0x1f83d9ab, h7 = 0x5be0cd19,
+      w = new Array(64);
 
     function blocks(p) {
       var off = 0, len = p.length;
       while (len >= 64) {
         var a = h0, b = h1, c = h2, d = h3, e = h4, f = h5, g = h6, h = h7,
-            u, i, j, t1, t2;
+          u, i, j, t1, t2;
 
         for (i = 0; i < 16; i++) {
           j = off + i*4;
           w[i] = ((p[j] & 0xff)<<24) | ((p[j+1] & 0xff)<<16) |
-                 ((p[j+2] & 0xff)<<8) | (p[j+3] & 0xff);
+            ((p[j+2] & 0xff)<<8) | (p[j+3] & 0xff);
         }
 
         for (i = 16; i < 64; i++) {
@@ -71,11 +77,11 @@ function scrypt(password, salt, logN, r, dkLen, interruptStep, callback, encodin
 
         for (i = 0; i < 64; i++) {
           t1 = ((((((e>>>6) | (e<<(32-6))) ^ ((e>>>11) | (e<<(32-11))) ^
-               ((e>>>25) | (e<<(32-25)))) + ((e & f) ^ (~e & g))) | 0) +
-               ((h + ((K[i] + w[i]) | 0)) | 0)) | 0;
+            ((e>>>25) | (e<<(32-25)))) + ((e & f) ^ (~e & g))) | 0) +
+            ((h + ((K[i] + w[i]) | 0)) | 0)) | 0;
 
           t2 = ((((a>>>2) | (a<<(32-2))) ^ ((a>>>13) | (a<<(32-13))) ^
-               ((a>>>22) | (a<<(32-22)))) + ((a & b) ^ (a & c) ^ (b & c))) | 0;
+            ((a>>>22) | (a<<(32-22)))) + ((a & b) ^ (a & c) ^ (b & c))) | 0;
 
           h = g;
           g = f;
@@ -104,10 +110,10 @@ function scrypt(password, salt, logN, r, dkLen, interruptStep, callback, encodin
     blocks(m);
 
     var i, bytesLeft = m.length % 64,
-        bitLenHi = (m.length / 0x20000000) | 0,
-        bitLenLo = m.length << 3,
-        numZeros = (bytesLeft < 56) ? 56 : 120,
-        p = m.slice(m.length - bytesLeft, m.length);
+      bitLenHi = (m.length / 0x20000000) | 0,
+      bitLenLo = m.length << 3,
+      numZeros = (bytesLeft < 56) ? 56 : 120,
+      p = m.slice(m.length - bytesLeft, m.length);
 
     p.push(0x80);
     for (i = bytesLeft + 1; i < numZeros; i++) p.push(0);
@@ -139,9 +145,9 @@ function scrypt(password, salt, logN, r, dkLen, interruptStep, callback, encodin
     password = password.length <= 64 ? password : SHA256(password);
 
     var i, innerLen = 64 + salt.length + 4,
-        inner = new Array(innerLen),
-        outerKey = new Array(64),
-        dk = [];
+      inner = new Array(innerLen),
+      outerKey = new Array(64),
+      dk = [];
 
     // inner = (password ^ ipad) || salt || counter
     for (i = 0; i < 64; i++) inner[i] = 0x36;
@@ -177,26 +183,26 @@ function scrypt(password, salt, logN, r, dkLen, interruptStep, callback, encodin
 
   function salsaXOR(tmp, B, bin, bout) {
     var j0  = tmp[0]  ^ B[bin++],
-        j1  = tmp[1]  ^ B[bin++],
-        j2  = tmp[2]  ^ B[bin++],
-        j3  = tmp[3]  ^ B[bin++],
-        j4  = tmp[4]  ^ B[bin++],
-        j5  = tmp[5]  ^ B[bin++],
-        j6  = tmp[6]  ^ B[bin++],
-        j7  = tmp[7]  ^ B[bin++],
-        j8  = tmp[8]  ^ B[bin++],
-        j9  = tmp[9]  ^ B[bin++],
-        j10 = tmp[10] ^ B[bin++],
-        j11 = tmp[11] ^ B[bin++],
-        j12 = tmp[12] ^ B[bin++],
-        j13 = tmp[13] ^ B[bin++],
-        j14 = tmp[14] ^ B[bin++],
-        j15 = tmp[15] ^ B[bin++],
-        u, i;
+      j1  = tmp[1]  ^ B[bin++],
+      j2  = tmp[2]  ^ B[bin++],
+      j3  = tmp[3]  ^ B[bin++],
+      j4  = tmp[4]  ^ B[bin++],
+      j5  = tmp[5]  ^ B[bin++],
+      j6  = tmp[6]  ^ B[bin++],
+      j7  = tmp[7]  ^ B[bin++],
+      j8  = tmp[8]  ^ B[bin++],
+      j9  = tmp[9]  ^ B[bin++],
+      j10 = tmp[10] ^ B[bin++],
+      j11 = tmp[11] ^ B[bin++],
+      j12 = tmp[12] ^ B[bin++],
+      j13 = tmp[13] ^ B[bin++],
+      j14 = tmp[14] ^ B[bin++],
+      j15 = tmp[15] ^ B[bin++],
+      u, i;
 
     var x0 = j0, x1 = j1, x2 = j2, x3 = j3, x4 = j4, x5 = j5, x6 = j6, x7 = j7,
-        x8 = j8, x9 = j9, x10 = j10, x11 = j11, x12 = j12, x13 = j13, x14 = j14,
-        x15 = j15;
+      x8 = j8, x9 = j9, x10 = j10, x11 = j11, x12 = j12, x13 = j13, x14 = j14,
+      x15 = j15;
 
     for (i = 0; i < 8; i += 2) {
       u =  x0 + x12;   x4 ^= u<<7  | u>>>(32-7);
@@ -279,21 +285,21 @@ function scrypt(password, salt, logN, r, dkLen, interruptStep, callback, encodin
   }
 
   function stringToUTF8Bytes(s) {
-      var arr = [];
-      for (var i = 0; i < s.length; i++) {
-          var c = s.charCodeAt(i);
-          if (c < 128) {
-              arr.push(c);
-          } else if (c > 127 && c < 2048) {
-              arr.push((c>>6) | 192);
-              arr.push((c & 63) | 128);
-          } else {
-              arr.push((c>>12) | 224);
-              arr.push(((c>>6) & 63) | 128);
-              arr.push((c & 64) | 128);
-          }
+    var arr = [];
+    for (var i = 0; i < s.length; i++) {
+      var c = s.charCodeAt(i);
+      if (c < 128) {
+        arr.push(c);
+      } else if (c > 127 && c < 2048) {
+        arr.push((c>>6) | 192);
+        arr.push((c & 63) | 128);
+      } else {
+        arr.push((c>>12) | 224);
+        arr.push(((c>>6) & 63) | 128);
+        arr.push((c & 63) | 128);
       }
-      return arr;
+    }
+    return arr;
   }
 
   function bytesToHex(p) {
@@ -301,12 +307,12 @@ function scrypt(password, salt, logN, r, dkLen, interruptStep, callback, encodin
     var enc = '0123456789abcdef'.split('');
 
     var len = p.length,
-        arr = [],
-        i = 0;
+      arr = [],
+      i = 0;
 
     for (; i < len; i++) {
-        arr.push(enc[(p[i]>>>4) & 15]);
-        arr.push(enc[(p[i]>>>0) & 15]);
+      arr.push(enc[(p[i]>>>4) & 15]);
+      arr.push(enc[(p[i]>>>0) & 15]);
     }
     return arr.join('');
   }
@@ -314,12 +320,12 @@ function scrypt(password, salt, logN, r, dkLen, interruptStep, callback, encodin
   function bytesToBase64(p) {
     /** @const */
     var enc = ('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz' +
-              '0123456789+/').split('');
+    '0123456789+/').split('');
 
     var len = p.length,
-        arr = [],
-        i = 0,
-        a, b, c, t;
+      arr = [],
+      i = 0,
+      a, b, c, t;
 
     while (i < len) {
       a = i < len ? p[i++] : 0;
@@ -333,7 +339,7 @@ function scrypt(password, salt, logN, r, dkLen, interruptStep, callback, encodin
     }
     if (len % 3 > 0) {
       arr[arr.length-1] = '=';
-      if (len % 3 == 1) arr[arr.length-2] = '=';
+      if (len % 3 === 1) arr[arr.length-2] = '=';
     }
     return arr.join('');
   }
@@ -348,16 +354,16 @@ function scrypt(password, salt, logN, r, dkLen, interruptStep, callback, encodin
     throw new Error('scrypt: logN not be between 1 and 31');
 
   var MAX_INT = (1<<31)>>>0,
-      N = (1<<logN)>>>0,
-      XY, V, B, tmp;
+    N = (1<<logN)>>>0,
+    XY, V, B, tmp;
 
   if (r*p >= 1<<30 || r > MAX_INT/128/p || r > MAX_INT/256 || N > MAX_INT/128/r)
     throw new Error('scrypt: parameters are too large');
 
   // Decode strings.
-  if (typeof password == 'string')
+  if (typeof password === 'string')
     password = stringToUTF8Bytes(password);
-  if (typeof salt == 'string')
+  if (typeof salt === 'string')
     salt = stringToUTF8Bytes(salt);
 
   if (typeof Int32Array !== 'undefined') {
@@ -378,7 +384,7 @@ function scrypt(password, salt, logN, r, dkLen, interruptStep, callback, encodin
     for (var i = 0; i < 32*r; i++) {
       var j = i*4;
       XY[xi+i] = ((B[j+3] & 0xff)<<24) | ((B[j+2] & 0xff)<<16) |
-                 ((B[j+1] & 0xff)<<8)  | ((B[j+0] & 0xff)<<0);
+        ((B[j+1] & 0xff)<<8)  | ((B[j+0] & 0xff)<<0);
     }
   }
 
@@ -423,27 +429,50 @@ function scrypt(password, salt, logN, r, dkLen, interruptStep, callback, encodin
           performStep();
         else
           donefn();
-        }, 0);
+      }, 0);
     })();
   }
 
-  // Note: step argument for interruptedFor must be divisible by
-  // two, since smixStepX work in increments of 2.
-  if (!interruptStep) interruptStep = 1000;
-  
-  smixStart();
-  interruptedFor(0, N, interruptStep*2, smixStep1, function() {
-    interruptedFor(0, N, interruptStep*2, smixStep2, function () {
-      smixFinish();
-      var result = PBKDF2_HMAC_SHA256_OneIter(password, B, dkLen);
-      if (encoding == "base64")
-        callback(bytesToBase64(result));
-      else if (encoding == "hex")
-        callback(bytesToHex(result));
-      else
-        callback(result);
+  function getResult(enc) {
+    var result = PBKDF2_HMAC_SHA256_OneIter(password, B, dkLen);
+    if (enc === 'base64')
+      return bytesToBase64(result);
+    else if (enc === 'hex')
+      return bytesToHex(result);
+    else
+      return result;
+  }
+
+  if (typeof interruptStep === 'function') {
+    // Called as: scrypt(...,      callback, [encoding])
+    //  shifting: scrypt(..., interruptStep,  callback, [encoding])
+    encoding = callback;
+    callback = interruptStep;
+    interruptStep = 1000;
+  }
+
+  if (interruptStep <= 0) {
+    //
+    // Blocking async variant, calls callback.
+    //
+    smixStart();
+    smixStep1(0, N);
+    smixStep2(0, N);
+    smixFinish();
+    callback(getResult(encoding));
+
+  } else {
+    //
+    // Async variant with interruptions, calls callback.
+    //
+    smixStart();
+    interruptedFor(0, N, interruptStep*2, smixStep1, function() {
+      interruptedFor(0, N, interruptStep*2, smixStep2, function () {
+        smixFinish();
+        callback(getResult(encoding));
+      });
     });
-  });
+  }
 }
 
 if (typeof module !== 'undefined') module.exports = scrypt;
