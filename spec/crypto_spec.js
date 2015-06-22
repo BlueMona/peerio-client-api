@@ -14,32 +14,44 @@ describe('Crypto', function () {
   var C = Peerio.Crypto;
 
   // === test user data
-  var PIN = '123456';
-  var PINKey = new Uint8Array([184, 135, 222, 32, 70, 141, 21, 108, 37, 106, 53, 55, 39, 165, 110, 115, 220, 211, 162, 252, 249, 102, 214, 124, 156, 103, 75, 48, 177, 94, 62, 73]);
-  var contacts = {};
-  contacts[testUser.username] = {miniLockID: testUser.miniLockID};
 
   // === specs
-  it('extracts public key from miniLockID', function () {
-    var key = C.getPublicKeyFromMiniLockID(testUser.miniLockID);
+  it('creates keypair from username and passphrase', function (done) {
+
+    C.getKeyPair(testUser.passPhrase, testUser.username)
+      .then(function (keyPair) {
+        expect(keyPair).toEqual(testUser.keyPair);
+        done();
+      }).error(function (err) {
+        done.fail(err);
+      });
+  });
+
+  it('creates string representation from public key bytes', function () {
+    var key = C.getPublicKeyString(testUser.keyPair.publicKey);
     expect(key).toEqual(testUser.publicKey);
+  });
+
+  it('extracts public key bytes from string representation', function () {
+    var key = C.getPublicKeyBytes(testUser.publicKey);
+    expect(key).toEqual(testUser.keyPair.publicKey);
   });
 
   it('encrypts and decrypts plaintext', function () {
     var original = 'wow such secret';
-    var encrypted = C.secretBoxEncrypt(nacl.util.decodeUTF8(original), testUser.secretKey);
-    var decrypted = C.secretBoxDecrypt(encrypted.ciphertext, encrypted.nonce, testUser.secretKey);
-    decrypted = nacl.util.encodeUTF8(decrypted);
+    var encrypted = C.secretBoxEncrypt(original, testUser.keyPair.secretKey);
+    var decrypted = C.secretBoxDecrypt(encrypted.ciphertext, encrypted.nonce, testUser.keyPair.secretKey);
 
     expect(decrypted).toBe(original);
     expect(encrypted).not.toBe(original);
   });
 
   it('derives key from PIN', function (done) {
-    C.getKeyFromPIN(PIN, testUser.username, function (result) {
-      expect(result).toEqual(PINKey);
-      done();
-    });
+    C.getKeyFromPIN(testUser.PIN, testUser.username)
+      .then(function (result) {
+        expect(result).toEqual(testUser.PINKey);
+        done();
+      });
   });
 
   it('decrypts account creation token', function () {
@@ -63,26 +75,18 @@ describe('Crypto', function () {
 
   });
 
-  it('decrypts auth tokens', function () {
+  it('decrypts auth token', function () {
     var serverResponse = {
       ephemeralServerID: 'G83PhNPP3VoupLVBQuEs7anYajkHo5upyGH17daXMBV7e',
-      authTokens: [
-        {
-          nonce: 'DOG+9ZFH1TlBR9OBMpdIQ9wyz7KU726K',
-          token: 'WVMseSXvYmxdAtBlQH0Qrsy12bFN5vEjI6iCno+jQeEFRIRONDLkLM/0vjMrWuof'
-        },
-        {
-          nonce: 'irm/tMtUUMICZ1A2TeHQyJIiBQizfcpM',
-          token: 'oLlt3Xnamgar97pgeyqR9rFcC41sF7DTIjbMSkkPHCcFd9IM+B6rHGJbjL7hxfPT'
-        }
-      ]
+      nonce: 'DOG+9ZFH1TlBR9OBMpdIQ9wyz7KU726K',
+      token: 'WVMseSXvYmxdAtBlQH0Qrsy12bFN5vEjI6iCno+jQeEFRIRONDLkLM/0vjMrWuof'
     };
 
-    var expectedTokens = ['QVSYZSKTZAnzBa+exoax6WAQwN302+FvJwfOqaGnNsY=', 'QVSEUNugJB3gApy/bZNv+gWDc5E+wsZMKlidvYdtYmU='];
+    var expectedToken = 'QVSYZSKTZAnzBa+exoax6WAQwN302+FvJwfOqaGnNsY=';
 
-    var tokens = C.decryptAuthTokens(serverResponse, testUser.keyPair);
+    var token = C.decryptAuthToken(serverResponse, testUser.keyPair);
 
-    expect(tokens).toEqual(expectedTokens);
+    expect(token).toEqual(expectedToken);
   });
 
   it('creates avatar data', function () {
