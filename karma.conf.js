@@ -17,6 +17,7 @@ module.exports = function (config) {
       'bower_components/bluebird/js/browser/bluebird.js',
       'src/crypto/*.js',
       'src/network/*.js',
+      'src/api/*.js',
       'spec/globals.js',
       'spec/*.js'
     ],

@@ -1,5 +1,6 @@
 /**
  * Peerio crypto library.
+ * Partially based on https://github.com/kaepora/miniLock.
  * ======================
  * Functions accessible via window.Peerio.Crypto object.
  * Depends on libraries:
@@ -48,9 +49,7 @@ Peerio.Crypto = {};
 
   api.chunkSize = 1024 * 1024;
 
-  //----------------------------------------------------------------
   //-- PUBLIC API --------------------------------------------------
-  //----------------------------------------------------------------
 
   /**
    * Generates keypair from string key and salt (passphrase and username)
@@ -205,52 +204,48 @@ Peerio.Crypto = {};
   };
 
   /**
-   * Gets a user's avatar using their username and miniLock ID.
+   * Gets a user's avatar using their username and publicKey.
    * The avatar consists of two 256-bit BLAKE2 hashes spread across 4 identicons:
-   * Identicon 1: First 128 bits of BLAKE2(username||miniLockID).
-   * Identicon 2:  Last 128 bits of BLAKE2(username||miniLockID).
-   * Identicon 3: First 128 bits of BLAKE2(miniLockID||username).
-   * Identicon 4:  Last 128 bits of BLAKE2(miniLockID||username).
+   * Identicon 1: First 128 bits of BLAKE2(username||publicKey).
+   * Identicon 2:  Last 128 bits of BLAKE2(username||publicKey).
+   * Identicon 3: First 128 bits of BLAKE2(publicKey||username).
+   * Identicon 4:  Last 128 bits of BLAKE2(publicKey||username).
    * Note that the miniLock ID is hashed as its byte values, not as a string.
    * @param {string} username
-   * @param {string} miniLockID
-   * @return {Array} [hash1 (Hex string), hash2 (Hex string)]
+   * @param {string} publicKey
+   * @return {Array|Boolean} [hash1 (Hex string), hash2 (Hex string)]
    */
-  api.getAvatar = function (username, miniLockID) {
-    if (!username || !miniLockID) {
-      return null;
+  api.getAvatar = function (username, publicKey) {
+    if (!username || !publicKey) {
+      return false;
     }
+
     var hash1 = new BLAKE2s(keySize);
     hash1.update(nacl.util.decodeUTF8(username));
-    hash1.update(Base58.decode(miniLockID));
+    hash1.update(Base58.decode(publicKey));
+
     var hash2 = new BLAKE2s(keySize);
-    hash2.update(Base58.decode(miniLockID));
+    hash2.update(Base58.decode(publicKey));
     hash2.update(nacl.util.decodeUTF8(username));
+
     return [hash1.hexDigest(), hash2.hexDigest()];
   };
 
   /**
    * Encrypt a message to recipients, return header JSON and body.
-   * @param {object} message - Plaintext message object.
-   * @param {Array} recipients - Array of usernames of recipients.
-   * @param {string} username
-   * @param {string} miniLockID
-   * @param {object} keyPair
-   * @param {object} contacts - user's contacts map
+   * @param {object} message - message object.
+   * @param {string[]} recipients - Array of usernames of recipients.
+   * @param {User} sender
    * @param {function} callback - With header, body parameters, and array of failed recipients.
    */
-  api.encryptMessage = function (message, recipients, username, miniLockID, keyPair, contacts, callback) {
-    var miniLockIDs = [miniLockID];
-    var failed = [];
-
-    processRecipients(recipients, username, miniLockIDs, contacts, failed);
+  api.encryptMessage = function (message, recipients, sender, callback) {
+    var validatedRecipients = validateRecipients(recipients, sender);
 
     encryptFile(
       new Blob([nacl.util.decodeUTF8(JSON.stringify(message))]),
       'message',
-      miniLockIDs,
-      miniLockID,
-      keyPair.secretKey,
+      validatedRecipients.publicKeys,
+      sender,
       null,
       function (encryptedChunks, header) {
         if (!encryptedChunks) {
@@ -267,7 +262,7 @@ Peerio.Crypto = {};
           var body = nacl.util.encodeBase64(
             encryptedBuffer.subarray(12 + headerLength)
           );
-          callback(header, body, failed);
+          callback(header, body, validatedRecipients.failed);
         };
         reader.readAsArrayBuffer(encryptedBlob);
       }
@@ -277,32 +272,26 @@ Peerio.Crypto = {};
   /**
    * Encrypt a file to recipients, return UTF8 Blob and header (separate).
    * @param {object} file - File object to encrypt.
-   * @param {Array} recipients - Array of usernames of recipients.
-   * @param {string} username
-   * @param {string} miniLockID
-   * @param {object} keyPair
-   * @param {object} contacts - user's contacts map
+   * @param {string[]} recipients - Array of usernames of recipients.
+   * @param {User} sender
    * @param {function} fileNameCallback - Callback with encrypted fileName.
    * @param {function} callback - With header, body and failedRecipients parameters.
    */
-  api.encryptFile = function (file, recipients, username, miniLockID, keyPair, contacts, fileNameCallback, callback) {
-    var miniLockIDs = [miniLockID];
-    var failed = [];
-    processRecipients(recipients, username, miniLockIDs, contacts, failed);
+  api.encryptFile = function (file, recipients, sender,  fileNameCallback, callback) {
+    var validatedRecipients = validateRecipients(recipients, sender);
 
     var blob = file.slice();
     blob.name = file.name;
     encryptFile(
       blob,
       file.name,
-      miniLockIDs,
-      miniLockID,
-      keyPair.secretKey,
+      validatedRecipients.publicKeys,
+      sender,
       fileNameCallback,
       function (encryptedChunks, header) {
         if (encryptedChunks) {
           encryptedChunks.splice(0, 4);
-          callback(JSON.parse(header), encryptedChunks, failed);
+          callback(JSON.parse(header), encryptedChunks, validatedRecipients.failed);
         } else
           callback(false);
       }
@@ -312,13 +301,11 @@ Peerio.Crypto = {};
   /**
    * Decrypt a message.
    * @param {object} messageObject - As received from server.
-   * @param {string} miniLockID
-   * @param {object} keyPair
-   * @param {object} contacts
+   * @param {User} user - decrypting user
    * @param {function} callback - with plaintext object.
    *
    */
-  api.decryptMessage = function (messageObject, miniLockID, keyPair, contacts, callback) {
+  api.decryptMessage = function (messageObject, user, callback) {
     var header = JSON.stringify(messageObject.header);
 
     var messageBlob = new Blob([
@@ -328,14 +315,15 @@ Peerio.Crypto = {};
       nacl.util.decodeBase64(messageObject.body)
     ]);
 
-    decryptFile(messageBlob, miniLockID, keyPair.secretKey,
+    decryptFile(messageBlob, user,
       function (decryptedBlob, saveName, senderID) {
         if (!decryptedBlob) {
           callback(false);
           return false;
         }
-
-        if (hasProp(contacts, messageObject.sender) && contacts[messageObject.sender].miniLockID !== senderID) {
+        // validating sender public key
+        if (hasProp(user.contacts, messageObject.sender)
+            && user.contacts[messageObject.sender].publicKey !== senderID) {
           callback(false);
           return false;
         }
@@ -367,24 +355,22 @@ Peerio.Crypto = {};
    * @param {object} blob - File ciphertext as blob
    * @param {object} header
    * @param {object} file
-   * @param {string} miniLockID
-   * @param {object} keyPair
-   * @param {object} contacts
+   * @param {User} user - decrypting user
    * @param {function} callback - with plaintext blob
    */
-  api.decryptFile = function (id, blob, header, file, miniLockID, keyPair, contacts, callback) {
+  api.decryptFile = function (id, blob, header, file, user, callback) {
     var headerString = JSON.stringify(header);
     var headerStringLength = nacl.util.decodeUTF8(headerString).length;
     var miniLockBlob = new Blob([
       'miniLock',
       numberToByteArray(headerStringLength),
       headerString,
-      numberToByteArray(256),
+      numberToByteArray(256), // todo: convert to constant
       nacl.util.decodeBase64(id),
       blob
     ]);
 
-    decryptFile(miniLockBlob, miniLockID, keyPair.secretKey,
+    decryptFile(miniLockBlob, user,
       function (decryptedBlob, saveName, senderID) {
         if (!decryptedBlob) {
           callback(false);
@@ -393,9 +379,9 @@ Peerio.Crypto = {};
 
         var claimedSender = hasProp(file, 'sender') ? file.sender : file.creator;
         // this looks strange that we call success callback when sender is not in contacts
-        // but it can be the case and we skip public key (miniLockID) verification,
+        // but it can be the case and we skip public key verification,
         // because we don't have sender's public key
-        if (hasProp(contacts, claimedSender) && contacts[claimedSender].miniLockID !== senderID)
+        if (hasProp(user.contacts, claimedSender) && user.contacts[claimedSender].publicKey !== senderID)
           callback(false);
         else
           callback(decryptedBlob);
@@ -406,14 +392,12 @@ Peerio.Crypto = {};
   /**
    * Decrypt a filename from a file's ID given by the Peerio server.
    * @param {string} id - File ID (Base64)
-   * @param {object} header - miniLock header for file
-   * @param {string} miniLockID
-   * @param {object} keyPair
+   * @param {object} header - encryption header for file
+   * @param {User} user
    * @return {string} fileName
    */
-  api.decryptFileName = function (id, header, miniLockID, keyPair) {
-    var fileInfo = decryptHeader(
-      header, keyPair.secretKey, miniLockID).fileInfo;
+  api.decryptFileName = function (id, header, user) {
+    var fileInfo = decryptHeader(header, user).fileInfo;
 
     fileInfo.fileNonce = nacl.util.decodeBase64(fileInfo.fileNonce);
     fileInfo.fileKey = nacl.util.decodeBase64(fileInfo.fileKey);
@@ -432,33 +416,44 @@ Peerio.Crypto = {};
 
   //-- END OF PUBLIC API -------------------------------------------
 
-  //----------------------------------------------------------------
   //-- INTERNALS ---------------------------------------------------
-  //----------------------------------------------------------------
 
-  function processRecipients(recipients, username, miniLockIDs, contacts, failed) {
+  /**
+   * Validates and builds a list of recipient public keys
+   * @param {string[]} recipients - recipient usernames
+   * @param {User} sender - username
+   * @returns { { publicKeys:string[], failed:string[] } } - list of qualified public keys and usernames list
+   *                                                         that failed to qualify as recipients
+   */
+  function validateRecipients(recipients, sender) {
+    var publicKeys = [sender.publicKey];
+    var failed = [];
+
     recipients.forEach(function (recipient) {
-      var contact = contacts[recipient];
-      if (hasProp(contact, 'miniLockID') && miniLockIDs.indexOf(contact.miniLockID) < 0)
-        miniLockIDs.push(contact.miniLockID);
-      else if (recipient !== username)
+
+      var contact = sender.contacts[recipient];
+      if (hasProp(contact, 'publicKey') && publicKeys.indexOf(contact.publicKey) < 0)
+        publicKeys.push(contact.publicKey);
+      else if(recipient != sender.username)
         failed.push(recipient);
     });
+
+    return {publicKeys: publicKeys, failed: failed};
   }
 
   /**
-   * Validates miniLockID
-   * @param {string} id
-   * @returns {boolean} - true for valid miniLockID
+   * Validates public key string
+   * @param {string} publicKey
+   * @returns {boolean} - true for valid public key string
    */
-  function validateID(id) {
-    if (id.length > 55 || id.length < 40)
+  function validatePublicKey(publicKey) {
+    if (publicKey.length > 55 || publicKey.length < 40)
       return false;
 
-    if (!base58Match.test(id))
+    if (!base58Match.test(publicKey))
       return false;
 
-    var bytes = Base58.decode(id);
+    var bytes = Base58.decode(publicKey);
     if (bytes.length !== (keySize + 1))
       return false;
 
@@ -531,28 +526,245 @@ Peerio.Crypto = {};
     return byteArray;
   }
 
-  /**  Input:
-   *    Entire file object,
-   *      Stream encryptor object,
-   *      Hash object,
-   *      Encrypted chunks,
-   *    data position on which to start decryption (number),
-   *    Name to use when saving the file (String),
-   *    fileKey (Uint8Array),
-   *    fileNonce (Uint8Array),
-   *    miniLock IDs for which to encrypt (Array),
-   *    sender ID (Base58 string),
-   *    sender long-term secret key (Uint8Array)
-   *    Callback to execute when last chunk has been decrypted.
-   *  Result: Will recursively encrypt until the last chunk,
-   *    at which point callbackOnComplete() is called.
-   *    Callback is passed these parameters:
-   *      file: Decrypted file object (Array of Uint8ArrayChunks),
-   *      saveName: File name for saving the file (String),
-   *      senderID: Sender's miniLock ID (Base58 string)
+  /**
+   * Creates encrypted data header
+   *  @param {string[]} publicKeys - recepients
+   *  @param {User} sender
+   *  @param {Uint8Array} fileKey
+   *  @param {Uint8Array} fileNonce
+   *  @param {Uint8Array} fileHash
+   *  @returns {object} header
+   */
+  function createHeader(publicKeys, sender, fileKey, fileNonce, fileHash) {
+    var ephemeral = nacl.box.keyPair();
+
+    var header = {
+      version: 1,
+      ephemeral: nacl.util.encodeBase64(ephemeral.publicKey),
+      decryptInfo: {}
+    };
+
+    var decryptInfoNonces = [];
+
+    for (var i = 0; i < publicKeys.length; i++) {
+      decryptInfoNonces.push(nacl.randomBytes(decryptInfoNonceSize));
+
+      var decryptInfo = {
+        senderID: sender.publicKey,
+        recipientID: publicKeys[i],
+        fileInfo: {
+          fileKey: nacl.util.encodeBase64(fileKey),
+          fileNonce: nacl.util.encodeBase64(fileNonce),
+          fileHash: nacl.util.encodeBase64(fileHash)
+        }
+      };
+
+      decryptInfo.fileInfo = nacl.util.encodeBase64(nacl.box(
+        nacl.util.decodeUTF8(JSON.stringify(decryptInfo.fileInfo)),
+        decryptInfoNonces[i],
+        Base58.decode(publicKeys[i]).subarray(0, keySize),
+        sender.keyPair.secretKey
+      ));
+
+      decryptInfo = nacl.util.encodeBase64(nacl.box(
+        nacl.util.decodeUTF8(JSON.stringify(decryptInfo)),
+        decryptInfoNonces[i],
+        Base58.decode(publicKeys[i]).subarray(0, keySize),
+        ephemeral.secretKey
+      ));
+
+      header.decryptInfo[nacl.util.encodeBase64(decryptInfoNonces[i])] = decryptInfo;
+    }
+
+    return header;
+  }
+
+  /**
+   * Decrypts encrypted data header
+   * @param {object} header - encrypted header
+   * @param {User} user - decrypting user
+   * @returns {object} header - decrypted decryptInfo object containing decrypted fileInfo object.
+   */
+  function decryptHeader(header, user) {
+    if (!hasProp(header, 'version') || header.version !== 1)
+      return false;
+
+    if (!hasProp(header,'ephemeral') || !validateKey(header.ephemeral))
+      return false;
+
+    // Attempt decryptInfo decryptions until one succeeds
+    var actualDecryptInfo = null;
+    var actualDecryptInfoNonce = null;
+    var actualFileInfo = null;
+
+    for (var i in header.decryptInfo) {
+      if (hasProp(header.decryptInfo, i) && validateNonce(i, decryptInfoNonceSize)) {
+        actualDecryptInfo = nacl.box.open(
+          nacl.util.decodeBase64(header.decryptInfo[i]),
+          nacl.util.decodeBase64(i),
+          nacl.util.decodeBase64(header.ephemeral),
+          user.keyPair.secretKey
+        );
+
+        if (actualDecryptInfo) {
+          actualDecryptInfo = JSON.parse(nacl.util.encodeUTF8(actualDecryptInfo));
+          actualDecryptInfoNonce = nacl.util.decodeBase64(i);
+          break;
+        }
+      }
+    }
+
+    if (!actualDecryptInfo || !hasProp(actualDecryptInfo, 'recipientID')
+      || actualDecryptInfo.recipientID !== user.publicKey)
+      return false;
+
+    if (!hasAllProps(actualDecryptInfo, 'fileInfo', 'senderID') || !validatePublicKey(actualDecryptInfo.senderID))
+      return false;
+
+    try {
+      actualFileInfo = nacl.box.open(
+        nacl.util.decodeBase64(actualDecryptInfo.fileInfo),
+        actualDecryptInfoNonce,
+        Base58.decode(actualDecryptInfo.senderID).subarray(0, keySize),
+        user.keyPair.secretKey
+      );
+      actualFileInfo = JSON.parse(nacl.util.encodeUTF8(actualFileInfo));
+    }
+    catch (err) {
+      return false;
+    }
+    actualDecryptInfo.fileInfo = actualFileInfo;
+    return actualDecryptInfo;
+
+  }
+
+  /**
+   * Convenience method to read from blobs
+   */
+  function readFile(file, start, end, callback, errorCallback) {
+    var reader = new FileReader();
+
+    reader.onload = function (readerEvent) {
+       callback({
+        name: file.name,
+        size: file.size,
+        data: new Uint8Array(readerEvent.target.result)
+      });
+    };
+
+    reader.onerror = function () {
+      if (typeof(errorCallback) === 'function')
+         errorCallback();
+
+    };
+
+    reader.readAsArrayBuffer(file.slice(start, end));
+  }
+
+  /**
+   * Encrypts file
+   * @param {{name: string, size: Number, data: ArrayBuffer}} file
+   * @param {string} saveName
+   * @param {string[]} publicKeys
+   * @param {User} user
+   * @param {Function} fileNameCallback - A callback with the encrypted fileName.
+   * @param {Function} callback - Callback function to which encrypted result is passed.
+   */
+  function encryptFile(file, saveName, publicKeys, user, fileNameCallback, callback) {
+    saveName += '.miniLock';
+    var fileKey = nacl.randomBytes(keySize);
+    var fileNonce = nacl.randomBytes(fileNonceSize);
+    var streamEncryptor = nacl.stream.createEncryptor(
+      fileKey,
+      fileNonce,
+      api.chunkSize
+    );
+
+    var paddedFileName = new Uint8Array(256);
+    var fileNameBytes = nacl.util.decodeUTF8(file.name);
+    if (fileNameBytes.length > paddedFileName.length) {
+      //file name is too long
+      callback(false);
+      return false;
+    }
+    paddedFileName.set(fileNameBytes);
+
+    var hashObject = new BLAKE2s(keySize);
+    var encryptedChunk = streamEncryptor.encryptChunk(paddedFileName, false);
+
+    if (!encryptedChunk) {
+      //general encryption error'
+      callback(false);
+      return false;
+    }
+
+    if (typeof(fileNameCallback) === 'function') {
+      fileNameCallback(encryptedChunk);
+    }
+
+    var encryptedChunks = [encryptedChunk];
+    hashObject.update(encryptedChunk);
+
+    encryptNextChunk(file, streamEncryptor, hashObject, encryptedChunks, 0,
+      saveName, fileKey, fileNonce, publicKeys, user, callback);
+
+  }
+
+  /**
+   * Decrypts file
+   * @param {{name: string, size: Number, data: ArrayBuffer}}file
+   * @param {User} user - decrypting user
+   * @param {Function} callback - function to which decrypted result is passed.
+   */
+  function decryptFile(file, user, callback) {
+    readFile(file, 8, 12, function (headerLength) {
+      headerLength = byteArrayToNumber(headerLength.data);
+
+      readFile(file, 12, headerLength + 12, function (header) {
+        try {
+          header = nacl.util.encodeUTF8(header.data);
+          header = JSON.parse(header);
+        }
+        catch (error) {
+          callback(false);
+          return false;
+        }
+        var actualDecryptInfo = decryptHeader(header, user);
+        if (!actualDecryptInfo) {
+          callback(false, file.name, false);
+          return false;
+        }
+
+        // Begin actual ciphertext decryption
+        var dataPosition = 12 + headerLength;
+        var streamDecryptor = nacl.stream.createDecryptor(
+          nacl.util.decodeBase64(actualDecryptInfo.fileInfo.fileKey),
+          nacl.util.decodeBase64(actualDecryptInfo.fileInfo.fileNonce),
+          api.chunkSize
+        );
+        var hashObject = new BLAKE2s(keySize);
+        decryptNextChunk(file, streamDecryptor, hashObject, [], dataPosition,
+          actualDecryptInfo.fileInfo, actualDecryptInfo.senderID, headerLength, callback);
+      });
+    });
+  }
+
+  /**
+   * Encrypts next chunk of data
+   * @param {{name: string, size: Number, data: ArrayBuffer}} file
+   * @param {object} streamEncryptor - nacl stream encryptor instance
+   * @param {object} hashObject - blake2 hash object instance
+   * @param {Uint8Array[]} encryptedChunks
+   * @param {Number} dataPosition
+   * @param {string} saveName
+   * @param {Uint8Array} fileKey
+   * @param {Uint8Array} fileNonce
+   * @param {string[]} publicKeys
+   * @param {User} user
+   * @param {Function} callbackOnComplete {file, saveName, senderID}
    */
   function encryptNextChunk(file, streamEncryptor, hashObject, encryptedChunks, dataPosition,
-                            saveName, fileKey, fileNonce, miniLockIDs, myminiLockID, mySecretKey, callbackOnComplete) {
+                            saveName, fileKey, fileNonce, publicKeys, user, callbackOnComplete) {
     readFile(
       file,
       dataPosition,
@@ -572,41 +784,37 @@ Peerio.Crypto = {};
 
         if (isLast) {
           streamEncryptor.clean();
-          var header = createHeader(miniLockIDs, myminiLockID, mySecretKey, fileKey, fileNonce, hashObject.digest());
+          var header = createHeader(publicKeys, user, fileKey, fileNonce, hashObject.digest());
           header = JSON.stringify(header);
           // todo changing the string here requires change in the code that depends on that string length when reading blob
           encryptedChunks.unshift('miniLock', numberToByteArray(header.length), header);
 
-          return callbackOnComplete(encryptedChunks, header, saveName, myminiLockID);
+          return callbackOnComplete(encryptedChunks, header, saveName, user.publicKey);
         }
 
         dataPosition += api.chunkSize;
         return encryptNextChunk(file, streamEncryptor, hashObject, encryptedChunks, dataPosition,
-          saveName, fileKey, fileNonce, miniLockIDs, myminiLockID, mySecretKey, callbackOnComplete);
+          saveName, fileKey, fileNonce, publicKeys, user, callbackOnComplete);
 
       }
     );
   }
 
-  /**  Input:
-   *    Entire file object,
-   *      Stream decryptor,
-   *      Hash object,
-   *      Decrypted chunks,
-   *    data position on which to start decryption (number),
-   *    fileInfo object (From header),
-   *    sender ID (Base58 string),
-   *    header length (in bytes) (number),
-   *    Callback to execute when last chunk has been decrypted.
-   *  Result: Will recursively decrypt until the last chunk,
-   *    at which point callbackOnComplete() is called.
-   *    Callback is passed these parameters:
-   *      file: Decrypted file object (blob),
-   *      saveName: File name for saving the file (String),
-   *      senderID: Sender's miniLock ID (Base58 string)
+
+  /**
+   * Dencrypts next chunk of data
+   * @param {{name: string, size: Number, data: ArrayBuffer}} file
+   * @param {object} streamDecryptor - nacl stream decryptor instance
+   * @param {object} hashObject - blake2 hash object instance
+   * @param {Uint8Array[]} decryptedChunks
+   * @param {Number} dataPosition
+   * @param {object} fileInfo
+   * @param {string} senderPublicKey
+   * @param {Number} headerLength
+   * @param {Function} callbackOnComplete {file, saveName, senderID}
    */
   function decryptNextChunk(file, streamDecryptor, hashObject, decryptedChunks, dataPosition,
-                            fileInfo, senderID, headerLength, callbackOnComplete) {
+                            fileInfo, senderPublicKey, headerLength, callbackOnComplete) {
     readFile(
       file,
       dataPosition,
@@ -659,256 +867,15 @@ Peerio.Crypto = {};
             return false;
           } else {
             streamDecryptor.clean();
-            return callbackOnComplete(new Blob(decryptedChunks), fileName, senderID);
+            return callbackOnComplete(new Blob(decryptedChunks), fileName, senderPublicKey);
           }
         }
         else {
           return decryptNextChunk(file, streamDecryptor, hashObject, decryptedChunks, dataPosition,
-            fileInfo, senderID, headerLength, callbackOnComplete);
+            fileInfo, senderPublicKey, headerLength, callbackOnComplete);
         }
       }
     );
-  }
-
-  /**
-   * Convenience method to read from blobs
-   * Output: Callback function executed with object:
-   *  {
-   *		name: File name,
-   *		size: File size (bytes),
-   *		data: File data within specified bounds (Uint8Array)
-   *	}
-   * Error callback which is called in case of error (no parameters)
-   */
-  function readFile(file, start, end, callback, errorCallback) {
-    var reader = new FileReader();
-
-    reader.onload = function (readerEvent) {
-      return callback({
-        name: file.name,
-        size: file.size,
-        data: new Uint8Array(readerEvent.target.result)
-      });
-    };
-
-    reader.onerror = function () {
-      if (typeof(errorCallback) === 'function')
-        return errorCallback();
-
-      throw new Error('miniLock: File read error');
-    };
-
-    reader.readAsArrayBuffer(file.slice(start, end));
-  }
-
-  /** Input: Object:
-   *  {
-   *		name: File name,
-   *		size: File size,
-   *		data: File (ArrayBuffer),
-   *	}
-   * saveName: Name to use when saving resulting file. '.miniLock' extension will be added.
-   * miniLockIDs: Array of (Base58) public IDs to encrypt for
-   * myminiLockID: Sender's miniLock ID (String)
-   * mySecretKey: My secret key (Uint8Array)
-   * fileNameCallback: A callback with the encrypted fileName.
-   * callback: Name of the callback function to which encrypted result is passed.
-   * Result: Sends file to be encrypted, with the result picked up
-   *   and sent to the specified callback.
-   */
-  function encryptFile(file, saveName, miniLockIDs, myminiLockID, mySecretKey, fileNameCallback, callback) {
-    saveName += '.miniLock';
-    var fileKey = nacl.randomBytes(keySize);
-    var fileNonce = nacl.randomBytes(fileNonceSize);
-    var streamEncryptor = nacl.stream.createEncryptor(
-      fileKey,
-      fileNonce,
-      api.chunkSize
-    );
-
-    var paddedFileName = new Uint8Array(256);
-    var fileNameBytes = nacl.util.decodeUTF8(file.name);
-    if (fileNameBytes.length > paddedFileName.length) {
-      //file name is too long
-      callback(false);
-      return false;
-    }
-    paddedFileName.set(fileNameBytes);
-
-    var hashObject = new BLAKE2s(keySize);
-    var encryptedChunk = streamEncryptor.encryptChunk(paddedFileName, false);
-
-    if (!encryptedChunk) {
-      //general encryption error'
-      callback(false);
-      return false;
-    }
-
-    if (typeof(fileNameCallback) === 'function') {
-      fileNameCallback(encryptedChunk);
-    }
-
-    var encryptedChunks = [encryptedChunk];
-    hashObject.update(encryptedChunk);
-
-    encryptNextChunk(file, streamEncryptor, hashObject, encryptedChunks, 0,
-      saveName, fileKey, fileNonce, miniLockIDs, myminiLockID, mySecretKey, callback);
-
-  }
-
-  /** Input:
-   *    miniLock IDs (Array),
-   *    Sender's miniLock ID (String),
-   *    Sender's secret key (Uint8Array),
-   *    fileKey (Uint8Array),
-   *    fileNonce (Uint8Array),
-   *    fileHash (Uint8Array)
-   * Result: Returns a header ready for use by a miniLock file.
-   */
-  function createHeader(miniLockIDs, myminiLockID, mySecretKey, fileKey, fileNonce, fileHash) {
-    var ephemeral = nacl.box.keyPair();
-
-    var header = {
-      version: 1,
-      ephemeral: nacl.util.encodeBase64(ephemeral.publicKey),
-      decryptInfo: {}
-    };
-
-    var decryptInfoNonces = [];
-    for (var u = 0; u < miniLockIDs.length; u++) {
-      decryptInfoNonces.push(nacl.randomBytes(decryptInfoNonceSize));
-    }
-
-    for (var i = 0; i < miniLockIDs.length; i++) {
-      var decryptInfo = {
-        senderID: myminiLockID,
-        recipientID: miniLockIDs[i],
-        fileInfo: {
-          fileKey: nacl.util.encodeBase64(fileKey),
-          fileNonce: nacl.util.encodeBase64(fileNonce),
-          fileHash: nacl.util.encodeBase64(fileHash)
-        }
-      };
-
-      decryptInfo.fileInfo = nacl.util.encodeBase64(nacl.box(
-        nacl.util.decodeUTF8(JSON.stringify(decryptInfo.fileInfo)),
-        decryptInfoNonces[i],
-        Base58.decode(miniLockIDs[i]).subarray(0, keySize),
-        mySecretKey
-      ));
-
-      decryptInfo = nacl.util.encodeBase64(nacl.box(
-        nacl.util.decodeUTF8(JSON.stringify(decryptInfo)),
-        decryptInfoNonces[i],
-        Base58.decode(miniLockIDs[i]).subarray(0, keySize),
-        ephemeral.secretKey
-      ));
-
-      header.decryptInfo[nacl.util.encodeBase64(decryptInfoNonces[i])] = decryptInfo;
-    }
-    return header;
-  }
-
-  /**
-   * Input: miniLock header (JSON Object)
-   * Result: Returns decrypted decryptInfo object containing decrypted fileInfo object.
-   */
-  function decryptHeader(header, mySecretKey, myminiLockID) {
-    if (!header.hasOwnProperty('version') || header.version !== 1)
-      return false;
-
-    if (!header.hasOwnProperty('ephemeral') || !validateKey(header.ephemeral))
-      return false;
-
-    // Attempt decryptInfo decryptions until one succeeds
-    var actualDecryptInfo = null;
-    var actualDecryptInfoNonce = null;
-    var actualFileInfo = null;
-    for (var i in header.decryptInfo) {
-      if (({}).hasOwnProperty.call(header.decryptInfo, i) && validateNonce(i, decryptInfoNonceSize)) {
-        actualDecryptInfo = nacl.box.open(
-          nacl.util.decodeBase64(header.decryptInfo[i]),
-          nacl.util.decodeBase64(i),
-          nacl.util.decodeBase64(header.ephemeral),
-          mySecretKey
-        );
-
-        if (actualDecryptInfo) {
-          actualDecryptInfo = JSON.parse(nacl.util.encodeUTF8(actualDecryptInfo));
-          actualDecryptInfoNonce = nacl.util.decodeBase64(i);
-          break;
-        }
-      }
-    }
-
-    if (!actualDecryptInfo || !({}).hasOwnProperty.call(actualDecryptInfo, 'recipientID')
-      || actualDecryptInfo.recipientID !== myminiLockID)
-      return false;
-
-    if (!({}).hasOwnProperty.call(actualDecryptInfo, 'fileInfo') || !({}).hasOwnProperty.call(actualDecryptInfo, 'senderID')
-      || !validateID(actualDecryptInfo.senderID))
-      return false;
-
-    try {
-      actualFileInfo = nacl.box.open(
-        nacl.util.decodeBase64(actualDecryptInfo.fileInfo),
-        actualDecryptInfoNonce,
-        Base58.decode(actualDecryptInfo.senderID).subarray(0, keySize),
-        mySecretKey
-      );
-      actualFileInfo = JSON.parse(nacl.util.encodeUTF8(actualFileInfo));
-    }
-    catch (err) {
-      return false;
-    }
-    actualDecryptInfo.fileInfo = actualFileInfo;
-    return actualDecryptInfo;
-
-  }
-
-  /** Input: Object:
-   *  {
-*		name: File name,
-*		size: File size,
-*		data: Encrypted file (ArrayBuffer),
-*	}
-   * myminiLockID: Sender's miniLock ID (String)
-   * mySecretKey: Sender's secret key (Uint8Array)
-   * callback: Name of the callback function to which decrypted result is passed.
-   * Result: Sends file to be decrypted, with the result picked up
-   *  and sent to the specified callback.
-   */
-  function decryptFile(file, myminiLockID, mySecretKey, callback) {
-    readFile(file, 8, 12, function (headerLength) {
-      headerLength = byteArrayToNumber(headerLength.data);
-
-      readFile(file, 12, headerLength + 12, function (header) {
-        try {
-          header = nacl.util.encodeUTF8(header.data);
-          header = JSON.parse(header);
-        }
-        catch (error) {
-          callback(false);
-          return false;
-        }
-        var actualDecryptInfo = decryptHeader(header, mySecretKey, myminiLockID);
-        if (!actualDecryptInfo) {
-          callback(false, file.name, false);
-          return false;
-        }
-
-        // Begin actual ciphertext decryption
-        var dataPosition = 12 + headerLength;
-        var streamDecryptor = nacl.stream.createDecryptor(
-          nacl.util.decodeBase64(actualDecryptInfo.fileInfo.fileKey),
-          nacl.util.decodeBase64(actualDecryptInfo.fileInfo.fileNonce),
-          api.chunkSize
-        );
-        var hashObject = new BLAKE2s(keySize);
-        decryptNextChunk(file, streamDecryptor, hashObject, [], dataPosition,
-          actualDecryptInfo.fileInfo, actualDecryptInfo.senderID, headerLength, callback);
-      });
-    });
   }
 
   //-- END OF INTERNALS --------------------------------------------

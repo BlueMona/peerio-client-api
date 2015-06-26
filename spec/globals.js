@@ -1,6 +1,6 @@
 
 // IMMUTABLE global spec data
-testUser = {};
+testUser = new User();
 testUser.username = 'anritest1';
 testUser.publicKey = '24yZSy2gDbBbY9MV5fxD4krLEK3M7S74BcD4EwSz4RVCMS';
 testUser.passPhrase = 'titular dragoon tornado leapfrog unworthy pantiled';
@@ -11,5 +11,5 @@ testUser.keyPair = {
 testUser.PIN = '123456';
 testUser.PINKey = new Uint8Array([184, 135, 222, 32, 70, 141, 21, 108, 37, 106, 53, 55, 39, 165, 110, 115, 220, 211, 162, 252, 249, 102, 214, 124, 156, 103, 75, 48, 177, 94, 62, 73]);
 testUser.contacts = {};
-testUser.contacts[testUser.username] = {publicKey: testUser.publicKey};
+testUser.contacts[testUser.username] = testUser;
 

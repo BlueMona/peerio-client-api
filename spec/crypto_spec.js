@@ -93,20 +93,21 @@ describe('Crypto', function () {
     var expected = ['9dbc492d105dde6a48c39eb788e2bdce0695114cbfddc74e267b7ff1b3cf288f',
       '5c756aa09ea4eb8df592a897ac7f7d1c04336b9dfa5e03d5d209f5e1d81e2dac'];
 
-    var avatar = C.getAvatar(testUser.username, testUser.miniLockID);
+    var avatar = C.getAvatar(testUser.username, testUser.publicKey);
 
     expect(avatar).toEqual(expected);
   });
+
 
   it('encrypts and decrypts message', function (done) {
     var originalMessage = {subject: 'encryption test', message: 'this is an encryption unit test message'};
 
     // encrypting
-    C.encryptMessage(originalMessage, [testUser.username], testUser.username, testUser.miniLockID, testUser.keyPair, contacts,
+    C.encryptMessage(originalMessage, [testUser.username], testUser,
       function (header, body, failed) {
         expect(failed).toEqual([]);
         // decrypting
-        C.decryptMessage({header: header, body: body}, testUser.miniLockID, testUser.keyPair, contacts,
+        C.decryptMessage({header: header, body: body}, testUser,
           function (decrypted) {
             expect(decrypted).toEqual(originalMessage);
             done();
@@ -126,7 +127,7 @@ describe('Crypto', function () {
       ephemeral: 'WdFT3Wqb8SjR9KBMIU+YhJ15z3AvyveDFwMgUym2s0Q=',
       version: 1
     };
-    var decrypted = C.decryptFileName(encrypted, header, testUser.miniLockID, testUser.keyPair);
+    var decrypted = C.decryptFileName(encrypted, header, testUser);
 
     expect(decrypted).toBe(original);
   });
@@ -136,7 +137,7 @@ describe('Crypto', function () {
     file.name = 'test';
     var id;
 
-    C.encryptFile(file, [testUser.username], testUser.username, testUser.miniLockID, testUser.keyPair, contacts,
+    C.encryptFile(file, [testUser.username], testUser,
       function (filename) {
         expect(filename).toBeDefined();
         id = nacl.util.encodeBase64(filename.subarray(4));
@@ -146,7 +147,7 @@ describe('Crypto', function () {
         expect(chunks).toBeDefined();
         var blob = new Blob(chunks, {type: 'application/octet-stream'});
 
-        C.decryptFile(id, blob, header, {sender: testUser.username}, testUser.miniLockID, testUser.keyPair, contacts,
+        C.decryptFile(id, blob, header, {sender: testUser.username}, testUser,
           function (decrypted) {
             expect(decrypted).toBeDefined();
             expect(file.size).toBe(decrypted.size);
