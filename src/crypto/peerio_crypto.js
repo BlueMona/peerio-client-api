@@ -29,10 +29,15 @@ Peerio.Crypto = {};
   var keySize = 32;
   var decryptInfoNonceSize = 24;
   var fileNonceSize = 16;
+  var numberSize = 4; // integer
+  var signatureSize = 8;
+  var headerStart = numberSize + signatureSize;
+  var fileNameSize = 256;
   // DO NOT CHANGE, it will change crypto output
   var scryptResourceCost = 14;
   var scryptBlockSize = 8;
   var scryptStepDuration = 1000;
+
 
   // todo: move to global helper
   // malicious server safe hasOwnProperty functions
@@ -257,10 +262,10 @@ Peerio.Crypto = {};
         var reader = new FileReader();//todo: refactor to remove File API usage
         reader.onload = function (readerEvent) {
           var encryptedBuffer = new Uint8Array(readerEvent.target.result);
-          var headerLength = byteArrayToNumber(encryptedBuffer.subarray(8, 12));
+          var headerLength = byteArrayToNumber(encryptedBuffer.subarray(signatureSize, headerStart));
           header = JSON.parse(header);
           var body = nacl.util.encodeBase64(
-            encryptedBuffer.subarray(12 + headerLength)
+            encryptedBuffer.subarray(headerStart + headerLength)
           );
           callback(header, body, validatedRecipients.failed);
         };
@@ -290,7 +295,7 @@ Peerio.Crypto = {};
       fileNameCallback,
       function (encryptedChunks, header) {
         if (encryptedChunks) {
-          encryptedChunks.splice(0, 4);
+          encryptedChunks.splice(0, numberSize);
           callback(JSON.parse(header), encryptedChunks, validatedRecipients.failed);
         } else
           callback(false);
@@ -365,7 +370,7 @@ Peerio.Crypto = {};
       'miniLock',
       numberToByteArray(headerStringLength),
       headerString,
-      numberToByteArray(256), // todo: convert to constant
+      numberToByteArray(fileNameSize),
       nacl.util.decodeBase64(id),
       blob
     ]);
@@ -736,7 +741,7 @@ Peerio.Crypto = {};
         }
 
         // Begin actual ciphertext decryption
-        var dataPosition = 12 + headerLength;
+        var dataPosition = headerStart + headerLength;
         var streamDecryptor = nacl.stream.createDecryptor(
           nacl.util.decodeBase64(actualDecryptInfo.fileInfo.fileKey),
           nacl.util.decodeBase64(actualDecryptInfo.fileInfo.fileNonce),
@@ -818,23 +823,23 @@ Peerio.Crypto = {};
     readFile(
       file,
       dataPosition,
-      dataPosition + 4 + fileNonceSize + api.chunkSize,
+      dataPosition + numberSize + fileNonceSize + api.chunkSize,
       function (chunk) {
         var fileName = '';
         chunk = chunk.data;
-        var actualChunkLength = byteArrayToNumber(chunk.subarray(0, 4));
+        var actualChunkLength = byteArrayToNumber(chunk.subarray(0, numberSize));
 
         if (actualChunkLength > chunk.length) {
           callbackOnComplete(false);
           return false;
         }
 
-        chunk = chunk.subarray(0, actualChunkLength + 4 + fileNonceSize);
+        chunk = chunk.subarray(0, actualChunkLength + numberSize + fileNonceSize);
 
         var decryptedChunk;
-        var isLast = dataPosition >= ((file.size) - (4 + fileNonceSize + actualChunkLength));
+        var isLast = dataPosition >= ((file.size) - (numberSize + fileNonceSize + actualChunkLength));
 
-        if (dataPosition === (12 + headerLength)) {
+        if (dataPosition === (headerStart + headerLength)) {
           // This is the first chunk, containing the filename
           decryptedChunk = streamDecryptor.decryptChunk(chunk, isLast);
           if (!decryptedChunk) {
@@ -842,11 +847,11 @@ Peerio.Crypto = {};
             return false;
           }
 
-          fileName = nacl.util.encodeUTF8(decryptedChunk.subarray(0, 256));
+          fileName = nacl.util.encodeUTF8(decryptedChunk.subarray(0, fileNameSize));
           while (fileName[fileName.length - 1] === String.fromCharCode(0x00))
             fileName = fileName.slice(0, -1);
 
-          hashObject.update(chunk.subarray(0, 256 + 4 + fileNonceSize));
+          hashObject.update(chunk.subarray(0, fileNameSize + numberSize + fileNonceSize));
         } else {
           decryptedChunk = streamDecryptor.decryptChunk(chunk, isLast);
 
