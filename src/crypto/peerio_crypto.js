@@ -16,8 +16,9 @@
 // todo: 1. probably replace "throw" with return values
 // todo: 2. "contacts" dependency is not nice, is there a better way?
 // todo: 3. maybe initialize crypto lib once instead of passing same user data to most of the functions
-
-var Peerio = Peerio || {};
+// todo: 4. using blobs forces us to use html5 file api, don't think it's optimal, see if can be changed
+  
+var Peerio = this.Peerio || {};
 Peerio.Crypto = {};
 
 (function () {
@@ -28,7 +29,7 @@ Peerio.Crypto = {};
 
   var keySize = 32;
   var decryptInfoNonceSize = 24;
-  var fileNonceSize = 16;
+  var blobNonceSize = 16;
   var numberSize = 4; // integer
   var signatureSize = 8;
   var headerStart = numberSize + signatureSize;
@@ -37,7 +38,6 @@ Peerio.Crypto = {};
   var scryptResourceCost = 14;
   var scryptBlockSize = 8;
   var scryptStepDuration = 1000;
-
 
   // todo: move to global helper
   // malicious server safe hasOwnProperty functions
@@ -246,9 +246,8 @@ Peerio.Crypto = {};
   api.encryptMessage = function (message, recipients, sender, callback) {
     var validatedRecipients = validateRecipients(recipients, sender);
 
-    encryptFile(
+    encryptBlob(
       new Blob([nacl.util.decodeUTF8(JSON.stringify(message))]),
-      'message',
       validatedRecipients.publicKeys,
       sender,
       null,
@@ -259,7 +258,7 @@ Peerio.Crypto = {};
         }
         var encryptedBlob = new Blob(encryptedChunks);
         encryptedChunks = null;
-        var reader = new FileReader();//todo: refactor to remove File API usage
+        var reader = new FileReader();
         reader.onload = function (readerEvent) {
           var encryptedBuffer = new Uint8Array(readerEvent.target.result);
           var headerLength = byteArrayToNumber(encryptedBuffer.subarray(signatureSize, headerStart));
@@ -282,14 +281,13 @@ Peerio.Crypto = {};
    * @param {function} fileNameCallback - Callback with encrypted fileName.
    * @param {function} callback - With header, body and failedRecipients parameters.
    */
-  api.encryptFile = function (file, recipients, sender,  fileNameCallback, callback) {
+  api.encryptFile = function (file, recipients, sender, fileNameCallback, callback) {
     var validatedRecipients = validateRecipients(recipients, sender);
 
     var blob = file.slice();
     blob.name = file.name;
-    encryptFile(
+    encryptBlob(
       blob,
-      file.name,
       validatedRecipients.publicKeys,
       sender,
       fileNameCallback,
@@ -320,15 +318,15 @@ Peerio.Crypto = {};
       nacl.util.decodeBase64(messageObject.body)
     ]);
 
-    decryptFile(messageBlob, user,
-      function (decryptedBlob, saveName, senderID) {
+    decryptBlob(messageBlob, user,
+      function (decryptedBlob, senderID) {
         if (!decryptedBlob) {
           callback(false);
           return false;
         }
         // validating sender public key
         if (hasProp(user.contacts, messageObject.sender)
-            && user.contacts[messageObject.sender].publicKey !== senderID) {
+          && user.contacts[messageObject.sender].publicKey !== senderID) {
           callback(false);
           return false;
         }
@@ -375,8 +373,8 @@ Peerio.Crypto = {};
       blob
     ]);
 
-    decryptFile(miniLockBlob, user,
-      function (decryptedBlob, saveName, senderID) {
+    decryptBlob(miniLockBlob, user,
+      function (decryptedBlob, senderID) {
         if (!decryptedBlob) {
           callback(false);
           return false;
@@ -439,7 +437,7 @@ Peerio.Crypto = {};
       var contact = sender.contacts[recipient];
       if (hasProp(contact, 'publicKey') && publicKeys.indexOf(contact.publicKey) < 0)
         publicKeys.push(contact.publicKey);
-      else if(recipient != sender.username)
+      else if (recipient != sender.username)
         failed.push(recipient);
     });
 
@@ -594,7 +592,7 @@ Peerio.Crypto = {};
     if (!hasProp(header, 'version') || header.version !== 1)
       return false;
 
-    if (!hasProp(header,'ephemeral') || !validateKey(header.ephemeral))
+    if (!hasProp(header, 'ephemeral') || !validateKey(header.ephemeral))
       return false;
 
     // Attempt decryptInfo decryptions until one succeeds
@@ -646,49 +644,47 @@ Peerio.Crypto = {};
   /**
    * Convenience method to read from blobs
    */
-  function readFile(file, start, end, callback, errorCallback) {
+  function readBlob(blob, start, end, callback, errorCallback) {
     var reader = new FileReader();
 
     reader.onload = function (readerEvent) {
-       callback({
-        name: file.name,
-        size: file.size,
+      callback({
+        name: blob.name,
+        size: blob.size,
         data: new Uint8Array(readerEvent.target.result)
       });
     };
 
     reader.onerror = function () {
       if (typeof(errorCallback) === 'function')
-         errorCallback();
+        errorCallback();
 
     };
 
-    reader.readAsArrayBuffer(file.slice(start, end));
+    reader.readAsArrayBuffer(blob.slice(start, end));
   }
 
   /**
-   * Encrypts file
-   * @param {{name: string, size: Number, data: ArrayBuffer}} file
-   * @param {string} saveName
+   * Encrypts blob
+   * @param {{name: string, size: Number, data: ArrayBuffer}} blob
    * @param {string[]} publicKeys
    * @param {User} user
    * @param {Function} fileNameCallback - A callback with the encrypted fileName.
    * @param {Function} callback - Callback function to which encrypted result is passed.
    */
-  function encryptFile(file, saveName, publicKeys, user, fileNameCallback, callback) {
-    saveName += '.miniLock';
-    var fileKey = nacl.randomBytes(keySize);
-    var fileNonce = nacl.randomBytes(fileNonceSize);
+  function encryptBlob(blob, publicKeys, user, fileNameCallback, callback) {
+    var blobKey = nacl.randomBytes(keySize);
+    var blobNonce = nacl.randomBytes(blobNonceSize);
     var streamEncryptor = nacl.stream.createEncryptor(
-      fileKey,
-      fileNonce,
+      blobKey,
+      blobNonce,
       api.chunkSize
     );
 
     var paddedFileName = new Uint8Array(256);
-    var fileNameBytes = nacl.util.decodeUTF8(file.name);
+    var fileNameBytes = nacl.util.decodeUTF8(blob.name);
     if (fileNameBytes.length > paddedFileName.length) {
-      //file name is too long
+      //blob name is too long
       callback(false);
       return false;
     }
@@ -710,22 +706,22 @@ Peerio.Crypto = {};
     var encryptedChunks = [encryptedChunk];
     hashObject.update(encryptedChunk);
 
-    encryptNextChunk(file, streamEncryptor, hashObject, encryptedChunks, 0,
-      saveName, fileKey, fileNonce, publicKeys, user, callback);
-
+    encryptNextChunk({blob: blob, streamEncryptor: streamEncryptor, hashObject: hashObject,
+                      encryptedChunks: encryptedChunks, dataPosition: 0, fileKey: blobKey, fileNonce: blobNonce,
+                      publicKeys: publicKeys, user: user, callbackOnComplete: callback});
   }
 
   /**
-   * Decrypts file
-   * @param {{name: string, size: Number, data: ArrayBuffer}}file
+   * Decrypts blob
+   * @param {{name: string, size: Number, data: ArrayBuffer}}blob
    * @param {User} user - decrypting user
    * @param {Function} callback - function to which decrypted result is passed.
    */
-  function decryptFile(file, user, callback) {
-    readFile(file, 8, 12, function (headerLength) {
+  function decryptBlob(blob, user, callback) {
+    readBlob(blob, 8, 12, function (headerLength) {
       headerLength = byteArrayToNumber(headerLength.data);
 
-      readFile(file, 12, headerLength + 12, function (header) {
+      readBlob(blob, 12, headerLength + 12, function (header) {
         try {
           header = nacl.util.encodeUTF8(header.data);
           header = JSON.parse(header);
@@ -736,7 +732,7 @@ Peerio.Crypto = {};
         }
         var actualDecryptInfo = decryptHeader(header, user);
         if (!actualDecryptInfo) {
-          callback(false, file.name, false);
+          callback(false, blob.name, false);
           return false;
         }
 
@@ -748,137 +744,142 @@ Peerio.Crypto = {};
           api.chunkSize
         );
         var hashObject = new BLAKE2s(keySize);
-        decryptNextChunk(file, streamDecryptor, hashObject, [], dataPosition,
-          actualDecryptInfo.fileInfo, actualDecryptInfo.senderID, headerLength, callback);
+        decryptNextChunk({
+          firstChunk: true,
+          blob: blob,
+          fileName: '',
+          streamDecryptor: streamDecryptor,
+          hashObject: hashObject,
+          decryptedChunks: [],
+          dataPosition: dataPosition,
+          fileInfo: actualDecryptInfo.fileInfo,
+          senderPublicKey: actualDecryptInfo.senderID,
+          headerLength: headerLength,
+          callbackOnComplete: callback
+        });
       });
     });
   }
 
   /**
    * Encrypts next chunk of data
-   * @param {{name: string, size: Number, data: ArrayBuffer}} file
-   * @param {object} streamEncryptor - nacl stream encryptor instance
-   * @param {object} hashObject - blake2 hash object instance
-   * @param {Uint8Array[]} encryptedChunks
-   * @param {Number} dataPosition
-   * @param {string} saveName
-   * @param {Uint8Array} fileKey
-   * @param {Uint8Array} fileNonce
-   * @param {string[]} publicKeys
-   * @param {User} user
-   * @param {Function} callbackOnComplete {file, saveName, senderID}
+   * @param {object} e - encrypt data object
+   * @param {{name: string, size: Number, data: ArrayBuffer}} e.blob
+   * @param {object} e.streamEncryptor - nacl stream encryptor instance
+   * @param {object} e.hashObject - blake2 hash object instance
+   * @param {Uint8Array[]} e.encryptedChunks
+   * @param {Number} e.dataPosition
+   * @param {Uint8Array} e.fileKey
+   * @param {Uint8Array} e.fileNonce
+   * @param {string[]} e.publicKeys
+   * @param {User} e.user
+   * @param {Function} e.callbackOnComplete {file, header, senderID}
    */
-  function encryptNextChunk(file, streamEncryptor, hashObject, encryptedChunks, dataPosition,
-                            saveName, fileKey, fileNonce, publicKeys, user, callbackOnComplete) {
-    readFile(
-      file,
-      dataPosition,
-      dataPosition + api.chunkSize,
+  function encryptNextChunk(e) {
+    readBlob(
+      e.blob,
+      e.dataPosition,
+      e.dataPosition + api.chunkSize,
       function (chunk) {
         chunk = chunk.data;
-        var isLast = dataPosition >= (file.size - api.chunkSize);
+        var isLast = e.dataPosition >= (e.blob.size - api.chunkSize);
 
-        var encryptedChunk = streamEncryptor.encryptChunk(chunk, isLast);
+        var encryptedChunk = e.streamEncryptor.encryptChunk(chunk, isLast);
         if (!encryptedChunk) {
-          callbackOnComplete(false);
+          e.callbackOnComplete(false);
           return false;
         }
 
-        hashObject.update(encryptedChunk);
-        encryptedChunks.push(encryptedChunk);
+        e.hashObject.update(encryptedChunk);
+        e.encryptedChunks.push(encryptedChunk);
 
         if (isLast) {
-          streamEncryptor.clean();
-          var header = createHeader(publicKeys, user, fileKey, fileNonce, hashObject.digest());
+          e.streamEncryptor.clean();
+          var header = createHeader(e.publicKeys, e.user, e.fileKey, e.fileNonce, e.hashObject.digest());
           header = JSON.stringify(header);
-          // todo changing the string here requires change in the code that depends on that string length when reading blob
-          encryptedChunks.unshift('miniLock', numberToByteArray(header.length), header);
+          e.encryptedChunks.unshift('miniLock', numberToByteArray(header.length), header);
 
-          return callbackOnComplete(encryptedChunks, header, saveName, user.publicKey);
+          return e.callbackOnComplete(e.encryptedChunks, header, e.user.publicKey);
         }
 
-        dataPosition += api.chunkSize;
-        return encryptNextChunk(file, streamEncryptor, hashObject, encryptedChunks, dataPosition,
-          saveName, fileKey, fileNonce, publicKeys, user, callbackOnComplete);
+        e.dataPosition += api.chunkSize;
 
+        return encryptNextChunk(e);
       }
     );
   }
 
-
   /**
-   * Dencrypts next chunk of data
-   * @param {{name: string, size: Number, data: ArrayBuffer}} file
-   * @param {object} streamDecryptor - nacl stream decryptor instance
-   * @param {object} hashObject - blake2 hash object instance
-   * @param {Uint8Array[]} decryptedChunks
-   * @param {Number} dataPosition
-   * @param {object} fileInfo
-   * @param {string} senderPublicKey
-   * @param {Number} headerLength
-   * @param {Function} callbackOnComplete {file, saveName, senderID}
+   * Decrypts next chunk of data
+   * @param {object} d - decrypt data object
+   * @param {boolean} d.firstChunk - does position point to the first chunk or not
+   * @param {{name: string, size: Number, data: ArrayBuffer}} d.blob
+   * @param {string} d.fileName
+   * @param {object} d.streamDecryptor - nacl stream decryptor instance
+   * @param {object} d.hashObject - blake2 hash object instance
+   * @param {Uint8Array[]} d.decryptedChunks
+   * @param {Number} d.dataPosition
+   * @param {object} d.fileInfo
+   * @param {string} d.senderPublicKey
+   * @param {Number} d.headerLength
+   * @param {Function} d.callbackOnComplete {file, senderID}
    */
-  function decryptNextChunk(file, streamDecryptor, hashObject, decryptedChunks, dataPosition,
-                            fileInfo, senderPublicKey, headerLength, callbackOnComplete) {
-    readFile(
-      file,
-      dataPosition,
-      dataPosition + numberSize + fileNonceSize + api.chunkSize,
+  function decryptNextChunk(d) {
+    readBlob(
+      d.blob,
+      d.dataPosition,
+      d.dataPosition + numberSize + blobNonceSize + api.chunkSize,
       function (chunk) {
-        var fileName = '';
         chunk = chunk.data;
-        var actualChunkLength = byteArrayToNumber(chunk.subarray(0, numberSize));
+        var chunkLength = byteArrayToNumber(chunk.subarray(0, numberSize));
 
-        if (actualChunkLength > chunk.length) {
-          callbackOnComplete(false);
-          return false;
+        if (chunkLength > chunk.length) {
+          d.callbackOnComplete(false);
+          throw new Error('Invalid chunk length read while decrypting.');
         }
 
-        chunk = chunk.subarray(0, actualChunkLength + numberSize + fileNonceSize);
+        chunk = chunk.subarray(0, chunkLength + numberSize + blobNonceSize);
 
         var decryptedChunk;
-        var isLast = dataPosition >= ((file.size) - (numberSize + fileNonceSize + actualChunkLength));
+        var isLast = d.dataPosition >= ((d.blob.size) - (numberSize + blobNonceSize + chunkLength));
 
-        if (dataPosition === (headerStart + headerLength)) {
-          // This is the first chunk, containing the filename
-          decryptedChunk = streamDecryptor.decryptChunk(chunk, isLast);
+        if (d.firstChunk) {
+          d.firstChunk = false;
+
+          decryptedChunk = d.streamDecryptor.decryptChunk(chunk, isLast);
           if (!decryptedChunk) {
-            callbackOnComplete(false);
+            d.callbackOnComplete(false);
             return false;
           }
 
-          fileName = nacl.util.encodeUTF8(decryptedChunk.subarray(0, fileNameSize));
-          while (fileName[fileName.length - 1] === String.fromCharCode(0x00))
-            fileName = fileName.slice(0, -1);
+          var fileName = nacl.util.encodeUTF8(decryptedChunk.subarray(0, fileNameSize));
+          var trimStart = fileName.indexOf('\0');
+          d.fileName = trimStart >= 0 ? fileName.slice(trimStart) : fileName;
 
-          hashObject.update(chunk.subarray(0, fileNameSize + numberSize + fileNonceSize));
-        } else {
-          decryptedChunk = streamDecryptor.decryptChunk(chunk, isLast);
+          d.hashObject.update(chunk.subarray(0, fileNameSize + numberSize + blobNonceSize));
+        } else { // if not first chunk
+          decryptedChunk = d.streamDecryptor.decryptChunk(chunk, isLast);
 
           if (!decryptedChunk) {
-            callbackOnComplete(false);
-            return false;
+            d.callbackOnComplete(false);
+            throw new Error('Failed to decrypt chunk');
           }
 
-          decryptedChunks.push(decryptedChunk);
-          hashObject.update(chunk);
+          d.decryptedChunks.push(decryptedChunk);
+          d.hashObject.update(chunk);
         }
 
-        dataPosition += chunk.length;
-        if (isLast) {
-          if (!nacl.verify(new Uint8Array(hashObject.digest()), nacl.util.decodeBase64(fileInfo.fileHash))) {
-            //throw new Error('miniLock: Decryption failed - could not validate file contents after decryption')
-            callbackOnComplete(false);
-            return false;
-          } else {
-            streamDecryptor.clean();
-            return callbackOnComplete(new Blob(decryptedChunks), fileName, senderPublicKey);
-          }
+        d.dataPosition += chunk.length;
+        if (!isLast) return decryptNextChunk(d);
+
+        if (!nacl.verify(new Uint8Array(d.hashObject.digest()), nacl.util.decodeBase64(d.fileInfo.fileHash))) {
+          d.callbackOnComplete(false);
+          throw new Error('Failed to verify decrypted data hash');
         }
-        else {
-          return decryptNextChunk(file, streamDecryptor, hashObject, decryptedChunks, dataPosition,
-            fileInfo, senderPublicKey, headerLength, callbackOnComplete);
-        }
+
+        d.streamDecryptor.clean();
+        d.callbackOnComplete(new Blob(d.decryptedChunks), d.senderPublicKey);
+
       }
     );
   }
