@@ -17,7 +17,7 @@
 // todo: 2. "contacts" dependency is not nice, is there a better way?
 // todo: 3. maybe initialize crypto lib once instead of passing same user data to most of the functions
 // todo: 4. using blobs forces us to use html5 file api, don't think it's optimal, see if can be changed
-  
+
 var Peerio = this.Peerio || {};
 Peerio.Crypto = {};
 
@@ -38,6 +38,7 @@ Peerio.Crypto = {};
   var scryptResourceCost = 14;
   var scryptBlockSize = 8;
   var scryptStepDuration = 1000;
+  var signature = '.peerio.'; // has to be 8 bytes, don't change
 
   // todo: move to global helper
   // malicious server safe hasOwnProperty functions
@@ -215,7 +216,6 @@ Peerio.Crypto = {};
    * Identicon 2:  Last 128 bits of BLAKE2(username||publicKey).
    * Identicon 3: First 128 bits of BLAKE2(publicKey||username).
    * Identicon 4:  Last 128 bits of BLAKE2(publicKey||username).
-   * Note that the miniLock ID is hashed as its byte values, not as a string.
    * @param {string} username
    * @param {string} publicKey
    * @return {Array|Boolean} [hash1 (Hex string), hash2 (Hex string)]
@@ -312,7 +312,7 @@ Peerio.Crypto = {};
     var header = JSON.stringify(messageObject.header);
 
     var messageBlob = new Blob([
-      'miniLock',
+      signature,
       numberToByteArray(header.length),
       header,
       nacl.util.decodeBase64(messageObject.body)
@@ -364,8 +364,8 @@ Peerio.Crypto = {};
   api.decryptFile = function (id, blob, header, file, user, callback) {
     var headerString = JSON.stringify(header);
     var headerStringLength = nacl.util.decodeUTF8(headerString).length;
-    var miniLockBlob = new Blob([
-      'miniLock',
+    var peerioBlob = new Blob([
+      signature,
       numberToByteArray(headerStringLength),
       headerString,
       numberToByteArray(fileNameSize),
@@ -373,7 +373,7 @@ Peerio.Crypto = {};
       blob
     ]);
 
-    decryptBlob(miniLockBlob, user,
+    decryptBlob(peerioBlob, user,
       function (decryptedBlob, senderID) {
         if (!decryptedBlob) {
           callback(false);
@@ -797,7 +797,7 @@ Peerio.Crypto = {};
           e.streamEncryptor.clean();
           var header = createHeader(e.publicKeys, e.user, e.fileKey, e.fileNonce, e.hashObject.digest());
           header = JSON.stringify(header);
-          e.encryptedChunks.unshift('miniLock', numberToByteArray(header.length), header);
+          e.encryptedChunks.unshift(signature, numberToByteArray(header.length), header);
 
           return e.callbackOnComplete(e.encryptedChunks, header, e.user.publicKey);
         }
