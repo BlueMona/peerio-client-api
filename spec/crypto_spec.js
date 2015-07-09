@@ -5,7 +5,7 @@
  *
  */
 
-describe('Crypto', function () {
+xdescribe('Crypto', function () {
   'use strict';
 
   jasmine.DEFAULT_TIMEOUT_INTERVAL = 15000;

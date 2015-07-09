@@ -41,7 +41,7 @@ var Base58 = {};
       }
     }
 
-    var zeros = maxEncodedLen(buffer.length * 8) - digits.length;
+    var zeros = maxEncodedLen(buffer.length * 8) - digits.length-1;
     // deal with leading zeros
     for (i = 0; i < zeros; i++) digits.push(0);
 

@@ -19,6 +19,7 @@
     "lodash": "~3.9.2"
   },
   "devDependencies": {
-    "node-uuid": "~1.4.3"
+    "node-uuid": "~1.4.3",
+    "axios": "~0.5.4"
   }
 }

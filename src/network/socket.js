@@ -4,7 +4,7 @@
  *  and networking layer.
  */
 
-window.Peerio = window.Peerio || {};
+var Peerio = this.Peerio || {};
 Peerio.Socket = {};
 
 (function () {
@@ -13,9 +13,12 @@ Peerio.Socket = {};
   // malicious server safe hasOwnProperty function;
   var hasProp = Function.call.bind(Object.prototype.hasOwnProperty);
 
-  // todo: inject this from config
   // worker instance holding the actual web socket
-  var worker = new Worker('/base/src/network/socket_worker.js');
+  var worker = new Worker(Peerio.Config.socketWorkerPath);
+
+  // initializing worker
+  worker.postMessage({ socketIOPath: Peerio.Config.socketIOPath,
+                       server: Peerio.Config.webSocketServer});
 
   // pending callbacks id:function
   var callbacks = {};
@@ -41,17 +44,17 @@ Peerio.Socket = {};
   Peerio.Socket.send = function (name, data, callback) {
 
     // registering the callback, if provided
-    var callbackId = null;
+    var callbackID = null;
     if (typeof(callback) === 'function') {
-      callbackId = uuid();
-      callbacks[callbackId] = callback;
+      callbackID = uuid();
+      callbacks[callbackID] = callback;
     }
 
     // object to send
     var message = {
       name: name,
       data: data,
-      callbackId: callbackId
+      callbackID: callbackID
     };
 
     // for file upload we want to transfer ownership of the chunk data
@@ -65,15 +68,16 @@ Peerio.Socket = {};
   };
 
   worker.onmessage = function (message) {
+    var data = message.data;
 
-    if (hasProp(message.data, 'callbackID') && message.data.callbackID) {
-      callbacks[message.callbackID](message.data);
-      delete callbacks[message.callbackID];
+    if (hasProp(data, 'callbackID') && data.callbackID) {
+      callbacks[data.callbackID](data.data);
+      delete callbacks[data.callbackID];
       return;
     }
 
-    if (eventHandler && hasProp(message, 'socketEvent')) {
-      eventHandler(message.socketEvent);
+    if (eventHandler && hasProp(data, 'socketEvent')) {
+      eventHandler(data.socketEvent);
     }
 
   };

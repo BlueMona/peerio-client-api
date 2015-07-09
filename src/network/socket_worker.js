@@ -3,6 +3,9 @@
  * This architectural decision was made to minimize the impact
  * of potential performance bottleneck and UI thread blocking.
  *
+ * IMPORTANT: socket client should be initialized before using,
+ *            see documentation for onmessage handler below.
+ *
  * todo: Ideally this should be decoupled further,
  *       moving out socket handling code to separate file,
  *       that can be imported in a web worker wrapper or be used in UI thread as usual.
@@ -15,45 +18,50 @@
 (function () {
   'use strict';
 
-  // protect from accidental running in UI thread instead of web worker.
-  // this also helps to make unit tests configuration easier
-  if(self.document !== undefined) return;
-
-  // todo path should be injected to work from the actual app using this api
-  importScripts('/bower_components/socket.io-client/socket.io.js');
-
-  var server = 'https://app.peerio.com:443';
-  //var server = 'https://marcyhome.peerio.com:443';
-
-  // creating socket.io client instance
-  self.peerioSocket = io.connect(server, {transports: ['websocket']});
-
-  // socket events should be passed to UI thread
-  ['receivedContactRequestsAvailable',
-    'modifiedMessagesAvailable',
-    'uploadedFilesAvailable',
-    'modifiedConversationsAvailable',
-    'newContactsAvailable',
-    'sentContactRequestsAvailable',
-    'contactsAvailable',
-    'connect_error',
-    'reconnecting',
-    'reconnect'
-  ].forEach(function (eventName) {
-      self.peerioSocket.on(eventName, self.postMessage.bind(self, {socketEvent: eventName}));
-    });
-
-  // message from UI thread means we need to send it though socket
+  // First message from UI thread should contain configuration data to initialise worker.
+  // All the following messages will be considered data to send through socket.
   self.onmessage = function (payload) {
+    initialize(payload.data);
+    // replacing init handler with the one that will send data through socket
+    self.onmessage = messageHandler;
+  };
+
+  // Config object:
+  // {
+  //   socketIOPath: string - absolute path to socket.io client script,
+  //   server: string - peerio server url
+  // }
+  function initialize(cfg) {
+    // importing socket.io client script
+    importScripts(cfg.socketIOPath);
+    // creating socket.io client instance
+    self.peerioSocket = io.connect(cfg.server, {transports: ['websocket']});
+    // socket events should be passed to UI thread
+    ['receivedContactRequestsAvailable',
+      'modifiedMessagesAvailable',
+      'uploadedFilesAvailable',
+      'modifiedConversationsAvailable',
+      'newContactsAvailable',
+      'sentContactRequestsAvailable',
+      'contactsAvailable',
+      'connect_error',
+      'reconnecting',
+      'reconnect'
+    ].forEach(function (eventName) {
+        self.peerioSocket.on(eventName, self.postMessage.bind(self, {socketEvent: eventName}));
+      });
+  }
+
+  // sends data from UI thread through socket
+  function messageHandler(payload) {
     var message = payload.data;
 
-    self.peerioSocket.emit(message.name, message.content, function (data) {
+    self.peerioSocket.emit(message.name, message.data, function (response) {
       self.postMessage({
         callbackID: message.callbackID,
-        data: data
+        data: response
       });
     });
-
-  };
+  }
 
 })();

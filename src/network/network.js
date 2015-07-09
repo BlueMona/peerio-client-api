@@ -2,24 +2,26 @@
  * Peerio network protocol implementation
  */
 
+var Peerio = this.Peerio || {};
+Peerio.Net = {};
+
 (function () {
   'use strict';
-  Peerio.network = {};
 
-  var AUTH_TOKEN_THRESHOLD = 10;
+  var api = Peerio.Net;
+  // malicious server safe hasOwnProperty function
+  var hasProp = Function.call.bind(Object.prototype.hasOwnProperty);
 
-  //>>>>> PROMISE MANAGEMENT BLOCK
-  // We need to be able to reject all pending promises in case of socket errors
-  // here we store them by unique id
+  //-- PRIVATE: PROMISE MANAGEMENT -------------------------------------------------------------------------------------
+  // here we store all pending promises by unique id
   var pending = {};
-  // safe max id under 32-bit integer. Once we reach maximum, id resets to 0.
+  // safe max promise id under 32-bit integer. Once we reach maximum, id resets to 0.
   var maxId = 4000000000;
   var currentId = 0;
 
   // registers new promise reject function and returns a unique id for it
   function addPendingPromise(rejectFn) {
-    currentId++;
-    if (currentId > maxId) currentId = 0;
+    if (++currentId > maxId) currentId = 0;
     pending[currentId] = rejectFn;
     return currentId;
   }
@@ -29,7 +31,19 @@
     delete pending[id];
   }
 
-  // rejects all pending promises
+  var ServerErrors = {
+    getMessage: function (code) {
+      return this[code] || 'Server error.';
+    },
+    404: 'Resource does not exist or you are not allowed to access it.',
+    413: 'Storage quota exceeded.',
+    406: 'Malformed request.',
+    423: 'Authentication error.',
+    424: 'Two-factor authentication required.',
+    425: 'The account has been throttled (sent too many requests that failed to authenticate).',
+    426: 'User blacklisted.'
+  };
+  // rejects all pending promises. useful in case of socket errors, logout.
   function rejectAllPromises() {
     _.forOwn(pending, function (reject) {
       reject();
@@ -37,577 +51,487 @@
     pending = {};
     currentId = 0;
   }
-  //<<<<< END OF PROMISE MANAGEMENT BLOCK
 
-  //>>>>> AUTH TOKEN MANAGEMENT BLOCK
-  // auth tokens are tied to server.
-  // object contains arrays of tokens by
-  var authTokens = {};
-
-  function popAuthToken(){
-    if(authTokens.length < AUTH_TOKEN_THRESHOLD) refillAuthTokens();
+  function PeerioServerError(code) {
+    this.code = +code;
+    this.message = ServerErrors.getMessage(code);
+    this.timestamp = Date.now();
+    this.isOperational = true;
   }
 
-  function refillAuthTokens(){
-
-  }
-
-  //<<<<< END OF AUTH TOKEN MANAGEMENT BLOCK
+  PeerioServerError.prototype = Object.create(Error.prototype);
 
   /**
    *  generalized DRY function to use from public api functions
    *  @param {string} name - message name
-   *  @param {object} data - object to send
-   *  @param {bool} [noAuthToken] - optionally pass true for messages that do not require auth
+   *  @param {Object} [data] - object to send
    */
-  function sendMessage(name, data, noAuthToken) {
+  function sendToSocket(name, data) {
+    // unique (within reasonable time frame) promise id
     var id = null;
+
     return new Promise(function (resolve, reject) {
       id = addPendingPromise(reject);
-      Peerio.socket.emit(name, data, resolve);
-    }).finally(removePendingPromise.bind(this, id));
+      Peerio.Socket.send(name, data, resolve);
+    })
+      // we want to catch all exceptions, log them and reject promise
+      .catch(function (error) {
+        console.log(error);
+        return Promise.reject();
+      })
+      // if we got response, let's check it for 'error' property and reject promise if it exists
+      .then(function (response) {
+        return hasProp(response, 'error')
+          ? Promise.reject(new PeerioServerError(response.error))
+          : Promise.resolve(response);
+      })
+      .finally(removePendingPromise.bind(this, id));
   }
 
   /**
    * Asks the server to validate a username.
-   * @param {string}   username - Username to validate.
+   * @param {string}  username - Username to validate.
+   * @promise {Boolean} - true if username is valid (free)
    */
-  Peerio.network.validateUsername = function (username) {
-    if (!username) { return Promise.reject(); }
-    return sendMessage('validateUsername', {username: username}, true);
+  api.validateUsername = function (username) {
+    if (!username) { return Promise.resolve(false); }
+    return sendToSocket('validateUsername', {username: username})
+      .return(true)
+      .catch(PeerioServerError, function (error) {
+        if (error.code === 400) return Promise.resolve(false);
+        else return Promise.reject();
+      });
   };
 
   /**
-   * Asks the server to validate an address.
-   * @param {string}   address  - Address to validate.
-   * @param {function} callback - Callback function with server data.
+   * Asks the server to validate an address(email or phone).
+   * @param {string} address  - Address to validate.
+   * @promise {Boolean} - true if address is valid and not yet registered, false otherwise
    */
-  Peerio.network.validateAddress = function (address, callback) {
-    var parsed = Peerio.util.parseAddress(address)
-    if (!parsed) { return false }
-    Peerio.socket.emit('validateAddress', {
-      address: parsed
-    }, callback)
-  }
+  api.validateAddress = function (address) {
+    var parsed = Peerio.Util.parseAddress(address);
+    if (!parsed) return Promise.resolve(false);
+    return sendToSocket('validateAddress', {address: parsed})
+      .return(true)
+      .catch(PeerioServerError, function (error) {
+        if (error.code === 400) return Promise.resolve(false);
+        else return Promise.reject();
+      });
+  };
 
   /**
    * Begins an account registration challenge with the server.
-   * @param {object} accountInfo - Contains account information.
-   * @param {function} callback - Callback function with server data.
+   * @param {Peerio.Model.AccountInfo} accountInfo - Contains account information.
+   * @promise {{
+   *            username: 'Username this challenge is for (String)',
+   *            accountCreationToken: {
+   *              token: 'Encrypted token (Base64 String)',
+   *              nonce: 'Nonce used to encrypt the token (Base64 string)'
+   *            },
+   *            ephemeralServerID: 'server's public key (Base58 String)'
+   *          }} - server response
    */
-  Peerio.network.registerAccount = function (accountInfo, callback) {
-    Peerio.socket.emit('registrationRequest', accountInfo, callback)
-  }
+  api.registerAccount = function (accountInfo) {
+    return sendToSocket('registrationRequest', accountInfo);
+  };
 
   /**
    * Begins an account registration challenge with the server.
-   * @param {object} accountInfo - Contains account information.
-   * @param {function} callback - Callback function with server data.
+   * @param {string} decryptedToken - Contains account information.
+   * @promise {Boolean} - always returns true or throws a PeerioServerError
    */
-  Peerio.network.returnAccountCreationToken = function (decryptedToken, callback) {
-    Peerio.socket.emit('accountCreationResponse', {
-      accountCreationToken: decryptedToken
-    }, callback)
-  }
+  api.returnAccountCreationToken = function (decryptedToken) {
+    return sendToSocket('accountCreationResponse', {accountCreationToken: decryptedToken})
+      .return(true);
+  };
 
   /**
-   * Send back an account confirmation code for the user's email/phone number.
+   * Sends back an account confirmation code for the user's email/phone number.
+   * @param {string} username
    * @param {number} confirmationCode - 8 digit number.
-   * @param {function} callback - Callback function with server data.
+   * @promise {Boolean}
    */
-  Peerio.network.sendAccountConfirmation = function (confirmationCode, callback) {
-    Peerio.socket.emit('accountConfirmation', {
-      username: Peerio.user.username,
-      confirmationCode: confirmationCode
-    }, callback)
-  }
+  api.sendAccountConfirmation = function (username, confirmationCode) {
+    return sendToSocket('accountConfirmation', {username: username, confirmationCode: confirmationCode})
+      .return(true);
+  };
 
   /**
-   * Send a request for authTokens.
-   * @param {function} callback - Callback function with server data.
+   * Sends a request for authToken.
+   * @param {string} username
+   * @param {string} publicKey
+   * @promise {{ ephemeralServerID: 'miniLock ID of server (Base58 String)',
+   *             token: 'Encrypted token (Base64 String)',
+   *             nonce: 'Nonce used to encrypt the token (Base64 string)' }}
    */
-  Peerio.network.getAuthTokens = function (callback) {
-    console.log('authTokenRequest')
-    Peerio.socket.emit('authTokenRequest', {
-      username: Peerio.user.username,
-      miniLockID: Peerio.user.miniLockID,
-      //version: Peerio.config.version
-    }, callback)
-  }
+  api.getAuthenticationToken = function (username, publicKey) {
+    return sendToSocket('getAuthenticationToken', {username: username, miniLockID: publicKey, apiVersion: '2.0.0'});
+  };
 
   /**
-   * Get user settings and some personal data. Uses an authToken.
-   * @param {function} callback - Callback function with server data.
+   * Authenticates current websocket session
+   * @param {string} authToken - decrypted auth token
    */
-  Peerio.network.getSettings = function (callback) {
-    Peerio.socket.emit('getSettings', {
-      authToken: Peerio.user.popAuthToken()
-    }, callback)
-  }
+  api.login = function (authToken) {
+    return sendToSocket('login', {authToken: authToken})
+      .return(true)
+      .catch(function () {
+        return Promise.reject();
+      });
+  };
 
   /**
-   * Change settings. Uses an authtoken.
-   * @param {object} settingsObject - With the optional parameters of:
-   *  twoFactorAuth, firstName, lastName, sendReadReceipts,
-   *  localeCode, receiveMessageNotifications, useSounds, enterToSend
-   * @param {function} callback - Callback function with server data.
+   * Gets user settings and some personal data
+   * @promise {{todo}}
    */
-  Peerio.network.updateSettings = function (settingsObject, callback) {
-    settingsObject.authToken = Peerio.user.popAuthToken()
-    Peerio.socket.emit('updateSettings', settingsObject, callback)
-  }
+  api.getSettings = function () {
+    return sendToSocket('getSettings');
+  };
 
   /**
-   * Add a new user address. Uses an authtoken.
-   * @param {string} address
-   * @param {function} callback - Callback function with server data.
+   * Change settings.
+   * @param {object} settings
+   * @promise
    */
-  Peerio.network.addAddress = function (address, callback) {
-    address = Peerio.util.parseAddress(address)
-    if (!address) { return false }
-    Peerio.socket.emit('addAddress', {
-      address: address,
-      authToken: Peerio.user.popAuthToken()
-    }, callback)
-  }
+  api.updateSettings = function (settings) {
+    return sendToSocket('updateSettings', settings);
+  };
 
   /**
-   * Confirms an address using confirmation code. Uses an authToken.
-   * @param {string} address
+   * Adds a new user address. Requires confirmation to make changes permanent.
+   * @param {{type: 'email'||'phone', value: address }} address
+   * @promise
+   */
+  api.addAddress = function (address) {
+    return sendToSocket('addAddress', address);
+  };
+
+  /**
+   * Confirms an address using confirmation code.
    * @param {string} code
-   * @param {function} callback - Callback function with server data.
+   * @promise
    */
-  Peerio.network.confirmAddress = function (address, code, callback) {
-    address = Peerio.util.parseAddress(address)
-    if (!address) { return false }
-    Peerio.socket.emit('confirmAddress', {
-      address: {
-        value: address.value
-      },
-      confirmationCode: code,
-      authToken: Peerio.user.popAuthToken()
-    }, callback)
-  }
+  api.confirmAddress = function (code) {
+    return sendToSocket('confirmAddress', {confirmationCode: code});
+  };
 
   /**
-   * Sets an adddress as the primary address. Uses an authToken.
+   * Sets an address as the primary address.
    * @param {string} address
-   * @param {function} callback - Callback function with server data.
+   * @promise
    */
-  Peerio.network.setPrimaryAddress = function (address, callback) {
-    address = Peerio.util.parseAddress(address)
-    if (!address) { return false }
-    Peerio.socket.emit('setPrimaryAddress', {
-      address: {
-        value: address.value
-      },
-      authToken: Peerio.user.popAuthToken()
-    }, callback)
-  }
+  api.setPrimaryAddress = function (address) {
+    return sendToSocket('setPrimaryAddress', {address: address});
+  };
 
   /**
-   * Removes an address from user's account. Uses an authToken.
+   * Removes an address from user's account.
    * @param {string} address
-   * @param {function} callback - Callback function with server data.
+   * @promise
    */
-  Peerio.network.removeAddress = function (address, callback) {
-    address = Peerio.util.parseAddress(address)
-    if (!address) { return false }
-    Peerio.socket.emit('removeAddress', {
-      address: {
-        value: address.value
-      },
-      authToken: Peerio.user.popAuthToken()
-    }, callback)
-  }
+  api.removeAddress = function (address) {
+    return sendToSocket('removeAddress', {address: address});
+  };
 
   /**
-   * Gets a miniLock ID for a user.  Uses an authToken.
+   * Gets a publicKey for a user.
    * @param {string} username
-   * @param {function} callback - Callback function with server data.
+   * @promise
    */
-  Peerio.network.getMiniLockID = function (username, callback) {
-    Peerio.socket.emit('getMiniLockID', {
-      username: username,
-      authToken: Peerio.user.popAuthToken()
-    }, callback)
-  }
+  api.getPublicKey = function (username) {
+    return sendToSocket('getMiniLockID', {username: username});
+  };
 
   /**
-   * Retrieves all contacts for the user. Uses an authToken.
-   * @param {function} callback - Callback function with server data.
+   * Retrieves all contacts for the user.
+   * @promise
    */
-  Peerio.network.getContacts = function (callback) {
-    Peerio.socket.emit('getContacts', {
-      authToken: Peerio.user.popAuthToken()
-    }, callback)
-  }
+  api.getContacts = function () {
+    return sendToSocket('getContacts');
+  };
 
   /**
-   * Retrieves all sent contact requests. Uses an authToken.
-   * @param {function} callback - Callback function with server data.
+   * Retrieves all sent contact requests.
+   * @promise
    */
-  Peerio.network.getSentContactRequests = function (callback) {
-    Peerio.socket.emit('getSentContactRequests', {
-      authToken: Peerio.user.popAuthToken()
-    }, callback)
-  }
+  api.getSentContactRequests = function () {
+    return sendToSocket('getSentContactRequests');
+  };
 
   /**
-   * Retrieves all received contact requests. Uses an authToken.
-   * @param {function} callback - Callback function with server data.
+   * Retrieves all received contact requests.
+   * @promise
    */
-  Peerio.network.getReceivedContactRequests = function (callback) {
-    Peerio.socket.emit('getReceivedContactRequests', {
-      authToken: Peerio.user.popAuthToken()
-    }, callback)
-  }
+  api.getReceivedContactRequests = function () {
+    return sendToSocket('getReceivedContactRequests');
+  };
 
   /**
-   * Retrieves all received contact requests. Uses an authToken.
-   * @param {function} callback - Callback function with server data.
+   * Retrieves a Peerio username from an address.
+   * @param {Object} address
+   * @promise
    */
-  Peerio.network.getReceivedContactRequests = function (callback) {
-    Peerio.socket.emit('getReceivedContactRequests', {
-      authToken: Peerio.user.popAuthToken()
-    }, callback)
-  }
+  api.addressLookup = function (address) {
+    return sendToSocket('addressLookup', address);
+  };
 
   /**
-   * Retrieves a Peerio username from an address. Uses an authToken.
-   * @param {string} address
-   * @param {function} callback - Callback function with server data.
-   */
-  Peerio.network.addressLookup = function (address, callback) {
-    address = Peerio.util.parseAddress(address)
-    if (!address) { return false }
-    Peerio.socket.emit('addressLookup', {
-      address: address,
-      authToken: Peerio.user.popAuthToken()
-    }, callback)
-  }
-
-  /**
-   * Sends a contact request to a username. Uses an authToken.
+   * Sends a contact request to a username.
    * @param {array} contacts - Contains objects which either have a `username` or `address` property
-   * @param {function} callback - Callback function with server data.
+   * @promise
    */
-  Peerio.network.addContact = function (contacts, callback) {
-    Peerio.socket.emit('addContact', {
-      contacts: contacts,
-      authToken: Peerio.user.popAuthToken()
-    }, callback)
-  }
+  api.addContact = function (contacts) {
+    return sendToSocket('addContact', {contacts: contacts});
+  };
 
   /**
-   * Cancel a contact request previously sent to a username. Uses an authToken.
+   * Cancel a contact request previously sent to a username.
    * @param {string} username
-   * @param {function} callback - Callback function with server data.
+   * @promise
    */
-  Peerio.network.cancelContactRequest = function (username, callback) {
-    Peerio.socket.emit('cancelContactRequest', {
-      username: username,
-      authToken: Peerio.user.popAuthToken()
-    }, callback)
-  }
+  api.cancelContactRequest = function (username) {
+    return sendToSocket('cancelContactRequest', {username: username});
+  };
 
   /**
-   * Accept a contact request from a username. Uses an authToken.
+   * Accept a contact request from a username.
    * @param {string} username
-   * @param {function} callback - Callback function with server data.
+   * @promise
    */
-  Peerio.network.acceptContactRequest = function (username, callback) {
-    Peerio.socket.emit('acceptContactRequest', {
-      username: username,
-      authToken: Peerio.user.popAuthToken()
-    }, callback)
-  }
+  api.acceptContactRequest = function (username) {
+    return sendToSocket('acceptContactRequest', {username: username});
+  };
 
   /**
-   * Decline a contact request from a username. Uses an authToken.
+   * Decline a contact request from a username.
    * @param {string} username
-   * @param {function} callback - Callback function with server data.
+   * @promise
    */
-  Peerio.network.declineContactRequest = function (username, callback) {
-    Peerio.socket.emit('declineContactRequest', {
-      username: username,
-      authToken: Peerio.user.popAuthToken()
-    }, callback)
-  }
+  api.declineContactRequest = function (username) {
+    return sendToSocket('declineContactRequest', {username: username});
+  };
 
   /**
-   * Removes a username as a contact. Uses an authToken.
+   * Removes a username as a contact.
    * @param {string} username
-   * @param {function} callback - Callback function with server data.
+   * @promise
    */
-  Peerio.network.removeContact = function (username, callback) {
-    Peerio.socket.emit('removeContact', {
-      username: username,
-      authToken: Peerio.user.popAuthToken()
-    }, callback)
-  }
+  api.removeContact = function (username) {
+    return sendToSocket('removeContact', {username: username});
+  };
 
   /**
-   * Send a Peerio invitation to an address. Uses an authToken.
-   * @param {string} address
-   * @param {function} callback - Callback function with server data.
+   * Send a Peerio invitation to an address.
+   * @param {Object} address
+   * @promise
    */
-  Peerio.network.inviteUserAddress = function (address, callback) {
-    address = Peerio.util.parseAddress(address)
-    if (!address) { return false }
-    Peerio.socket.emit('inviteUserAddress', {
-      address: address,
-      authToken: Peerio.user.popAuthToken()
-    }, callback)
-  }
+  Peerio.Net.inviteUserAddress = function (address) {
+    return sendToSocket('inviteUserAddress', {address: address});
+  };
 
   /**
-   * Send a Peerio message to contacts. Uses an authToken.
-   * @param {string} createMessageObject - created with Peerio.message.new.
-   * @param {function} callback - Callback function with server data.
+   * Send a Peerio message to contacts.
+   * @param {Object} msg
+   * @promise
    */
-  Peerio.network.createMessage = function (messageObject, callback) {
+  Peerio.Net.createMessage = function (msg) {
     var socketMsg = {
-      isDraft: messageObject.isDraft,
-      recipients: messageObject.recipients,
-      header: messageObject.header,
-      body: messageObject.body,
-      files: messageObject.files,
-      authToken: Peerio.user.popAuthToken()
-    }
-    if (({}).hasOwnProperty.call(messageObject, 'conversationID')) {
-      socketMsg.conversationID = messageObject.conversationID
-    }
-    Peerio.socket.emit('createMessage', socketMsg, callback)
-  }
+      isDraft: msg.isDraft,
+      recipients: msg.recipients,
+      header: msg.header,
+      body: msg.body,
+      files: msg.files
+    };
+    if (hasProp(msg, 'conversationID'))
+      socketMsg.conversationID = msg.conversationID;
+
+    return sendToSocket('createMessage', socketMsg);
+  };
 
   /**
-   * Retrieve a list of all user messages. Uses an authToken.
-   * @param {function} callback - Callback function with server data.
+   * Retrieve a list of all user messages.
+   * @promise
    */
-  Peerio.network.getAllMessages = function (callback) {
-    Peerio.socket.emit('getAllMessages', {
-      authToken: Peerio.user.popAuthToken()
-    }, callback)
-  }
+  api.getAllMessages = function () {
+    return sendToSocket('getAllMessages');
+  };
 
   /**
-   * Retrieve a message by its ID. Uses an authToken.
+   * Retrieve a message by its ID.
    * @param {array} ids - Array of all message IDs.
-   * @param {function} callback - Callback function with server data.
+   * @promise
    */
-  Peerio.network.getMessages = function (ids, callback) {
-    Peerio.socket.emit('getMessages', {
-      ids: ids,
-      authToken: Peerio.user.popAuthToken()
-    }, callback)
-  }
+  api.getMessages = function (ids) {
+    return sendToSocket('getMessages', {ids: ids});
+  };
 
   /**
-   * Retrieve a list of all user message IDs. Uses an authToken.
-   * @param {function} callback - Callback function with server data.
+   * Retrieve a list of all user message IDs.
+   * @promise
    */
-  Peerio.network.getMessageIDs = function (callback) {
-    Peerio.socket.emit('getMessageIDs', {
-      authToken: Peerio.user.popAuthToken()
-    }, callback)
-  }
+  api.getMessageIDs = function () {
+    return sendToSocket('getMessageIDs');
+  };
 
   /**
-   * Retrieve a list of all unopened/modified IDs. Uses an authToken.
-   * @param {function} callback - Callback function with server data.
+   * Retrieve a list of all unopened/modified IDs.
+   * @promise
    */
-  Peerio.network.getModifiedMessageIDs = function (callback) {
-    Peerio.socket.emit('getModifiedMessageIDs', {
-      authToken: Peerio.user.popAuthToken()
-    }, callback)
-  }
+  api.getModifiedMessageIDs = function () {
+    return sendToSocket('getModifiedMessageIDs');
+  };
 
   /**
-   * Retrieve list of conversation IDs only. Uses an authToken.
-   * @param {function} callback - Callback function with server data.
+   * Retrieve list of conversation IDs only.
+   * @promise
    */
-  Peerio.network.getConversationIDs = function (callback) {
-    Peerio.socket.emit('getConversationIDs', {
-      authToken: Peerio.user.popAuthToken()
-    }, callback)
-  }
+  api.getConversationIDs = function () {
+    return sendToSocket('getConversationIDs');
+  };
 
   /**
-   * Retrieve list of conversations. Uses an authToken.
-   * @param {function} callback - Callback function with server data.
+   * Retrieve list of conversations.
+   * @promise
    */
-  Peerio.network.getAllConversations = function (callback) {
-    Peerio.socket.emit('getAllConversations', {
-      authToken: Peerio.user.popAuthToken()
-    }, callback)
-  }
+  api.getAllConversations = function () {
+    return sendToSocket('getAllConversations', {});
+  };
 
   /**
-   * Retrieve entire conversations. Uses an authToken.
+   * Retrieve entire conversations.
    * @param {array} conversations - Contains objects in format {id, page}
-   * @param {function} callback - Callback function with server data.
+   * @promise
    */
-  Peerio.network.getConversationPages = function (conversations, callback) {
-    Peerio.socket.emit('getConversationPages', {
-      conversations: conversations,
-      authToken: Peerio.user.popAuthToken()
-    }, callback)
-  }
+  api.getConversationPages = function (conversations) {
+    return sendToSocket('getConversationPages', {conversations: conversations});
+  };
 
   /**
-   * Mark a message as read. Uses an authToken.
+   * Mark a message as read.
    * @param {array} read - array containing {id, encryptedReturnReceipt} objects
-   * @param {function} callback - Callback function with server data.
+   * @promise
    */
-  Peerio.network.readMessages = function (read, callback) {
-    Peerio.socket.emit('readMessages', {
-      read: read,
-      authToken: Peerio.user.popAuthToken()
-    }, callback)
-  }
+  api.readMessages = function (read) {
+    return sendToSocket('readMessages', {read: read});
+  };
 
   /**
-   * Remove a conversation and optionally also remove files. Uses an authToken.
+   * Remove a conversation and optionally also remove files.
    * @param {array} ids
-   * @param {function} callback - Callback function with server data.
+   * @promise
    */
-  Peerio.network.removeConversation = function (ids, callback) {
-    Peerio.socket.emit('removeConversation', {
-      ids: ids,
-      authToken: Peerio.user.popAuthToken()
-    }, callback)
-  }
+  api.removeConversation = function (ids) {
+    return sendToSocket('removeConversation', {ids: ids});
+  };
 
   /**
-   * Initiate a file upload. Uses an authToken.
+   * Initiate a file upload.
    * @param {object} uploadFileObject - containing:
    {object} header,
    {string} ciphertext,
    {number} totalChunks,
    {string} clientFileID,
    {string} parentFolder (optional)
-   * @param {function} callback - Callback function with server data.
+   * @promise
    */
-  Peerio.network.uploadFile = function (uploadFileObject, callback) {
-    uploadFileObject.authToken = Peerio.user.popAuthToken()
-    Peerio.socket.emit('uploadFile', uploadFileObject, callback)
-  }
+  api.uploadFile = function (uploadFileObject) {
+    return sendToSocket('uploadFile', uploadFileObject);
+  };
 
   /**
-   * Uploads a file chunk. Uses an authToken.
+   * Uploads a file chunk.
    * @param {object} chunkObject - containing:
    {string} ciphertext,
    {number} chunkNumber,
    {string} clientFileID,
-   * @param {function} callback - Callback function with server data.
+   * @promise
    */
-  Peerio.network.uploadFileChunk = function (chunkObject, callback) {
-    chunkObject.authToken = Peerio.user.popAuthToken()
-    Peerio.socket.emit('uploadFileChunk', chunkObject, callback)
-  }
+  api.uploadFileChunk = function (chunkObject) {
+    return sendToSocket('uploadFileChunk', chunkObject);
+  };
 
   /**
    * Retrieve information about a single file.
    * @param {string} id
-   * @param {function} callback - Callback function with server data.
+   * @promise
    */
-  Peerio.network.getFile = function (id, callback) {
-    Peerio.socket.emit('getFile', {
-      id: id,
-      authToken: Peerio.user.popAuthToken()
-    }, callback)
-  }
+  api.getFile = function (id) {
+    return sendToSocket('getFile', {id: id});
+  };
 
   /**
-   * Retrieve a list of all user files. Uses an authToken.
-   * @param {function} callback - Callback function with server data.
+   * Retrieve a list of all user files.
+   * @promise
    */
-  Peerio.network.getFiles = function (callback) {
-    Peerio.socket.emit('getFiles', {
-      authToken: Peerio.user.popAuthToken()
-    }, callback)
-  }
+  api.getFiles = function () {
+    return sendToSocket('getFiles');
+  };
 
   /**
-   * Retrieve file download information. Uses an authToken.
+   * Retrieve file download information.
    * @param {string} id
-   * @param {function} callback - Callback function with server data.
+   * @promise
    */
-  Peerio.network.downloadFile = function (id, callback) {
-    Peerio.socket.emit('downloadFile', {
-      id: id,
-      authToken: Peerio.user.popAuthToken()
-    }, callback)
-  }
+  api.downloadFile = function (id) {
+    return sendToSocket('downloadFile', {id: id});
+  };
 
   /**
-   * Delete a file. Uses an authToken.
+   * Delete a file.
    * @param {array} ids - Contains id strings.
-   * @param {function} callback - Callback function with server data.
+   * @promise
    */
-  Peerio.network.removeFile = function (ids, callback) {
-    Peerio.socket.emit('removeFile', {
-      ids: ids,
-      authToken: Peerio.user.popAuthToken()
-    }, callback)
-  }
+  api.removeFile = function (ids) {
+    return sendToSocket('removeFile', {ids: ids});
+  };
 
   /**
-   * Nuke a file. Uses an authToken.
+   * Nuke a file.
    * @param {array} ids - Contains id strings.
-   * @param {function} callback - Callback function with server data.
+   * @promise
    */
-  Peerio.network.nukeFile = function (ids, callback) {
-    Peerio.socket.emit('nukeFile', {
-      ids: ids,
-      authToken: Peerio.user.popAuthToken()
-    }, callback)
-  }
+  api.nukeFile = function (ids) {
+    return sendToSocket('nukeFile', {ids: ids});
+  };
 
   /**
-   * Set up 2FA. Returns a TOTP shared secret. Uses an authToken.
-   * @param {function} callback - Callback function with server data.
+   * Set up 2FA. Returns a TOTP shared secret.
+   * @promise
    */
-  Peerio.network.setUp2FA = function (callback) {
-    Peerio.socket.emit('setUp2FA', {
-      authToken: Peerio.user.popAuthToken()
-    }, callback)
-  }
+  api.setUp2FA = function () {
+    return sendToSocket('setUp2FA');
+  };
 
   /**
    * Confirm 2FA. Send a code to confirm the shared secret.
    * @param {number} code
-   * @param {function} callback - Callback function with server data.
+   * @promise
    */
-  Peerio.network.confirm2FA = function (code, callback) {
-    Peerio.socket.emit('confirm2FA', {
-      twoFACode: code,
-      authToken: Peerio.user.popAuthToken()
-    }, callback)
-  }
+  api.confirm2FA = function (code) {
+    return sendToSocket('confirm2FA', {twoFACode: code});
+  };
 
   /**
    * Generic 2FA. Send a code to auth.
    * @param {number} code
-   * @param {function} callback - Callback function with server data.
+   * @param {string} username
+   * @param {string} publicKey
+   * @promise
    */
-  Peerio.network.validate2FA = function (code, callback) {
-    Peerio.socket.emit('validate2FA', {
+  api.validate2FA = function (code, username, publicKey) {
+    return sendToSocket('validate2FA', {
       twoFACode: code,
-      username: Peerio.user.username,
-      miniLockID: Peerio.user.miniLockID
-    }, callback)
-  }
+      username: username,
+      miniLockID: publicKey
+    });
+  };
 
   /**
-   * Delete account. Uses an authToken.
-   * @param {function} callback - Callback function with server data.
+   * Delete account.
+   * @promise
    */
-  Peerio.network.closeAccount = function (callback) {
-    Peerio.socket.emit('closeAccount', {
-      authToken: Peerio.user.popAuthToken()
-    }, callback)
-  }
+  Peerio.Net.closeAccount = function () {
+    return sendToSocket('closeAccount');
+  };
 
 }());

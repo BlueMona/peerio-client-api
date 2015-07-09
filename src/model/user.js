@@ -1,10 +1,12 @@
 // Peerio User object
 
-var User;
+var Peerio = this.Peerio || {};
+Peerio.Model = Peerio.Model || {};
+
 (function(){
   'use strict';
 
-  User = function(username, publicKey, isMe){
+  Peerio.Model.User = function(username, publicKey, isMe){
     this.username = username;
     this.publicKey = publicKey;
     this.isMe = !!isMe;

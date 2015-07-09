@@ -1,22 +1,100 @@
 /**
  * Peerio server communication protocol tests
  * ==========================================
- * Requires network connection
+ * - Requires network connection
+ * - Depends on Peerio.Crypto
  */
 
-xdescribe('Peerio network protocol', function () {
+describe('Peerio network protocol', function () {
   'use strict';
 
-  beforeAll(function () {
-  });
-
-  afterAll(function () {
-  });
+  function generateUsername() {
+    return 'test' + Math.round(Math.random() * 1000000000000);
+  }
 
   it('validates username', function (done) {
-    Peerio.Socket.send('test', {}, function (data) {
-      console.log('callback', data);
+    Peerio.Net.validateUsername('avmpeqrfkgpqpr').then(function (data) {
+      // this random username most likely is free
+      expect(data).toBe(true);
+      done();
+    }).catch(done.fail);
+  });
+
+  it('validates email', function (done) {
+    Peerio.Net.validateAddress('avmpeqrf@kgpqpr.com').then(function (data) {
+      // this random email most likely is free
+      expect(data).toBe(true);
+      done();
+    }).catch(done.fail);
+  });
+
+  it('validates phone', function (done) {
+    Peerio.Net.validateAddress('+99999999999999').then(function (data) {
+      // this phone most likely is free
+      expect(data).toBe(true);
+      done();
+    }).catch(done.fail);
+  });
+
+  // spec order matters
+  describe('registration', function () {
+    var self = this;
+
+    beforeAll(function (done) {
+      self.serverResponses = {};
+      self.user = {};
+      self.user.firstName = 'Test';
+      self.user.lastName = 'User';
+      self.user.username = generateUsername();
+      self.user.email = self.user.username + '@mailinator.com';
+      Peerio.Crypto.getKeyPair('lalalala', self.user.email).then(function (keys) {
+        self.user.keyPair = keys;
+        self.user.publicKey = Peerio.Crypto.getPublicKeyString(self.user.keyPair.publicKey);
+        self.accountInfo = new Peerio.Model.AccountInfo(self.user.username, self.user.firstName,
+          self.user.lastName, self.user.email, self.user.publicKey, 'en');
+        done();
+      });
     });
+
+    afterAll(function () {
+      self.user = null;
+      self.serverResponses = null;
+    });
+
+    it('requests account registration', function (done) {
+
+      Peerio.Net.registerAccount(self.accountInfo).then(function (response) {
+        expect(response).toBeDefined();
+        self.serverResponses.creationToken = response;
+        done();
+      }).catch(done.fail);
+    });
+
+    it('sends back account creation token', function (done) {
+      expect(self.serverResponses.creationToken).toBeDefined();
+      if (!self.serverResponses.creationToken) {
+        done();
+        return;
+      }
+
+      var token = Peerio.Crypto.decryptAccountCreationToken(self.serverResponses.creationToken, self.user.username, self.user.keyPair);
+      expect(token).not.toBe(false);
+
+      Peerio.Net.returnAccountCreationToken(token).then(function () {
+        done();
+      }).catch(done.fail);
+
+    });
+
+  });
+  it('authenticates session', function (done) {});
+
+  it('checks account information', function (done) {
+    //expect(response.username).toBe(self.user.username);
+    //expect(response.firstName).toBe(self.user.firstName);
+    //expect(response.lastName).toBe(self.user.lastName);
+    //expect(response.address).toEqual(self.accountInfo.address);
+    //expect(response.miniLockID).toBe(self.user.publicKey);
   });
 
 });

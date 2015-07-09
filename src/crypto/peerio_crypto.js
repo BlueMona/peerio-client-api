@@ -24,6 +24,9 @@ Peerio.Crypto = {};
 (function () {
   'use strict';
 
+  var api = Peerio.Crypto;
+  //-- PRIVATE ---------------------------------------------------------------------------------------------------------
+
   var base58Match = new RegExp('^[1-9ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]+$');
   var base64Match = new RegExp('^(?:[A-Za-z0-9+\/]{4})*(?:[A-Za-z0-9+\/]{2}==|[A-Za-z0-9+\/]{3}=)?$');
 
@@ -41,7 +44,7 @@ Peerio.Crypto = {};
   var signature = '.peerio.'; // has to be 8 bytes, don't change
 
   // todo: move to global helper
-  // malicious server safe hasOwnProperty functions
+  // malicious server safe hasOwnProperty function
   var hasProp = Function.call.bind(Object.prototype.hasOwnProperty);
 
   function hasAllProps(obj, props) {
@@ -51,11 +54,11 @@ Peerio.Crypto = {};
     return true;
   }
 
-  var api = Peerio.Crypto;
+
+
+  //-- PUBLIC API ------------------------------------------------------------------------------------------------------
 
   api.chunkSize = 1024 * 1024;
-
-  //-- PUBLIC API --------------------------------------------------
 
   /**
    * Generates keypair from string key and salt (passphrase and username)
@@ -155,7 +158,7 @@ Peerio.Crypto = {};
    *         }} data - account creation challenge JSON as received from server.
    * @param {string} username - username
    * @param {object} keyPair - keys
-   * @return {Uint8Array} decryptedToken
+   * @return {string} decryptedToken
    */
   api.decryptAccountCreationToken = function (data, username, keyPair) {
     if (!hasAllProps(data, ['username', 'accountCreationToken', 'ephemeralServerID'])
@@ -417,9 +420,7 @@ Peerio.Crypto = {};
     return decrypted;
   };
 
-  //-- END OF PUBLIC API -------------------------------------------
-
-  //-- INTERNALS ---------------------------------------------------
+  //-- INTERNALS -------------------------------------------------------------------------------------------------------
 
   /**
    * Validates and builds a list of recipient public keys
@@ -884,6 +885,5 @@ Peerio.Crypto = {};
     );
   }
 
-  //-- END OF INTERNALS --------------------------------------------
 
 })();
