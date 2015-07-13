@@ -7,12 +7,49 @@ Peerio.Net = {};
 
 (function () {
   'use strict';
-
+  var API_VERSION = '2.0.0';
   var api = Peerio.Net;
   // malicious server safe hasOwnProperty function
   var hasProp = Function.call.bind(Object.prototype.hasOwnProperty);
+  //-- SOCKET EVENT HANDLING, AUTH & CONNECTION STATE ------------------------------------------------------------------
+  var connected = false;
+  var credentials = null;
 
-  //-- PRIVATE: PROMISE MANAGEMENT -------------------------------------------------------------------------------------
+  function socketEventHandler(eventName) {
+    switch (eventName) {
+      case 'connect':
+        onConnect();
+        break;
+      case 'reconnecting':
+        onDisconnect();
+        break;
+    }
+  }
+
+  Peerio.Socket.injectEventHandler(socketEventHandler);
+
+  function onConnect() {
+    connected = true;
+    sendToSocket('setApiVersion', {version: API_VERSION});
+    // todo retry on fail, notify on retry fail
+    if (credentials)
+      login(credentials.username, credentials.passphrase);
+    // todo: notify logic layer
+  }
+
+  function onDisconnect() {
+    if (connected) {
+      rejectAllPromises();
+    }
+    connected = false;
+    // todo: notify logic layer
+  }
+
+  function login(username, passphrase) {
+    sendToSocket('logn')
+  }
+
+  //-- PROMISE MANAGEMENT ----------------------------------------------------------------------------------------------
   // here we store all pending promises by unique id
   var pending = {};
   // safe max promise id under 32-bit integer. Once we reach maximum, id resets to 0.
@@ -31,18 +68,6 @@ Peerio.Net = {};
     delete pending[id];
   }
 
-  var ServerErrors = {
-    getMessage: function (code) {
-      return this[code] || 'Server error.';
-    },
-    404: 'Resource does not exist or you are not allowed to access it.',
-    413: 'Storage quota exceeded.',
-    406: 'Malformed request.',
-    423: 'Authentication error.',
-    424: 'Two-factor authentication required.',
-    425: 'The account has been throttled (sent too many requests that failed to authenticate).',
-    426: 'User blacklisted.'
-  };
   // rejects all pending promises. useful in case of socket errors, logout.
   function rejectAllPromises() {
     _.forOwn(pending, function (reject) {
@@ -52,15 +77,7 @@ Peerio.Net = {};
     currentId = 0;
   }
 
-  function PeerioServerError(code) {
-    this.code = +code;
-    this.message = ServerErrors.getMessage(code);
-    this.timestamp = Date.now();
-    this.isOperational = true;
-  }
-
-  PeerioServerError.prototype = Object.create(Error.prototype);
-
+  //-- HELPERS ---------------------------------------------------------------------------------------------------------
   /**
    *  generalized DRY function to use from public api functions
    *  @param {string} name - message name
@@ -88,6 +105,7 @@ Peerio.Net = {};
       .finally(removePendingPromise.bind(this, id));
   }
 
+  //-- PUBLIC API ------------------------------------------------------------------------------------------------------
   /**
    * Asks the server to validate a username.
    * @param {string}  username - Username to validate.
@@ -128,11 +146,11 @@ Peerio.Net = {};
    *              token: 'Encrypted token (Base64 String)',
    *              nonce: 'Nonce used to encrypt the token (Base64 string)'
    *            },
-   *            ephemeralServerID: 'server's public key (Base58 String)'
+   *            ephemeralServerPublicKey: 'server's public key (Base58 String)'
    *          }} - server response
    */
   api.registerAccount = function (accountInfo) {
-    return sendToSocket('registrationRequest', accountInfo);
+    return sendToSocket('register', accountInfo);
   };
 
   /**
@@ -141,7 +159,7 @@ Peerio.Net = {};
    * @promise {Boolean} - always returns true or throws a PeerioServerError
    */
   api.returnAccountCreationToken = function (decryptedToken) {
-    return sendToSocket('accountCreationResponse', {accountCreationToken: decryptedToken})
+    return sendToSocket('activateAccount', {accountCreationToken: decryptedToken})
       .return(true);
   };
 
@@ -160,24 +178,35 @@ Peerio.Net = {};
    * Sends a request for authToken.
    * @param {string} username
    * @param {string} publicKey
-   * @promise {{ ephemeralServerID: 'miniLock ID of server (Base58 String)',
+   * @promise {{ ephemeralServerPublicKey: 'server key (Base58 String)',
    *             token: 'Encrypted token (Base64 String)',
    *             nonce: 'Nonce used to encrypt the token (Base64 string)' }}
    */
   api.getAuthenticationToken = function (username, publicKey) {
-    return sendToSocket('getAuthenticationToken', {username: username, miniLockID: publicKey, apiVersion: '2.0.0'});
+    return sendToSocket('getAuthenticationToken', {
+      username: username,
+      publicKeyString: publicKey
+    });
   };
 
   /**
-   * Authenticates current websocket session
-   * @param {string} authToken - decrypted auth token
+   * Authenticates current websocket session.
+   * Only need to call this once per app runtime, because credentials are being cached
+   * and connection authenticates on every reconnect.
+   * @param {string} username
+   * @param {string} passphrase
+   * @returns nothing. Provides api to read connection/auth state and events.
    */
-  api.login = function (authToken) {
-    return sendToSocket('login', {authToken: authToken})
-      .return(true)
-      .catch(function () {
-        return Promise.reject();
-      });
+  api.setCredentials = function (username, passphrase) {
+    Peerio.Crypto.getKeyPair(passphrase, username).then(function (keys) {
+      credentials = {
+        username: username,
+        publicKey: keys.publicKey,
+        publicKeyString: Peerio.Crypto.getPublicKeyString(keys.publicKey),
+        secretKey: keys.secretKey
+      };
+      login();
+    });
   };
 
   /**
@@ -239,7 +268,7 @@ Peerio.Net = {};
    * @promise
    */
   api.getPublicKey = function (username) {
-    return sendToSocket('getMiniLockID', {username: username});
+    return sendToSocket('getUserPublicKey', {username: username});
   };
 
   /**
@@ -522,7 +551,7 @@ Peerio.Net = {};
     return sendToSocket('validate2FA', {
       twoFACode: code,
       username: username,
-      miniLockID: publicKey
+      publicKeyString: publicKey
     });
   };
 
@@ -530,7 +559,7 @@ Peerio.Net = {};
    * Delete account.
    * @promise
    */
-  Peerio.Net.closeAccount = function () {
+  api.closeAccount = function () {
     return sendToSocket('closeAccount');
   };
 

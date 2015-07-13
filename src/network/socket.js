@@ -31,6 +31,7 @@ Peerio.Socket = {};
    *  @param {function(string)} handler - callback will be called with string parameter - event name.
    */
   Peerio.Socket.injectEventHandler = function (handler) {
+    if(eventHandler) throw new Error('Socket event handler already injected.');
     eventHandler = handler;
   };
 
@@ -69,7 +70,7 @@ Peerio.Socket = {};
 
   worker.onmessage = function (message) {
     var data = message.data;
-
+    console.log(data);
     if (hasProp(data, 'callbackID') && data.callbackID) {
       callbacks[data.callbackID](data.data);
       delete callbacks[data.callbackID];

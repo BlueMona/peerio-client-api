@@ -23,7 +23,6 @@
     "Peerio": true,
     "nacl":true,
     "Base58": true,
-    "miniLock": true,
     "scrypt": true,
     "BLAKE2s": true,
     "describe": true,

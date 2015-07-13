@@ -18,7 +18,7 @@ xdescribe('Crypto', function () {
   // === specs
   it('creates keypair from username and passphrase', function (done) {
 
-    C.getKeyPair(testUser.passPhrase, testUser.username)
+    C.getKeyPair(testUser.username, testUser.passPhrase)
       .then(function (keyPair) {
         expect(keyPair).toEqual(testUser.keyPair);
         done();
@@ -56,7 +56,7 @@ xdescribe('Crypto', function () {
 
   it('decrypts account creation token', function () {
     var serverResponse = {
-      ephemeralServerID: 'G83PhNPP3VoupLVBQuEs7anYajkHo5upyGH17daXMBV7e',
+      ephemeralServerPublicKey: 'G83PhNPP3VoupLVBQuEs7anYajkHo5upyGH17daXMBV7e',
       username: 'anritest2',
       accountCreationToken: {
         nonce: 'GcNzaruDKnZRop1e1ND4PJqPduTboB6J',
@@ -77,7 +77,7 @@ xdescribe('Crypto', function () {
 
   it('decrypts auth token', function () {
     var serverResponse = {
-      ephemeralServerID: 'G83PhNPP3VoupLVBQuEs7anYajkHo5upyGH17daXMBV7e',
+      ephemeralServerPublicKey: 'G83PhNPP3VoupLVBQuEs7anYajkHo5upyGH17daXMBV7e',
       nonce: 'DOG+9ZFH1TlBR9OBMpdIQ9wyz7KU726K',
       token: 'WVMseSXvYmxdAtBlQH0Qrsy12bFN5vEjI6iCno+jQeEFRIRONDLkLM/0vjMrWuof'
     };

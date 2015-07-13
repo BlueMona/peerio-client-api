@@ -62,18 +62,18 @@ Peerio.Crypto = {};
 
   /**
    * Generates keypair from string key and salt (passphrase and username)
-   * @param {string} key
-   * @param {string} salt
+   * @param {string} username - salt
+   * @param {string} passphrase - key
    * @promise { publicKey: Uint8Array - Public encryption key, secretKey: Uint8Array - Secret encryption key }
    */
-  api.getKeyPair = function (key, salt) {
+  api.getKeyPair = function (username, passphrase) {
     return new Promise(function (resolve) {
       var keyHash = new BLAKE2s(keySize);
-      keyHash.update(nacl.util.decodeUTF8(key));
-      salt = nacl.util.decodeUTF8(salt);
+      keyHash.update(nacl.util.decodeUTF8(passphrase));
+      username = nacl.util.decodeUTF8(username);
 
       // Generates 32 bytes of key material in a Uint8Array with scrypt
-      scrypt(keyHash.digest(), salt, scryptResourceCost, scryptBlockSize, keySize, scryptStepDuration, resolve);
+      scrypt(keyHash.digest(), username, scryptResourceCost, scryptBlockSize, keySize, scryptStepDuration, resolve);
 
     }).then(function (keyBytes) {
         return nacl.box.keyPair.fromSecretKey(new Uint8Array(keyBytes));
@@ -153,7 +153,7 @@ Peerio.Crypto = {};
   /**
    * Decrypts an account creation token.
    * @param {{ username: string,
-   *           ephemeralServerID: string,
+   *           ephemeralServerPublicKey: string,
    *           accountCreationToken: {token: string, nonce: string}
    *         }} data - account creation challenge JSON as received from server.
    * @param {string} username - username
@@ -161,7 +161,7 @@ Peerio.Crypto = {};
    * @return {string} decryptedToken
    */
   api.decryptAccountCreationToken = function (data, username, keyPair) {
-    if (!hasAllProps(data, ['username', 'accountCreationToken', 'ephemeralServerID'])
+    if (!hasAllProps(data, ['username', 'accountCreationToken', 'ephemeralServerPublicKey'])
       || !hasAllProps(data.accountCreationToken, ['token', 'nonce'])) {
       console.log('Invalid account creation token.');
       return false;
@@ -175,7 +175,7 @@ Peerio.Crypto = {};
     var token = nacl.box.open(
       nacl.util.decodeBase64(data.accountCreationToken.token),
       nacl.util.decodeBase64(data.accountCreationToken.nonce),
-      api.getPublicKeyBytes(data.ephemeralServerID),
+      api.getPublicKeyBytes(data.ephemeralServerPublicKey),
       keyPair.secretKey
     );
 
@@ -189,7 +189,7 @@ Peerio.Crypto = {};
 
   /**
    * Decrypts authToken
-   * @param {{ephemeralServerID:string, token:string, nonce:string}} data - authToken data as received from server.
+   * @param {{ephemeralServerPublicKey:string, token:string, nonce:string}} data - authToken data as received from server.
    * @param {object} keyPair
    * @returns {object|Boolean} decrypted token
    */
@@ -202,7 +202,7 @@ Peerio.Crypto = {};
     var dToken = nacl.box.open(
       nacl.util.decodeBase64(data.token),
       nacl.util.decodeBase64(data.nonce),
-      api.getPublicKeyBytes(data.ephemeralServerID),
+      api.getPublicKeyBytes(data.ephemeralServerPublicKey),
       keyPair.secretKey
     );
     //todo: explain magic numbers

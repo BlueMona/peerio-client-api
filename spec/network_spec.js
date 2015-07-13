@@ -1,6 +1,8 @@
 /**
  * Peerio server communication protocol tests
  * ==========================================
+ * It was supposed to be pure protocol methods test,
+ * but the nature of protocol flow makes it more of an integration test.
  * - Requires network connection
  * - Depends on Peerio.Crypto
  */
@@ -47,7 +49,7 @@ describe('Peerio network protocol', function () {
       self.user.lastName = 'User';
       self.user.username = generateUsername();
       self.user.email = self.user.username + '@mailinator.com';
-      Peerio.Crypto.getKeyPair('lalalala', self.user.email).then(function (keys) {
+      Peerio.Crypto.getKeyPair(self.user.username, 'lalalala').then(function (keys) {
         self.user.keyPair = keys;
         self.user.publicKey = Peerio.Crypto.getPublicKeyString(self.user.keyPair.publicKey);
         self.accountInfo = new Peerio.Model.AccountInfo(self.user.username, self.user.firstName,
@@ -83,6 +85,17 @@ describe('Peerio network protocol', function () {
       Peerio.Net.returnAccountCreationToken(token).then(function () {
         done();
       }).catch(done.fail);
+
+    });
+
+    // this spec does a few attempts to read peerio server email with mailinator api
+    // delays make sure message has a chance to arrive
+    it('confirms account address', function (done) {
+
+      var actualTest = function() {
+        TestUtil.getConfirmCodeFromMailinator(self.user.email);
+      };
+
 
     });
 

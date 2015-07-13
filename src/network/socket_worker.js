@@ -37,19 +37,39 @@
     // creating socket.io client instance
     self.peerioSocket = io.connect(cfg.server, {transports: ['websocket']});
     // socket events should be passed to UI thread
+
+    // socket.io events
+    // 'connect' is fired on every connection (including reconnection)
+    self.peerioSocket.on('connect', self.postMessage.bind(self, {socketEvent: 'connect'}));
+    // 'reconnect' is fired on every reconnection
+    self.peerioSocket.on('reconnect', function (attempt) {
+      self.postMessage({socketEvent: 'reconnect'});
+    });
+    // 'reconnecting' is fired every time after connection is broken and reconnect is attempted
+    self.peerioSocket.on('reconnecting', function (attempt) {
+      self.postMessage({socketEvent: 'reconnecting'});
+    });
+    // 'connect_error' is fired in case of an error during connection attempt
+    self.peerioSocket.on('connect_error', function (error) {
+      // todo: automatic clone of error object fails, need to clone it manually
+      self.postMessage({socketEvent: 'connect_error'});
+    });
+
+    // peerio events
     ['receivedContactRequestsAvailable',
       'modifiedMessagesAvailable',
       'uploadedFilesAvailable',
       'modifiedConversationsAvailable',
       'newContactsAvailable',
       'sentContactRequestsAvailable',
-      'contactsAvailable',
-      'connect_error',
-      'reconnecting',
-      'reconnect'
+      'contactsAvailable'
     ].forEach(function (eventName) {
         self.peerioSocket.on(eventName, self.postMessage.bind(self, {socketEvent: eventName}));
       });
+  }
+
+  function sendSocketIOEvent(name, param) {
+
   }
 
   // sends data from UI thread through socket

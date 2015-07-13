@@ -22,7 +22,7 @@ Peerio.Model = Peerio.Model || {};
     this.lastName = lastName;
     this.localeCode = localeCode;
     this.address = Peerio.Util.parseAddress(address);
-    this.miniLockID = publicKey;
+    this.publicKeyString = publicKey;
   };
 
 })();
