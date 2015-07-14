@@ -15,12 +15,14 @@ module.exports = function (config) {
       'bower_components/axios/dist/axios.standalone.js',
       'src/config.js',
       'src/*.js',
+      'src/crypto/lib/*.js',
       'src/crypto/*.js',
       'src/network/*.js',
       'src/model/*.js',
       'spec/globals.js',
       'spec/*.js',
-      {pattern: 'src/network/socket_worker.js', watched: true, included: false, served: true}
+      {pattern: 'src/network/socket_worker.js', watched: true, included: false, served: true},
+      {pattern: 'src/crypto/dict/*.txt', watched: true, included: false, served: true}
     ],
 
     // list of files to exclude

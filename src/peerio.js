@@ -13,6 +13,7 @@ Peerio.initAPI = function () {
   Peerio.Config.init();
   Peerio.Util.init();
   Peerio.Crypto.init();
+  Peerio.PhraseGenerator.init();
   Peerio.Socket.init();
   Peerio.Net.init();
 

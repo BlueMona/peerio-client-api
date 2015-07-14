@@ -14,3 +14,5 @@ testUser.PINKey = new Uint8Array([184, 135, 222, 32, 70, 141, 21, 108, 37, 106, 
 testUser.contacts = {};
 testUser.contacts[testUser.username] = testUser;
 
+
+Peerio.initAPI();
