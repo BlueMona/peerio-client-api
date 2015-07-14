@@ -162,7 +162,7 @@ Peerio.Net.init = function () {
    *              token: 'Encrypted token (Base64 String)',
    *              nonce: 'Nonce used to encrypt the token (Base64 string)'
    *            },
-   *            ephemeralServerPublicKey: 'server's public key (Base58 String)'
+   *            ephemeralServerID: 'server's public key (Base58 String)'
    *          }} - server response
    */
   api.registerAccount = function (accountInfo) {

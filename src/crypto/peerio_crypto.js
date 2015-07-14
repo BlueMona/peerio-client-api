@@ -152,7 +152,7 @@ Peerio.Crypto.init = function () {
   /**
    * Decrypts an account creation token.
    * @param {{ username: string,
-   *           ephemeralServerPublicKey: string,
+   *           ephemeralServerID: string,
    *           accountCreationToken: {token: string, nonce: string}
    *         }} data - account creation challenge JSON as received from server.
    * @param {string} username - username
@@ -160,7 +160,7 @@ Peerio.Crypto.init = function () {
    * @return {string} decryptedToken
    */
   api.decryptAccountCreationToken = function (data, username, keyPair) {
-    if (!hasAllProps(data, ['username', 'accountCreationToken', 'ephemeralServerPublicKey'])
+    if (!hasAllProps(data, ['username', 'accountCreationToken', 'ephemeralServerID'])
       || !hasAllProps(data.accountCreationToken, ['token', 'nonce'])) {
       console.log('Invalid account creation token.');
       return false;
@@ -174,7 +174,7 @@ Peerio.Crypto.init = function () {
     var token = nacl.box.open(
       nacl.util.decodeBase64(data.accountCreationToken.token),
       nacl.util.decodeBase64(data.accountCreationToken.nonce),
-      api.getPublicKeyBytes(data.ephemeralServerPublicKey),
+      api.getPublicKeyBytes(data.ephemeralServerID),
       keyPair.secretKey
     );
 
@@ -188,7 +188,7 @@ Peerio.Crypto.init = function () {
 
   /**
    * Decrypts authToken
-   * @param {{ephemeralServerPublicKey:string, token:string, nonce:string}} data - authToken data as received from server.
+   * @param {{ephemeralServerID:string, token:string, nonce:string}} data - authToken data as received from server.
    * @param {object} keyPair
    * @returns {object|Boolean} decrypted token
    */
@@ -201,7 +201,7 @@ Peerio.Crypto.init = function () {
     var dToken = nacl.box.open(
       nacl.util.decodeBase64(data.token),
       nacl.util.decodeBase64(data.nonce),
-      api.getPublicKeyBytes(data.ephemeralServerPublicKey),
+      api.getPublicKeyBytes(data.ephemeralServerID),
       keyPair.secretKey
     );
     //todo: explain magic numbers
