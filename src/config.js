@@ -9,9 +9,10 @@
 var Peerio = this.Peerio || {};
 Peerio.Config = {};
 
-(function () {
+Peerio.Config.init = function () {
   'use strict';
-  var cfg = Peerio.Config;
+
+  var cfg = Peerio.Config = {};
 
   // absolute path
   cfg.socketWorkerPath = '/base/src/network/socket_worker.js';
@@ -20,4 +21,4 @@ Peerio.Config = {};
   cfg.webSocketServer = 'wss://treetrunks.peerio.com:443';
   //cfg.webSocketServer = 'wss://app.peerio.com:443';
 
-})();
+};

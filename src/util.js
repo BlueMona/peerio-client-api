@@ -5,10 +5,17 @@
 var Peerio = this.Peerio || {};
 Peerio.Util = {};
 
-(function () {
+Peerio.Util.init = function () {
   'use strict';
 
-  var api = Peerio.Util;
+  var api = Peerio.Util = {};
+
+  /**
+   *  malicious server safe hasOwnProperty function
+   *  @param {object} object to test for property existence, can be null or undefined
+   *  @param {string} property name
+   */
+  api.hasProp = Function.call.bind(Object.prototype.hasOwnProperty);
 
   var emailExp = new RegExp('^([-0-9a-zA-Z.+_]+@[-0-9a-zA-Z.+_]+\\.[a-zA-Z]{2,20})$');
   var phoneExp = new RegExp('^\\+?(\\d|\\s|\\-|\\(|\\)){6,20}$');
@@ -44,4 +51,4 @@ Peerio.Util = {};
     return false;
   };
 
-})();
+};

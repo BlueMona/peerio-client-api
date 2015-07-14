@@ -6,33 +6,57 @@
 
 var Peerio = this.Peerio || {};
 Peerio.Socket = {};
-
-(function () {
+/**
+ * Initialises Peerio Socket handling code
+ */
+Peerio.Socket.init = function () {
   'use strict';
 
+  Peerio.Socket = {};
   // malicious server safe hasOwnProperty function;
   var hasProp = Function.call.bind(Object.prototype.hasOwnProperty);
-
-  // worker instance holding the actual web socket
-  var worker = new Worker(Peerio.Config.socketWorkerPath);
-
-  // initializing worker
-  worker.postMessage({ socketIOPath: Peerio.Config.socketIOPath,
-                       server: Peerio.Config.webSocketServer});
-
+  // webworker instance
+  var worker;
+  // socket events handler
+  var eventHandler;
   // pending callbacks id:function
   var callbacks = {};
-  var eventHandler = null;
 
   /**
    *  Subscribes a callback to socket events and server push notifications.
    *  This method exists to provide better layer decoupling
-   *  and is supposed to be called only once both by unit tests or by real app.
+   *  and is supposed to be called only once, there is no need for multiple handlers in current app design.
    *  @param {function(string)} handler - callback will be called with string parameter - event name.
    */
   Peerio.Socket.injectEventHandler = function (handler) {
-    if(eventHandler) throw new Error('Socket event handler already injected.');
+    if (eventHandler) throw new Error('Socket event handler already injected.');
     eventHandler = handler;
+  };
+
+  Peerio.Socket.start = function () {
+    // worker instance holding the actual web socket
+    worker = new Worker(Peerio.Config.socketWorkerPath);
+    // handles messages from web socket containing worker
+    worker.onmessage = function (message) {
+      var data = message.data;
+
+      if (hasProp(data, 'callbackID') && data.callbackID) {
+        callbacks[data.callbackID](data.data);
+        delete callbacks[data.callbackID];
+        return;
+      }
+
+      if (eventHandler && hasProp(data, 'socketEvent')) {
+        eventHandler(data.socketEvent);
+      }
+
+    };
+
+    // initializing worker
+    worker.postMessage({
+      socketIOPath: Peerio.Config.socketIOPath,
+      server: Peerio.Config.webSocketServer
+    });
   };
 
   /**
@@ -67,20 +91,4 @@ Peerio.Socket = {};
 
     worker.postMessage(message, transfer);
   };
-
-  worker.onmessage = function (message) {
-    var data = message.data;
-    console.log(data);
-    if (hasProp(data, 'callbackID') && data.callbackID) {
-      callbacks[data.callbackID](data.data);
-      delete callbacks[data.callbackID];
-      return;
-    }
-
-    if (eventHandler && hasProp(data, 'socketEvent')) {
-      eventHandler(data.socketEvent);
-    }
-
-  };
-
-})();
+};

@@ -4,15 +4,17 @@
 
 var Peerio = this.Peerio || {};
 Peerio.Net = {};
-
-(function () {
+/**
+ * Initialises network layer
+ */
+Peerio.Net.init = function () {
   'use strict';
   var API_VERSION = '2.0.0';
-  var api = Peerio.Net;
-  // malicious server safe hasOwnProperty function
-  var hasProp = Function.call.bind(Object.prototype.hasOwnProperty);
+  var api = Peerio.Net = {};
+  var hasProp = Peerio.Util.hasProp;
   //-- SOCKET EVENT HANDLING, AUTH & CONNECTION STATE ------------------------------------------------------------------
   var connected = false;
+  var authenticated = false;
   var credentials = null;
 
   function socketEventHandler(eventName) {
@@ -42,11 +44,25 @@ Peerio.Net = {};
       rejectAllPromises();
     }
     connected = false;
+    authenticated = false;
     // todo: notify logic layer
   }
 
-  function login(username, passphrase) {
-    sendToSocket('logn')
+  function login() {
+    if (!credentials) throw 'Credentials are not set for login.';
+    // todo notify progress
+    sendToSocket('getAuthenticationToken', {
+      username: credentials.username,
+      publicKeyString: credentials.publicKeyString
+    }).then(function (authToken) {
+      var decryptedToken = Peerio.Crypto.decryptAuthToken(authToken, credentials.keyPair);
+      return sendToSocket('login', {authToken: decryptedToken});
+    }).timeout(60000).then(function () {
+      authenticated = true;
+      // todo notify
+    }).catch(function () {
+      // todo notify
+    });
   }
 
   //-- PROMISE MANAGEMENT ----------------------------------------------------------------------------------------------
@@ -175,21 +191,6 @@ Peerio.Net = {};
   };
 
   /**
-   * Sends a request for authToken.
-   * @param {string} username
-   * @param {string} publicKey
-   * @promise {{ ephemeralServerPublicKey: 'server key (Base58 String)',
-   *             token: 'Encrypted token (Base64 String)',
-   *             nonce: 'Nonce used to encrypt the token (Base64 string)' }}
-   */
-  api.getAuthenticationToken = function (username, publicKey) {
-    return sendToSocket('getAuthenticationToken', {
-      username: username,
-      publicKeyString: publicKey
-    });
-  };
-
-  /**
    * Authenticates current websocket session.
    * Only need to call this once per app runtime, because credentials are being cached
    * and connection authenticates on every reconnect.
@@ -201,9 +202,11 @@ Peerio.Net = {};
     Peerio.Crypto.getKeyPair(passphrase, username).then(function (keys) {
       credentials = {
         username: username,
-        publicKey: keys.publicKey,
         publicKeyString: Peerio.Crypto.getPublicKeyString(keys.publicKey),
-        secretKey: keys.secretKey
+        keyPair: {
+          publicKey: keys.publicKey,
+          secretKey: keys.secretKey
+        }
       };
       login();
     });
@@ -563,4 +566,4 @@ Peerio.Net = {};
     return sendToSocket('closeAccount');
   };
 
-}());
+};

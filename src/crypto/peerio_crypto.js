@@ -15,16 +15,15 @@
 //
 // todo: 1. probably replace "throw" with return values
 // todo: 2. "contacts" dependency is not nice, is there a better way?
-// todo: 3. maybe initialize crypto lib once instead of passing same user data to most of the functions
-// todo: 4. using blobs forces us to use html5 file api, don't think it's optimal, see if can be changed
+// todo: 3. using blobs forces us to use html5 file api, don't think it's optimal, see if can be changed
 
 var Peerio = this.Peerio || {};
 Peerio.Crypto = {};
 
-(function () {
+Peerio.Crypto.init = function () {
   'use strict';
 
-  var api = Peerio.Crypto;
+  var api = Peerio.Crypto = {};
   //-- PRIVATE ---------------------------------------------------------------------------------------------------------
 
   var base58Match = new RegExp('^[1-9ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]+$');
@@ -886,4 +885,4 @@ Peerio.Crypto = {};
   }
 
 
-})();
+};
