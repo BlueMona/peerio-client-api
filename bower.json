@@ -1,6 +1,6 @@
 {
   "name": "peerio-client-api",
-  "description": "Peerio client api",
+  "description": "Peerio client API",
   "homepage": "http://peerio.com",
   "repository": {
     "type": "git",
@@ -10,7 +10,6 @@
     "Anri Asaturov <anri82@gmail.com>"
   ],
   "license": "MIT",
-  "main":"dist/peerio_client_api.js",
   "moduleType": "globals",
   "keywords": ["peerio"],
   "ignore": [
