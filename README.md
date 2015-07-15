@@ -1,9 +1,18 @@
 # peerio-client-api
 
+This repository contains code shared between all Peerio clients.
 
-## distribution package
+Components:
 
-Distribution files are located in `/dist/` folder.
+- Crypto library `src/crypto`
+- Networking layer `src/network`
+- Application logic layer `src/app_logic`
+- Flux-ish event system `src/events`
+- Shared objects/models `src/model`
+
+## build & distribution package
+
+Distribution files are located in `/dist/` folder. Execute `gulp build` to produce distribution files.
 
 1. `peerio_client_api.js` - concatenated file containing: 
    - A few vendor scripts peerio-client-api relies on.
@@ -27,3 +36,35 @@ Distribution files are located in `/dist/` folder.
 
    `Peerio.PassphraseGenerator` loads dictionaries on demand.
   
+
+## contributing 
+
+### style guide
+Please follow this simple style guide:
+
+1. Indentation: `2 spaces`
+2. File names: `lower_cased_and_underscored`
+3. Variables and function names: `camelCased`
+4. Constructor functions and namespaces: `PascalCased`
+5. Constants:  `UPPER_CASE_UNDERSCORED`
+6. Line termination: mandatory semicolon `;`
+7. You are free to follow your taste with other style aspects, but don't change formatting of the code you are not working with.
+8. Use promises, not callbacks.
+
+### testing
+```
+gulp test
+```
+
+This starts:   
+
+* gulp watcher, it builds source files into `dest` folder.  
+* karma server watching `dest` folder changes.
+
+### commit checklist
+
+1. Tests are not failing.
+2. New code is covered with tests.
+3. Run `gulp build` before commit.
+4. `README.md` is updated with information relevant tou your commit. 
+5. Commit message: laconic, but descriptive. Reference `#github_issue_id` or `#multiple #issue #ids`.
