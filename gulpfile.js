@@ -1,6 +1,7 @@
 var gulp = require('gulp');
 var concat = require('gulp-concat');
 var clean = require('gulp-clean');
+var karma = require('karma').server;
 
 var outputDir = './dist/';
 var dictDir = outputDir + 'dict/';
@@ -14,6 +15,7 @@ gulp.task('help', function () {
   console.log('+------------------------------------------------------------------------------------+');
   console.log('| gulp build       - builds distribution files and copies tem to dist folder         |');
   console.log('| gulp clean       - removes everything from dist folder                             |');
+  console.log('| gulp test        - starts karma server, watches for changes in src                 |');
   console.log('+------------------------------------------------------------------------------------+');
   console.log();
 });
@@ -53,4 +55,9 @@ gulp.task('build', ['clean'], function () {
 gulp.task('clean', function () {
   return gulp.src(outputDir, {read: false})
     .pipe(clean());
+});
+
+gulp.task('test', function () {
+  gulp.watch('src/**/*', ['build']);
+  karma.start({configFile: __dirname + '/karma.conf.js'});
 });
