@@ -16,8 +16,7 @@ Peerio.PhraseGenerator.init = function () {
   var loadedDictionary = null;
 
   // building dictionary files list
-  var base = Peerio.Config.phraseDictFolder;
-  if (base[base.length - 1] !== '/') base += '/';
+  var base = Peerio.Config.apiFolder + 'dict/';
 
   /**
    * Generates passphrase

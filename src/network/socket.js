@@ -35,7 +35,7 @@ Peerio.Socket.init = function () {
 
   Peerio.Socket.start = function () {
     // worker instance holding the actual web socket
-    worker = new Worker(Peerio.Config.socketWorkerPath);
+    worker = new Worker(Peerio.Config.apiFolder+'socket_worker.js');
     // handles messages from web socket containing worker
     worker.onmessage = function (message) {
       var data = message.data;
@@ -54,7 +54,7 @@ Peerio.Socket.init = function () {
 
     // initializing worker
     worker.postMessage({
-      socketIOPath: Peerio.Config.socketIOPath,
+      socketIOPath: Peerio.Config.apiFolder + 'socket.io.js',
       server: Peerio.Config.webSocketServer
     });
   };

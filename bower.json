@@ -1,11 +1,12 @@
 {
   "name": "peerio-client-api",
-  "version": "0.0.0",
+  "description": "Peerio client api",
   "homepage": "https://github.com/PeerioTechnologies/peerio-client-api",
   "authors": [
     "Anri Asaturov <anri82@gmail.com>"
   ],
   "license": "MIT",
+  "main":"dist/peerio_client_api.js",
   "ignore": [
     "**/.*",
     "node_modules",
@@ -14,12 +15,12 @@
     "tests"
   ],
   "dependencies": {
-    "socket.io-client": "~1.3.5",
-    "bluebird": "~2.9.25",
-    "lodash": "~3.9.2"
   },
   "devDependencies": {
-    "node-uuid": "~1.4.3",
     "axios": "~0.5.4"
+    "socket.io-client": "~1.3.5",
+    "bluebird": "~2.9.25",
+    "lodash": "~3.9.2",
+    "node-uuid": "~1.4.3"
   }
 }

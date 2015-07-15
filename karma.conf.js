@@ -9,25 +9,19 @@ module.exports = function (config) {
 
     // list of files / patterns to load in the browser
     files: [
-      'bower_components/socket.io-client/socket.io.js',
-      'bower_components/node-uuid/uuid.js',
-      'bower_components/bluebird/js/browser/bluebird.js',
-      'bower_components/axios/dist/axios.standalone.js',
       'src/config.js',
-      'src/*.js',
-      'src/crypto/lib/*.js',
-      'src/crypto/*.js',
-      'src/network/*.js',
-      'src/model/*.js',
+      'dist/peerio_client_api.js',
+      {pattern: 'dist/socket.io.js', watched: true, included: false, served: true},
+      {pattern: 'dist/socket_worker.js', watched: true, included: false, served: true},
+      {pattern: 'dist/dict/*.txt', watched: true, included: false, served: true},
       'spec/globals.js',
-      'spec/*.js',
-      {pattern: 'src/network/socket_worker.js', watched: true, included: false, served: true},
-      {pattern: 'src/crypto/dict/*.txt', watched: true, included: false, served: true}
+      'spec/*.js'
     ],
 
     // list of files to exclude
     exclude: [
-      '/**/_*.js'
+      '/**/_*.js',
+      '/dist/config_template.js'
     ],
 
     // preprocess matching files before serving them to the browser
