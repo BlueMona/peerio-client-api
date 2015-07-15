@@ -1,18 +1,24 @@
 {
   "name": "peerio-client-api",
   "description": "Peerio client api",
-  "homepage": "https://github.com/PeerioTechnologies/peerio-client-api",
+  "homepage": "http://peerio.com",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/PeerioTechnologies/peerio-client-api.git"
+  },
   "authors": [
     "Anri Asaturov <anri82@gmail.com>"
   ],
   "license": "MIT",
   "main":"dist/peerio_client_api.js",
+  "moduleType": "globals",
+  "keywords": ["peerio"],
   "ignore": [
     "**/.*",
     "node_modules",
     "bower_components",
-    "test",
-    "tests"
+    "spec",
+    "src"
   ],
   "dependencies": {
   },
@@ -22,5 +28,6 @@
     "bluebird": "~2.9.25",
     "lodash": "~3.9.2",
     "node-uuid": "~1.4.3"
-  }
+  },
+  "private": true
 }
