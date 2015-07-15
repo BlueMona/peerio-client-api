@@ -14,12 +14,12 @@
   "keywords": ["peerio"],
   "ignore": [
     "**/.*",
-    "*.js",
-    "*.json",
-    "node_modules",
-    "bower_components",
-    "spec",
-    "src"
+    "/*.js",
+    "/*.json",
+    "/node_modules",
+    "/bower_components",
+    "/spec",
+    "/src"
   ],
   "dependencies": {
   },
