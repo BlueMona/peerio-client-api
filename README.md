@@ -1,3 +1,5 @@
+
+
 # peerio-client-api
 
 This repository contains code shared between all Peerio clients.
@@ -10,32 +12,47 @@ Components:
 - Flux-ish event system `src/events`
 - Shared objects/models `src/model`
 
-## build & distribution package
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+## TOC
 
-Distribution files are located in `/dist/` folder. Execute `gulp build` to produce distribution files.
+- [usage](#usage)
+  - [distribution package](#distribution-package)
+  - [installing, configuring and initializing peerio-client-api in your project](#installing-configuring-and-initializing-peerio-client-api-in-your-project)
+- [contributing](#contributing)
+  - [style guide](#style-guide)
+  - [testing](#testing)
+  - [commit checklist](#commit-checklist)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
+## usage
+
+### distribution package
+
+Distribution files are located in `/dist/` folder. 
 
 1. `peerio_client_api.js` - concatenated file containing: 
    - A few vendor scripts peerio-client-api relies on.
    - Most of the peerio-client-api scripts.
-    
-   Include this file into your client with `<script>` tag.
-
-2. `config_template.js` - configuration file.
-   
-   Rename/copy it to `config.js` anywhere in your project, change the configuration settings and also include it with `<script>` tag **before** the main file.
-   
-3. `socket_worker.js` - worker script for WebSocket handling operations. 
-
-   This separate file will be passed to WebWorker constructor when API initializes. You don't have to do anything with it.
-
-4. `socket.io.js` - `socket.io` client script.
-
-   Will be imported by `socket_worker.js` when it starts.
-  
+2. `config_template.js` - configuration file template.      
+3. `socket_worker.js` - worker script for WebSocket handling socket operations. 
+4. `socket.io.js` - `socket.io` client script. Socket worker will import it when started.   
 5. `dict/*.txt` - passphrase generation dictionaries for different languages.
 
-   `Peerio.PassphraseGenerator` loads dictionaries on demand.
+### installing, configuring and initializing peerio-client-api in your project
   
+1. Install bower package `peerio-client-api` or clone this repository and execute `gulp build` to produce distribution files.
+2. Copy distribution files anywhere in your project, retaining folder structure. Or keep them at your bower files location. 
+3. Copy or rename `config_template.js` to `config.js` anywhere in your project. Change configuration to reflect your preferences. 
+If you are updating peerio-client-api and already have `config.js`, look at the new `config_template.js` to find and manually apply changes.  
+4. Include scripts 
+```html
+<script src="{yourpath}\config.js" \>
+<script src="{yourpath}\peerio-client-api.js" \>
+```
+Order matters.
+5. `ondomready` and/or `ondeviceready` call `Peerio.InitAPI()`.
 
 ## contributing 
 
