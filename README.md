@@ -46,12 +46,12 @@ Distribution files are located in `/dist/` folder.
 2. Copy distribution files anywhere in your project, retaining folder structure. Or keep them at your bower files location. 
 3. Copy or rename `config_template.js` to `config.js` anywhere in your project. Change configuration to reflect your preferences. 
 If you are updating peerio-client-api and already have `config.js`, look at the new `config_template.js` to find and manually apply changes.  
-4. Include scripts 
-```html
-<script src="{yourpath}\config.js" \>
-<script src="{yourpath}\peerio-client-api.js" \>
-```
-Order matters.
+4. Include scripts retaining order
+   ```html
+   <script src="{yourpath}\config.js" \>
+   <script src="{yourpath}\peerio-client-api.js" \>
+   ```
+   
 5. `ondomready` and/or `ondeviceready` call `Peerio.InitAPI()`.
 
 ## contributing 
