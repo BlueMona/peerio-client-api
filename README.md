@@ -64,9 +64,11 @@ Please follow this simple style guide:
 3. Variables and function names: `camelCased`
 4. Constructor functions and namespaces: `PascalCased`
 5. Constants:  `UPPER_CASE_UNDERSCORED`
-6. Line termination: mandatory semicolon `;`
-7. You are free to follow your taste with other style aspects, but don't change formatting of the code you are not working with.
-8. Use promises, not callbacks.
+6. `'single quotes'`
+7. `strictEquality === good`
+8. Line termination: mandatory semicolon `;`
+9. You are free to follow your taste with other style aspects, but don't change formatting of the code you are not working with.
+10. Use promises, not callbacks.
 
 ### testing
 ```
