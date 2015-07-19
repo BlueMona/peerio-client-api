@@ -22,32 +22,48 @@ gulp.task('help', function () {
 
 gulp.task('build', ['clean'], function () {
 
-  // config template for lib user's reference
+  // 1. config template for lib user's reference
   gulp.src('src/config_template.js')
     .pipe(gulp.dest(outputDir));
 
-  // socket worker should reside in separate script
-  gulp.src('src/network/socket_worker.js')
+  // 2. socket worker should reside in separate script,
+  // we also concatenate it with dependencies
+  gulp.src(['src/network/socket_worker.js',
+    'bower_components/socket.io-client/socket.io.js'])
+    .pipe(concat('socket_worker_bundle.js'))
     .pipe(gulp.dest(outputDir));
 
-  // socket.io client script will be used by worker, so it has to be a separate file
-  gulp.src('bower_components/socket.io-client/socket.io.js')
-    .pipe(gulp.dest(outputDir));
-
-  // passphrase dictionaries are loaded on demand, should be separate files
+  // 3. passphrase dictionaries are loaded on demand, should be separate files
   gulp.src('src/crypto/dict/*.*')
     .pipe(gulp.dest(dictDir));
 
-  // all other scripts are concatenated, including external libraries
-  return gulp.src([
-    '!src/config.js',
-    '!src/config_template.js',
+  // 4. crypto worker bundle
+  gulp.src([
+    'src/crypto/lib/*.js',
+    'bower_components/bluebird/js/browser/bluebird.js',
+    'src/crypto/crypto.js',
+    'src/crypto/crypto_worker.js'
+  ]).pipe(concat('crypto_worker_bundle.js'))
+    .pipe(gulp.dest(outputDir));
+
+  // 5. all other scripts are concatenated, excluding external libraries
+  gulp.src([
     '!src/network/socket_worker.js',
+    'src/crypto/phrase_generator.js',
+    'src/model/**/*',
+    'src/app_logic/**/*',
+    'src/network/**/*',
+    'src/util.js',
+    'src/peerio.js'
+  ]).pipe(concat('peerio_client_api_bundle.js'))
+    .pipe(gulp.dest(outputDir));
+
+  // 6. external libraries bundle
+  gulp.src([
     'bower_components/lodash/lodash.js',
     'bower_components/bluebird/js/browser/bluebird.js',
-    'bower_components/node-uuid/uuid.js',
-    'src/**/*.js'
-  ]).pipe(concat('peerio_client_api.js'))
+    'bower_components/node-uuid/uuid.js'
+  ]).pipe(concat('ext_lib_bundle.js'))
     .pipe(gulp.dest(outputDir));
 
 });

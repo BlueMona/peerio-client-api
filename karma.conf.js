@@ -10,9 +10,10 @@ module.exports = function (config) {
     // list of files / patterns to load in the browser
     files: [
       'src/config.js',
-      'dist/peerio_client_api.js',
-      {pattern: 'dist/socket.io.js', watched: true, included: false, served: true},
-      {pattern: 'dist/socket_worker.js', watched: true, included: false, served: true},
+      'dist/ext_lib_bundle.js',
+      'dist/peerio_client_api_bundle.js',
+      {pattern: 'dist/socket_worker_bundle.js', watched: true, included: false, served: true},
+      {pattern: 'dist/crypto_worker_bundle.js', watched: true, included: false, served: true},
       {pattern: 'dist/dict/*.txt', watched: true, included: false, served: true},
       'spec/globals.js',
       'spec/*.js'
@@ -20,8 +21,7 @@ module.exports = function (config) {
 
     // list of files to exclude
     exclude: [
-      '/**/_*.js',
-      '/dist/config_template.js'
+      '/**/_*.js'
     ],
 
     // preprocess matching files before serving them to the browser
