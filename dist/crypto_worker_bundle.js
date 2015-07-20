@@ -8350,7 +8350,6 @@ function isUndefined(arg) {
 // todo: 3. using blobs forces us to use html5 file api, don't think it's optimal, see if can be changed
 // todo: 4. encrypt/decrypt functions reduce nesting and promisify further
 
-
 var Peerio = this.Peerio || {};
 Peerio.Crypto = {};
 
@@ -8379,6 +8378,9 @@ Peerio.Crypto.init = function () {
   // todo: move to global helper
   // malicious server safe hasOwnProperty function
   var hasProp = Function.call.bind(Object.prototype.hasOwnProperty);
+  // optional cache of user data,
+  // mostly to prevent passing the same data to worker over and over again
+  var defaultUser;
 
   function hasAllProps(obj, props) {
     for (var i = 0; i > props.length; i++)
@@ -8390,6 +8392,36 @@ Peerio.Crypto.init = function () {
   //-- PUBLIC API ------------------------------------------------------------------------------------------------------
 
   api.chunkSize = 1024 * 1024;
+
+  /**
+   * Sets default user data for crypto operations to prevent repeated passing it to functions (and to workers)
+   * @param {string} username
+   * @param {object} keyPair
+   * @promise resolves with no value in case of success
+   */
+  api.setDefaultUserData = function (username, keyPair) {
+    return new Promise(function (resolve, reject) {
+      defaultUser = defaultUser || {};
+      defaultUser.username = username;
+      defaultUser.keyPair = keyPair;
+
+      api.getPublicKeyString(keyPair.publicKey).then(function (publicKeyString) {
+        defaultUser.publicKey = publicKeyString;
+        resolve();
+      }).catch(reject);
+    });
+  };
+
+  /**
+   * Sets default user contacts for crypto operations to prevent repeated passing it to functions (and to workers)
+   * @param {object} contacts - username-indexed dictionary
+   * @promise resolves with no value in case of success
+   */
+  api.setDefaultContacts = function (contacts) {
+    defaultUser = defaultUser || {};
+    defaultUser.contacts = contacts;
+    return Promise.resolve();
+  };
 
   /**
    * Generates keypair from string key and salt (passphrase and username)
@@ -8487,6 +8519,7 @@ Peerio.Crypto.init = function () {
 
   /**
    * Decrypts an account creation token.
+   * Does not use cached user data.
    * @param {{ username: string,
    *           ephemeralServerID: string,
    *           accountCreationToken: {token: string, nonce: string}
@@ -8526,19 +8559,21 @@ Peerio.Crypto.init = function () {
   };
 
   /**
-   * Decrypts authToken
+   * Decrypts authToken.
+   * Uses cached user data.
    * @param {{ephemeralServerID:string, token:string, nonce:string}} data - authToken data as received from server.
-   * @param {object} keyPair
+   * @param {object} [keyPair]
    * @promise {object} decrypted token
    */
   api.decryptAuthToken = function (data, keyPair) {
+    keyPair =  keyPair || getCachedKeyPair();
     if (hasProp(data, 'error')) {
       console.error(data.error);
       return Promise.reject(data.error);
     }
 
     return api.getPublicKeyBytes(data.ephemeralServerID)
-      .then(function(serverKey){
+      .then(function (serverKey) {
         var dToken = nacl.box.open(
           nacl.util.decodeBase64(data.token),
           nacl.util.decodeBase64(data.nonce),
@@ -8565,6 +8600,9 @@ Peerio.Crypto.init = function () {
    * @promise {Array|Boolean} [hash1 (Hex string), hash2 (Hex string)]
    */
   api.getAvatar = function (username, publicKey) {
+    username = username || getCachedUsername();
+    publicKey = publicKey || getCachedPublicKey();
+
     if (!username || !publicKey) {
       return Promise.reject();
     }
@@ -8584,10 +8622,11 @@ Peerio.Crypto.init = function () {
    * Encrypt a message to recipients, return header JSON and body.
    * @param {object} message - message object.
    * @param {string[]} recipients - Array of usernames of recipients.
-   * @param {User} sender
+   * @param {User} [sender]
    * @promise {object}  With header, body parameters, and array of failed recipients.
    */
   api.encryptMessage = function (message, recipients, sender) {
+    sender = sender || defaultUser;
     return new Promise(function (resolve, reject) {
 
       var validatedRecipients = validateRecipients(recipients, sender);
@@ -8623,10 +8662,11 @@ Peerio.Crypto.init = function () {
    * Encrypt a file to recipients, return UTF8 Blob and header (separate).
    * @param {object} file - File object to encrypt.
    * @param {string[]} recipients - Array of usernames of recipients.
-   * @param {User} sender
+   * @param {User} [sender]
    * @promise {object} fileName(base64 encoded), header, body and failedRecipients parameters.
    */
   api.encryptFile = function (file, recipients, sender) {
+    sender = sender || defaultUser;
     return new Promise(function (resolve, reject) {
       var validatedRecipients = validateRecipients(recipients, sender);
 
@@ -8642,7 +8682,12 @@ Peerio.Crypto.init = function () {
             return;
           }
           encryptedChunks.splice(0, numberSize);
-          resolve({fileName: nacl.util.encodeBase64(fileName.subarray(4)), header: JSON.parse(header), chunks: encryptedChunks, failed: validatedRecipients.failed});
+          resolve({
+            fileName: nacl.util.encodeBase64(fileName.subarray(4)),
+            header: JSON.parse(header),
+            chunks: encryptedChunks,
+            failed: validatedRecipients.failed
+          });
         }
       );
     });
@@ -8651,10 +8696,11 @@ Peerio.Crypto.init = function () {
   /**
    * Decrypt a message.
    * @param {object} messageObject - As received from server.
-   * @param {User} user - decrypting user
+   * @param {User} [user] - decrypting user
    * @promise {object} plaintext object.
    */
   api.decryptMessage = function (messageObject, user) {
+    user = defaultUser || user;
     return new Promise(function (resolve, reject) {
 
       var header = JSON.stringify(messageObject.header);
@@ -8703,10 +8749,11 @@ Peerio.Crypto.init = function () {
    * @param {object} blob - File ciphertext as blob
    * @param {object} header
    * @param {object} file
-   * @param {User} user - decrypting user
+   * @param {User} [user] - decrypting user
    * @promise {object} plaintext blob
    */
   api.decryptFile = function (id, blob, header, file, user) {
+    user = user || defaultUser;
     return new Promise(function (resolve, reject) {
 
       var headerString = JSON.stringify(header);
@@ -8744,10 +8791,11 @@ Peerio.Crypto.init = function () {
    * Decrypt a filename from a file's ID given by the Peerio server.
    * @param {string} id - File ID (Base64)
    * @param {object} header - encryption header for file
-   * @param {User} user
+   * @param {User} [user]
    * @promise {string} file name
    */
   api.decryptFileName = function (id, header, user) {
+    user = user || defaultUser;
     var fileInfo = decryptHeader(header, user).fileInfo;
 
     fileInfo.fileNonce = nacl.util.decodeBase64(fileInfo.fileNonce);
@@ -9050,7 +9098,8 @@ Peerio.Crypto.init = function () {
     var encryptedChunks = [encryptedChunk];
     hashObject.update(encryptedChunk);
 
-    encryptNextChunk({ fileName: fileName,
+    encryptNextChunk({
+      fileName: fileName,
       blob: blob, streamEncryptor: streamEncryptor, hashObject: hashObject,
       encryptedChunks: encryptedChunks, dataPosition: 0, fileKey: blobKey, fileNonce: blobNonce,
       publicKeys: publicKeys, user: user, callbackOnComplete: callback
@@ -9145,7 +9194,7 @@ Peerio.Crypto.init = function () {
           header = JSON.stringify(header);
           e.encryptedChunks.unshift(signature, numberToByteArray(header.length), header);
 
-          return e.callbackOnComplete(e.encryptedChunks, header, e.fileName, e.user.publicKey );
+          return e.callbackOnComplete(e.encryptedChunks, header, e.fileName, e.user.publicKey);
         }
 
         e.dataPosition += api.chunkSize;
@@ -9228,6 +9277,18 @@ Peerio.Crypto.init = function () {
 
       }
     );
+  }
+
+  function getCachedUsername() {
+    return (defaultUser && defaultUser.username) || null;
+  }
+
+  function getCachedKeyPair() {
+    return (defaultUser && defaultUser.keyPair) || null;
+  }
+
+  function getCachedPublicKey() {
+    return (defaultUser && defaultUser.publicKey) || null;
   }
 
 };

@@ -154,6 +154,8 @@ Peerio.Crypto.init = function () {
   };
 
   [
+    'setDefaultUserData',
+    'setDefaultContacts',
     'getKeyPair',
     'getPublicKeyString',
     'getPublicKeyBytes',

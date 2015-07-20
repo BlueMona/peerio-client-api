@@ -13,9 +13,15 @@ fdescribe('Crypto', function () {
   // shortcut
   var C = Peerio.Crypto;
 
-  // === test user data
+  beforeAll(function(done){
+    C.setDefaultUserData(testUser.username, testUser.keyPair)
+      .then(function(){
+        return C.setDefaultContacts(testUser.contacts);
+      })
+      .then(done)
+      .catch(done.fail);
+  });
 
-  // === specs
   it('creates keypair from username and passphrase', function (done) {
 
     C.getKeyPair(testUser.username, testUser.passPhrase)
