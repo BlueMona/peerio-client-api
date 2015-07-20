@@ -35,29 +35,27 @@ Peerio.Socket.init = function () {
 
   Peerio.Socket.start = function () {
     // worker instance holding the actual web socket
-    worker = new Worker(Peerio.Config.apiFolder+'socket_worker.js');
+    worker = new Worker(Peerio.Config.apiFolder + 'socket_worker_bundle.js');
     // handles messages from web socket containing worker
-    worker.onmessage = function (message) {
-      var data = message.data;
-
-      if (hasProp(data, 'callbackID') && data.callbackID) {
-        callbacks[data.callbackID](data.data);
-        delete callbacks[data.callbackID];
-        return;
-      }
-
-      if (eventHandler && hasProp(data, 'socketEvent')) {
-        eventHandler(data.socketEvent);
-      }
-
-    };
+    worker.onmessage = messageHandler;
 
     // initializing worker
-    worker.postMessage({
-      socketIOPath: Peerio.Config.apiFolder + 'socket.io.js',
-      server: Peerio.Config.webSocketServer
-    });
+    worker.postMessage(Peerio.Config);
   };
+
+  function messageHandler(message){
+    var data = message.data;
+
+    if (hasProp(data, 'callbackID') && data.callbackID) {
+      callbacks[data.callbackID](data.data);
+      delete callbacks[data.callbackID];
+      return;
+    }
+
+    if (eventHandler && hasProp(data, 'socketEvent')) {
+      eventHandler(data.socketEvent);
+    }
+  }
 
   /**
    * Sends message to the serve

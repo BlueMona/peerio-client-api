@@ -26,14 +26,8 @@
     self.onmessage = messageHandler;
   };
 
-  // Config object:
-  // {
-  //   socketIOPath: string - absolute path to socket.io client script,
-  //   server: string - peerio server url
-  // }
+  // cfg - Peerio.Config object
   function initialize(cfg) {
-    // importing socket.io client script
-    importScripts(cfg.socketIOPath);
     // creating socket.io client instance
     self.peerioSocket = io.connect(cfg.server, {transports: ['websocket']});
     // socket events should be passed to UI thread
@@ -66,10 +60,6 @@
     ].forEach(function (eventName) {
         self.peerioSocket.on(eventName, self.postMessage.bind(self, {socketEvent: eventName}));
       });
-  }
-
-  function sendSocketIOEvent(name, param) {
-
   }
 
   // sends data from UI thread through socket

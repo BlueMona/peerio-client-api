@@ -39,6 +39,7 @@ gulp.task('build', ['clean'], function () {
 
   // 4. crypto worker bundle
   gulp.src([
+    'src/worker_shim.js',
     'src/crypto/lib/*.js',
     'bower_components/bluebird/js/browser/bluebird.js',
     'src/crypto/crypto.js',
@@ -50,6 +51,7 @@ gulp.task('build', ['clean'], function () {
   gulp.src([
     '!src/network/socket_worker.js',
     'src/crypto/phrase_generator.js',
+    'src/crypto/crypto_hub.js',
     'src/model/**/*',
     'src/app_logic/**/*',
     'src/network/**/*',

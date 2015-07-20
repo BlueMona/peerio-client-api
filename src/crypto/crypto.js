@@ -10,12 +10,15 @@
  * - blake2s.js
  * - scrypt.js
  * - bluebird.js
+ *
+ * All public functions return promises for consistency
  */
 
-//
 // todo: 1. probably replace "throw" with return values
 // todo: 2. "contacts" dependency is not nice, is there a better way?
 // todo: 3. using blobs forces us to use html5 file api, don't think it's optimal, see if can be changed
+// todo: 4. encrypt/decrypt functions reduce nesting and promisify further
+
 
 var Peerio = this.Peerio || {};
 Peerio.Crypto = {};
@@ -53,8 +56,6 @@ Peerio.Crypto.init = function () {
     return true;
   }
 
-
-
   //-- PUBLIC API ------------------------------------------------------------------------------------------------------
 
   api.chunkSize = 1024 * 1024;
@@ -82,7 +83,7 @@ Peerio.Crypto.init = function () {
   /**
    * Generates public key in string representation from key bytes
    * @param {Uint8Array} publicKeyBytes
-   * @returns {string} Base58 encoded key
+   * @promise {string} Base58 encoded key
    */
   api.getPublicKeyString = function (publicKeyBytes) {
     var key = new Uint8Array(keySize + 1);
@@ -93,31 +94,33 @@ Peerio.Crypto.init = function () {
     hash.update(publicKeyBytes);
     key[keySize] = hash.digest()[0];
 
-    return Base58.encode(key);
+    return Promise.resolve(Base58.encode(key));
   };
 
   /**
    * Extracts byte array from public key string representation
    * @param {string} publicKey
-   * @return {Uint8Array} publicKeyBytes
+   * @promise {Uint8Array} publicKeyBytes
    */
   api.getPublicKeyBytes = function (publicKey) {
-    return Base58.decode(publicKey).subarray(0, keySize);
+    return Promise.resolve(
+      Base58.decode(publicKey).subarray(0, keySize)
+    );
   };
 
   /**
    * Encrypts a plaintext using `nacl.secretbox` and returns the ciphertext and a random nonce.
    * @param {string} plaintext
    * @param {Uint8Array} key
-   * @return {object} ciphertext - Contains ciphertext and nonce in Uint8Array format.
+   * @promise {object} ciphertext - Contains ciphertext and nonce in Uint8Array format.
    */
   api.secretBoxEncrypt = function (plaintext, key) {
     var nonce = nacl.randomBytes(decryptInfoNonceSize);
     var ciphertext = nacl.secretbox(nacl.util.decodeUTF8(plaintext), nonce, key);
-    return {
+    return Promise.resolve({
       ciphertext: ciphertext,
       nonce: nonce
-    };
+    });
   };
 
   /**
@@ -125,10 +128,12 @@ Peerio.Crypto.init = function () {
    * @param {Uint8Array} ciphertext
    * @param {Uint8Array} nonce
    * @param {Uint8Array} key
-   * @return {string} plaintext
+   * @promise {string} plaintext
    */
   api.secretBoxDecrypt = function (ciphertext, nonce, key) {
-    return nacl.util.encodeUTF8(nacl.secretbox.open(ciphertext, nonce, key));
+    return Promise.resolve(
+      nacl.util.encodeUTF8(nacl.secretbox.open(ciphertext, nonce, key))
+    );
   };
 
   /**
@@ -157,7 +162,7 @@ Peerio.Crypto.init = function () {
    *         }} data - account creation challenge JSON as received from server.
    * @param {string} username - username
    * @param {object} keyPair - keys
-   * @return {string} decryptedToken
+   * @promise {string} decryptedToken
    */
   api.decryptAccountCreationToken = function (data, username, keyPair) {
     if (!hasAllProps(data, ['username', 'accountCreationToken', 'ephemeralServerID'])
@@ -171,44 +176,50 @@ Peerio.Crypto.init = function () {
       return false;
     }
 
-    var token = nacl.box.open(
-      nacl.util.decodeBase64(data.accountCreationToken.token),
-      nacl.util.decodeBase64(data.accountCreationToken.nonce),
-      api.getPublicKeyBytes(data.ephemeralServerID),
-      keyPair.secretKey
-    );
+    return api.getPublicKeyBytes(data.ephemeralServerID)
+      .then(function (serverKey) {
+        var token = nacl.box.open(
+          nacl.util.decodeBase64(data.accountCreationToken.token),
+          nacl.util.decodeBase64(data.accountCreationToken.nonce),
+          serverKey,
+          keyPair.secretKey
+        );
 
-    //todo: explain magic numbers
-    if (token && token.length === 0x20 && token[0] === 0x41 && token[1] === 0x43)
-      return nacl.util.encodeBase64(token);
+        //todo: explain magic numbers
+        if (token && token.length === 0x20 && token[0] === 0x41 && token[1] === 0x43)
+          return Promise.resolve(nacl.util.encodeBase64(token));
 
-    console.log('Decryption of account creation token failed.');
-    return false;
+        console.log('Decryption of account creation token failed.');
+        return Promise.reject();
+      });
   };
 
   /**
    * Decrypts authToken
    * @param {{ephemeralServerID:string, token:string, nonce:string}} data - authToken data as received from server.
    * @param {object} keyPair
-   * @returns {object|Boolean} decrypted token
+   * @promise {object} decrypted token
    */
   api.decryptAuthToken = function (data, keyPair) {
     if (hasProp(data, 'error')) {
       console.error(data.error);
-      return false;
+      return Promise.reject(data.error);
     }
 
-    var dToken = nacl.box.open(
-      nacl.util.decodeBase64(data.token),
-      nacl.util.decodeBase64(data.nonce),
-      api.getPublicKeyBytes(data.ephemeralServerID),
-      keyPair.secretKey
-    );
-    //todo: explain magic numbers
-    if (dToken && dToken.length === 0x20 && dToken[0] === 0x41 && dToken[1] === 0x54)
-      return nacl.util.encodeBase64(dToken);
+    return api.getPublicKeyBytes(data.ephemeralServerID)
+      .then(function(serverKey){
+        var dToken = nacl.box.open(
+          nacl.util.decodeBase64(data.token),
+          nacl.util.decodeBase64(data.nonce),
+          serverKey,
+          keyPair.secretKey
+        );
+        //todo: explain magic numbers
+        if (dToken && dToken.length === 0x20 && dToken[0] === 0x41 && dToken[1] === 0x54)
+          return Promise.resolve(nacl.util.encodeBase64(dToken));
 
-    return false;
+        return Promise.reject();
+      });
   };
 
   /**
@@ -220,11 +231,11 @@ Peerio.Crypto.init = function () {
    * Identicon 4:  Last 128 bits of BLAKE2(publicKey||username).
    * @param {string} username
    * @param {string} publicKey
-   * @return {Array|Boolean} [hash1 (Hex string), hash2 (Hex string)]
+   * @promise {Array|Boolean} [hash1 (Hex string), hash2 (Hex string)]
    */
   api.getAvatar = function (username, publicKey) {
     if (!username || !publicKey) {
-      return false;
+      return Promise.reject();
     }
 
     var hash1 = new BLAKE2s(keySize);
@@ -235,7 +246,7 @@ Peerio.Crypto.init = function () {
     hash2.update(Base58.decode(publicKey));
     hash2.update(nacl.util.decodeUTF8(username));
 
-    return [hash1.hexDigest(), hash2.hexDigest()];
+    return Promise.resolve([hash1.hexDigest(), hash2.hexDigest()]);
   };
 
   /**
@@ -243,36 +254,38 @@ Peerio.Crypto.init = function () {
    * @param {object} message - message object.
    * @param {string[]} recipients - Array of usernames of recipients.
    * @param {User} sender
-   * @param {function} callback - With header, body parameters, and array of failed recipients.
+   * @promise {object}  With header, body parameters, and array of failed recipients.
    */
-  api.encryptMessage = function (message, recipients, sender, callback) {
-    var validatedRecipients = validateRecipients(recipients, sender);
+  api.encryptMessage = function (message, recipients, sender) {
+    return new Promise(function (resolve, reject) {
 
-    encryptBlob(
-      new Blob([nacl.util.decodeUTF8(JSON.stringify(message))]),
-      validatedRecipients.publicKeys,
-      sender,
-      null,
-      function (encryptedChunks, header) {
-        if (!encryptedChunks) {
-          callback(false);
-          return false;
+      var validatedRecipients = validateRecipients(recipients, sender);
+
+      encryptBlob(
+        new Blob([nacl.util.decodeUTF8(JSON.stringify(message))]),
+        validatedRecipients.publicKeys,
+        sender,
+        function (encryptedChunks, header) {
+          if (!encryptedChunks) {
+            reject();
+            return;
+          }
+          var encryptedBlob = new Blob(encryptedChunks);
+          encryptedChunks = null;
+          var reader = new FileReader();
+          reader.onload = function (readerEvent) {
+            var encryptedBuffer = new Uint8Array(readerEvent.target.result);
+            var headerLength = byteArrayToNumber(encryptedBuffer.subarray(signatureSize, headerStart));
+            header = JSON.parse(header);
+            var body = nacl.util.encodeBase64(
+              encryptedBuffer.subarray(headerStart + headerLength)
+            );
+            resolve({header: header, body: body, failed: validatedRecipients.failed});
+          };
+          reader.readAsArrayBuffer(encryptedBlob);
         }
-        var encryptedBlob = new Blob(encryptedChunks);
-        encryptedChunks = null;
-        var reader = new FileReader();
-        reader.onload = function (readerEvent) {
-          var encryptedBuffer = new Uint8Array(readerEvent.target.result);
-          var headerLength = byteArrayToNumber(encryptedBuffer.subarray(signatureSize, headerStart));
-          header = JSON.parse(header);
-          var body = nacl.util.encodeBase64(
-            encryptedBuffer.subarray(headerStart + headerLength)
-          );
-          callback(header, body, validatedRecipients.failed);
-        };
-        reader.readAsArrayBuffer(encryptedBlob);
-      }
-    );
+      );
+    });
   };
 
   /**
@@ -280,118 +293,120 @@ Peerio.Crypto.init = function () {
    * @param {object} file - File object to encrypt.
    * @param {string[]} recipients - Array of usernames of recipients.
    * @param {User} sender
-   * @param {function} fileNameCallback - Callback with encrypted fileName.
-   * @param {function} callback - With header, body and failedRecipients parameters.
+   * @promise {object} fileName(base64 encoded), header, body and failedRecipients parameters.
    */
-  api.encryptFile = function (file, recipients, sender, fileNameCallback, callback) {
-    var validatedRecipients = validateRecipients(recipients, sender);
+  api.encryptFile = function (file, recipients, sender) {
+    return new Promise(function (resolve, reject) {
+      var validatedRecipients = validateRecipients(recipients, sender);
 
-    var blob = file.slice();
-    blob.name = file.name;
-    encryptBlob(
-      blob,
-      validatedRecipients.publicKeys,
-      sender,
-      fileNameCallback,
-      function (encryptedChunks, header) {
-        if (encryptedChunks) {
+      var blob = file.slice();
+      blob.name = file.name;
+      encryptBlob(
+        blob,
+        validatedRecipients.publicKeys,
+        sender,
+        function (encryptedChunks, header, fileName) {
+          if (!encryptedChunks) {
+            reject();
+            return;
+          }
           encryptedChunks.splice(0, numberSize);
-          callback(JSON.parse(header), encryptedChunks, validatedRecipients.failed);
-        } else
-          callback(false);
-      }
-    );
+          resolve({fileName: nacl.util.encodeBase64(fileName), header: JSON.parse(header), chunks: encryptedChunks, failed: validatedRecipients.failed});
+        }
+      );
+    });
   };
 
   /**
    * Decrypt a message.
    * @param {object} messageObject - As received from server.
    * @param {User} user - decrypting user
-   * @param {function} callback - with plaintext object.
-   *
+   * @promise {object} plaintext object.
    */
-  api.decryptMessage = function (messageObject, user, callback) {
-    var header = JSON.stringify(messageObject.header);
+  api.decryptMessage = function (messageObject, user) {
+    return new Promise(function (resolve, reject) {
 
-    var messageBlob = new Blob([
-      signature,
-      numberToByteArray(header.length),
-      header,
-      nacl.util.decodeBase64(messageObject.body)
-    ]);
+      var header = JSON.stringify(messageObject.header);
 
-    decryptBlob(messageBlob, user,
-      function (decryptedBlob, senderID) {
-        if (!decryptedBlob) {
-          callback(false);
-          return false;
+      var messageBlob = new Blob([
+        signature,
+        numberToByteArray(header.length),
+        header,
+        nacl.util.decodeBase64(messageObject.body)
+      ]);
+
+      decryptBlob(messageBlob, user,
+        function (decryptedBlob, senderID) {
+          if (!decryptedBlob) {
+            reject();
+            return;
+          }
+          // validating sender public key
+          if (hasProp(user.contacts, messageObject.sender)
+            && user.contacts[messageObject.sender].publicKey !== senderID) {
+            reject();
+            return;
+          }
+
+          var decryptedBuffer;
+          var reader = new FileReader();
+          reader.onload = function (readerEvent) {
+            decryptedBuffer = nacl.util.encodeUTF8(
+              new Uint8Array(readerEvent.target.result)
+            );
+
+            var message = JSON.parse(decryptedBuffer);
+
+            resolve(message);
+          };
+
+          reader.readAsArrayBuffer(decryptedBlob);
         }
-        // validating sender public key
-        if (hasProp(user.contacts, messageObject.sender)
-          && user.contacts[messageObject.sender].publicKey !== senderID) {
-          callback(false);
-          return false;
-        }
-
-        var decryptedBuffer;
-        var reader = new FileReader(); // todo: remove file api usage
-        reader.onload = function (readerEvent) {
-          decryptedBuffer = nacl.util.encodeUTF8(
-            new Uint8Array(readerEvent.target.result)
-          );
-
-          var message = JSON.parse(decryptedBuffer);
-
-          // todo: should crypto really care what props message object has?
-          //if (hasProp(message, 'subject') && hasProp(message, 'message')
-          //    && hasProp(message, 'receipt') && hasProp(message, 'sequence')) {
-          callback(message);
-          //} else callback(false);
-        };
-
-        reader.readAsArrayBuffer(decryptedBlob);
-      }
-    );
+      );
+    });
   };
 
   /**
    * Decrypt a file.
-   * @param {string} id - File ID
+   * @param {string} id - File ID in base64
    * @param {object} blob - File ciphertext as blob
    * @param {object} header
    * @param {object} file
    * @param {User} user - decrypting user
-   * @param {function} callback - with plaintext blob
+   * @promise {object} plaintext blob
    */
-  api.decryptFile = function (id, blob, header, file, user, callback) {
-    var headerString = JSON.stringify(header);
-    var headerStringLength = nacl.util.decodeUTF8(headerString).length;
-    var peerioBlob = new Blob([
-      signature,
-      numberToByteArray(headerStringLength),
-      headerString,
-      numberToByteArray(fileNameSize),
-      nacl.util.decodeBase64(id),
-      blob
-    ]);
+  api.decryptFile = function (id, blob, header, file, user) {
+    return new Promise(function (resolve, reject) {
 
-    decryptBlob(peerioBlob, user,
-      function (decryptedBlob, senderID) {
-        if (!decryptedBlob) {
-          callback(false);
-          return false;
+      var headerString = JSON.stringify(header);
+      var headerStringLength = nacl.util.decodeUTF8(headerString).length;
+      var peerioBlob = new Blob([
+        signature,
+        numberToByteArray(headerStringLength),
+        headerString,
+        numberToByteArray(fileNameSize),
+        nacl.util.decodeBase64(id),
+        blob
+      ]);
+
+      decryptBlob(peerioBlob, user,
+        function (decryptedBlob, senderID) {
+          if (!decryptedBlob) {
+            reject();
+            return;
+          }
+
+          var claimedSender = hasProp(file, 'sender') ? file.sender : file.creator;
+          // this looks strange that we call success callback when sender is not in contacts
+          // but it can be the case and we skip public key verification,
+          // because we don't have sender's public key
+          if (hasProp(user.contacts, claimedSender) && user.contacts[claimedSender].publicKey !== senderID)
+            reject();
+          else
+            resolve(decryptedBlob);
         }
-
-        var claimedSender = hasProp(file, 'sender') ? file.sender : file.creator;
-        // this looks strange that we call success callback when sender is not in contacts
-        // but it can be the case and we skip public key verification,
-        // because we don't have sender's public key
-        if (hasProp(user.contacts, claimedSender) && user.contacts[claimedSender].publicKey !== senderID)
-          callback(false);
-        else
-          callback(decryptedBlob);
-      }
-    );
+      );
+    });
   };
 
   /**
@@ -399,7 +414,7 @@ Peerio.Crypto.init = function () {
    * @param {string} id - File ID (Base64)
    * @param {object} header - encryption header for file
    * @param {User} user
-   * @return {string} fileName
+   * @promise {string} file name
    */
   api.decryptFileName = function (id, header, user) {
     var fileInfo = decryptHeader(header, user).fileInfo;
@@ -416,7 +431,7 @@ Peerio.Crypto.init = function () {
     while (decrypted[decrypted.length - 1] === '\0')
       decrypted = decrypted.slice(0, -1);
 
-    return decrypted;
+    return Promise.resolve(decrypted);
   };
 
   //-- INTERNALS -------------------------------------------------------------------------------------------------------
@@ -672,7 +687,7 @@ Peerio.Crypto.init = function () {
    * @param {Function} fileNameCallback - A callback with the encrypted fileName.
    * @param {Function} callback - Callback function to which encrypted result is passed.
    */
-  function encryptBlob(blob, publicKeys, user, fileNameCallback, callback) {
+  function encryptBlob(blob, publicKeys, user, callback) {
     var blobKey = nacl.randomBytes(keySize);
     var blobNonce = nacl.randomBytes(blobNonceSize);
     var streamEncryptor = nacl.stream.createEncryptor(
@@ -699,16 +714,16 @@ Peerio.Crypto.init = function () {
       return false;
     }
 
-    if (typeof(fileNameCallback) === 'function') {
-      fileNameCallback(encryptedChunk);
-    }
+    var fileName = encryptedChunk;
 
     var encryptedChunks = [encryptedChunk];
     hashObject.update(encryptedChunk);
 
-    encryptNextChunk({blob: blob, streamEncryptor: streamEncryptor, hashObject: hashObject,
-                      encryptedChunks: encryptedChunks, dataPosition: 0, fileKey: blobKey, fileNonce: blobNonce,
-                      publicKeys: publicKeys, user: user, callbackOnComplete: callback});
+    encryptNextChunk({ fileName: fileName,
+      blob: blob, streamEncryptor: streamEncryptor, hashObject: hashObject,
+      encryptedChunks: encryptedChunks, dataPosition: 0, fileKey: blobKey, fileNonce: blobNonce,
+      publicKeys: publicKeys, user: user, callbackOnComplete: callback
+    });
   }
 
   /**
@@ -773,7 +788,7 @@ Peerio.Crypto.init = function () {
    * @param {Uint8Array} e.fileNonce
    * @param {string[]} e.publicKeys
    * @param {User} e.user
-   * @param {Function} e.callbackOnComplete {file, header, senderID}
+   * @param {Function} e.callbackOnComplete {file, header, fileName, senderID}
    */
   function encryptNextChunk(e) {
     readBlob(
@@ -799,7 +814,7 @@ Peerio.Crypto.init = function () {
           header = JSON.stringify(header);
           e.encryptedChunks.unshift(signature, numberToByteArray(header.length), header);
 
-          return e.callbackOnComplete(e.encryptedChunks, header, e.user.publicKey);
+          return e.callbackOnComplete(e.encryptedChunks, header, e.fileName, e.user.publicKey );
         }
 
         e.dataPosition += api.chunkSize;
@@ -883,6 +898,5 @@ Peerio.Crypto.init = function () {
       }
     );
   }
-
 
 };

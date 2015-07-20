@@ -14,10 +14,10 @@ Peerio.initAPI = function () {
   Peerio.Util.init();
   Peerio.Crypto.init();
   Peerio.PhraseGenerator.init();
-  Peerio.Socket.init();
-  Peerio.Net.init();
+ // Peerio.Socket.init();
+ // Peerio.Net.init();
 
-  Peerio.Socket.start();
+//  Peerio.Socket.start();
 
   Peerio.initAPI = null;
 };

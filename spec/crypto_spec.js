@@ -5,7 +5,7 @@
  *
  */
 
-describe('Crypto', function () {
+fdescribe('Crypto', function () {
   'use strict';
 
   jasmine.DEFAULT_TIMEOUT_INTERVAL = 15000;
@@ -22,28 +22,42 @@ describe('Crypto', function () {
       .then(function (keyPair) {
         expect(keyPair).toEqual(testUser.keyPair);
         done();
-      }).error(function (err) {
-        done.fail(err);
-      });
+      })
+      .catch(done.fail);
   });
 
-  it('creates string representation from public key bytes', function () {
-    var key = C.getPublicKeyString(testUser.keyPair.publicKey);
-    expect(key).toEqual(testUser.publicKey);
+  it('creates string representation from public key bytes', function (done) {
+    C.getPublicKeyString(testUser.keyPair.publicKey)
+      .then(function (key) {
+        expect(key).toEqual(testUser.publicKey);
+        done();
+      })
+      .catch(done.fail);
   });
 
-  it('extracts public key bytes from string representation', function () {
-    var key = C.getPublicKeyBytes(testUser.publicKey);
-    expect(key).toEqual(testUser.keyPair.publicKey);
+  it('extracts public key bytes from string representation', function (done) {
+    C.getPublicKeyBytes(testUser.publicKey)
+      .then(function (key) {
+        expect(key).toEqual(testUser.keyPair.publicKey);
+        done();
+      })
+      .catch(done.fail);
   });
 
-  it('encrypts and decrypts plaintext', function () {
-    var original = 'wow such secret';
-    var encrypted = C.secretBoxEncrypt(original, testUser.keyPair.secretKey);
-    var decrypted = C.secretBoxDecrypt(encrypted.ciphertext, encrypted.nonce, testUser.keyPair.secretKey);
+  it('encrypts and decrypts plaintext', function (done) {
+    var original = 'wow such secret', encrypted;
 
-    expect(decrypted).toBe(original);
-    expect(encrypted).not.toBe(original);
+    C.secretBoxEncrypt(original, testUser.keyPair.secretKey)
+      .then(function (_encrypted) {
+        encrypted = _encrypted;
+        return C.secretBoxDecrypt(encrypted.ciphertext, encrypted.nonce, testUser.keyPair.secretKey);
+      })
+      .then(function (decrypted) {
+        expect(decrypted).toBe(original);
+        expect(encrypted).not.toBe(original);
+        done();
+      })
+      .catch(done.fail);
   });
 
   it('derives key from PIN', function (done) {
@@ -51,10 +65,11 @@ describe('Crypto', function () {
       .then(function (result) {
         expect(result).toEqual(testUser.PINKey);
         done();
-      });
+      })
+      .catch(done.fail);
   });
 
-  it('decrypts account creation token', function () {
+  it('decrypts account creation token', function (done) {
     var serverResponse = {
       ephemeralServerID: 'G83PhNPP3VoupLVBQuEs7anYajkHo5upyGH17daXMBV7e',
       username: 'anritest2',
@@ -69,13 +84,15 @@ describe('Crypto', function () {
     };
     var expectedToken = 'QUPREcTjtQ7xDbyH93EDO6ptjGVdukHPVMUX8AvL+FA=';
 
-    var token = C.decryptAccountCreationToken(serverResponse, serverResponse.username, keyPair);
-
-    expect(token).toBe(expectedToken);
-
+    C.decryptAccountCreationToken(serverResponse, serverResponse.username, keyPair)
+      .then(function (token) {
+        expect(token).toBe(expectedToken);
+        done();
+      })
+      .catch(done.fail);
   });
 
-  it('decrypts auth token', function () {
+  it('decrypts auth token', function (done) {
     var serverResponse = {
       ephemeralServerID: 'G83PhNPP3VoupLVBQuEs7anYajkHo5upyGH17daXMBV7e',
       nonce: 'DOG+9ZFH1TlBR9OBMpdIQ9wyz7KU726K',
@@ -84,38 +101,44 @@ describe('Crypto', function () {
 
     var expectedToken = 'QVSYZSKTZAnzBa+exoax6WAQwN302+FvJwfOqaGnNsY=';
 
-    var token = C.decryptAuthToken(serverResponse, testUser.keyPair);
+    C.decryptAuthToken(serverResponse, testUser.keyPair)
+      .then(function (token) {
+        expect(token).toEqual(expectedToken);
+        done();
+      })
+      .catch(done.fail);
 
-    expect(token).toEqual(expectedToken);
   });
 
-  it('creates avatar data', function () {
+  it('creates avatar data', function (done) {
     var expected = ['9dbc492d105dde6a48c39eb788e2bdce0695114cbfddc74e267b7ff1b3cf288f',
       '5c756aa09ea4eb8df592a897ac7f7d1c04336b9dfa5e03d5d209f5e1d81e2dac'];
 
-    var avatar = C.getAvatar(testUser.username, testUser.publicKey);
+    C.getAvatar(testUser.username, testUser.publicKey)
+      .then(function (avatar) {
+        expect(avatar).toEqual(expected);
+        done();
+      })
+      .catch(done.fail);
 
-    expect(avatar).toEqual(expected);
   });
-
 
   it('encrypts and decrypts message', function (done) {
     var originalMessage = {subject: 'encryption test', message: 'this is an encryption unit test message'};
 
-    // encrypting
-    C.encryptMessage(originalMessage, [testUser.username], testUser,
-      function (header, body, failed) {
-        expect(failed).toEqual([]);
-        // decrypting
-        C.decryptMessage({header: header, body: body}, testUser,
-          function (decrypted) {
-            expect(decrypted).toEqual(originalMessage);
-            done();
-          });
-      });
+    C.encryptMessage(originalMessage, [testUser.username], testUser)
+      .then(function (data) {
+        expect(data.failed).toEqual([]);
+        return C.decryptMessage(data, testUser);
+      })
+      .then(function (decrypted) {
+        expect(decrypted).toEqual(originalMessage);
+        done();
+      })
+      .catch(done.fail);
   });
 
-  it('decrypts file name', function () {
+  it('decrypts file name', function (done) {
     var original = 'skins.zip';
     var encrypted = 'xJXWu/2+QDvn6GxbZvz2gRmjVU8Vc8Jijh42BncM6xCriz6xJ/gnHF+MM7f3hxVerK3mNC4k6n0OokALrOqGA6vt9E0B1hiOBvqRidszjhFjQSxI4Nxo1znrS9jVPceGicMVShyxtW4uBmNXfozd29SvE9c2EfPe5L85WJeviuldk6n0Ko5lZEVU2geEDml+HF2I6DMtCIIVpoeDReatrWoHBu0BG7ygd8DUtXEhM9vjPph6mg/d2x8EXic/qa8pojT/AImaucBAPnv7W9M5v4k/UI6wwM4E3WtJj6MwoUakMdrfxbl6cL+wuHCbVSgbp8DVrpz3dbF9p529avjVaw908EfHqwFpwqarOMvm4Os=';
     var header = {
@@ -127,33 +150,34 @@ describe('Crypto', function () {
       ephemeral: 'WdFT3Wqb8SjR9KBMIU+YhJ15z3AvyveDFwMgUym2s0Q=',
       version: 1
     };
-    var decrypted = C.decryptFileName(encrypted, header, testUser);
+    C.decryptFileName(encrypted, header, testUser)
+      .then(function (decrypted) {
+        expect(decrypted).toBe(original);
+        done();
+      })
+      .catch(done.fail);
 
-    expect(decrypted).toBe(original);
   });
 
-  it('encrypts and decrypts file', function (done) {
+  fit('encrypts and decrypts file', function (done) {
     var file = new Blob([1, 2, 3]);
     file.name = 'test';
-    var id;
 
-    C.encryptFile(file, [testUser.username], testUser,
-      function (filename) {
-        expect(filename).toBeDefined();
-        id = nacl.util.encodeBase64(filename.subarray(4));
-      },
-      function (header, chunks) {
-        expect(header).toBeDefined();
-        expect(chunks).toBeDefined();
-        var blob = new Blob(chunks, {type: 'application/octet-stream'});
+    C.encryptFile(file, [testUser.username], testUser)
+      .then(function (data) {
+        expect(data.fileName).toBeDefined();
+        expect(data.header).toBeDefined();
+        expect(data.chunks).toBeDefined();
+        var blob = new Blob(data.chunks, {type: 'application/octet-stream'});
 
-        C.decryptFile(id, blob, header, {sender: testUser.username}, testUser,
-          function (decrypted) {
-            expect(decrypted).toBeDefined();
-            expect(file.size).toBe(decrypted.size);
-            done();
-          });
-      });
+        return C.decryptFile(data.fileName, blob, data.header, {sender: testUser.username}, testUser);
+      })
+      .then(function (decrypted) {
+        expect(decrypted).toBeDefined();
+        expect(file.size).toBe(decrypted.size);
+        done();
+      })
+      .catch(done.fail);
   });
 
 });
