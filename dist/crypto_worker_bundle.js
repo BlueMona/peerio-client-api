@@ -8642,7 +8642,7 @@ Peerio.Crypto.init = function () {
             return;
           }
           encryptedChunks.splice(0, numberSize);
-          resolve({fileName: nacl.util.encodeBase64(fileName), header: JSON.parse(header), chunks: encryptedChunks, failed: validatedRecipients.failed});
+          resolve({fileName: nacl.util.encodeBase64(fileName.subarray(4)), header: JSON.parse(header), chunks: encryptedChunks, failed: validatedRecipients.failed});
         }
       );
     });

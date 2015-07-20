@@ -159,7 +159,7 @@ fdescribe('Crypto', function () {
 
   });
 
-  fit('encrypts and decrypts file', function (done) {
+  it('encrypts and decrypts file', function (done) {
     var file = new Blob([1, 2, 3]);
     file.name = 'test';
 
