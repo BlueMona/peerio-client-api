@@ -17,12 +17,6 @@ Peerio.Config.init = function () {
   var cfg = Peerio.Config = {};
 
   // absolute url to the folder where Peerio client api files are installed
-  cfg.apiFolder = '/base/dist/';
   cfg.webSocketServer = 'wss://treetrunks.peerio.com:443';
-
-  //---------- configuration validation/correction -------------
-  if (cfg.apiFolder[cfg.apiFolder.length - 1] !== '/')
-    cfg.apiFolder += '/';
-
 
 };
