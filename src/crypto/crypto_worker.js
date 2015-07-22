@@ -8,6 +8,9 @@
 
   Peerio.Crypto.init();
 
+  // service functions are there for performance reasons and they don't provide response
+  var serviceFunctions = ['setDefaultUserData', 'setDefaultContacts'];
+
   // expects message in following format:
   // {
   //   id:      unique message id. Will be sent back as is
@@ -23,6 +26,12 @@
   // }
   self.onmessage = function (payload) {
     var message = payload.data;
+
+    if (serviceFunctions.indexOf(message.fnName) >= 0) {
+      Peerio.Crypto[message.fnName].apply(Peerio.Crypto, message.args);
+      return;
+    }
+
     var response = {id: message.id};
 
     try {

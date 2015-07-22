@@ -11,12 +11,13 @@ Peerio.Config.init = function () {
 
   var cfg = Peerio.Config = {};
 
-  // absolute url to the folder where Peerio client api files are installed
-  cfg.apiFolder = '/';
   cfg.webSocketServer = 'wss://........peerio.com:443';
 
-  //---------- configuration validation/correction -------------
-  if (cfg.apiFolder[cfg.apiFolder.length - 1] !== '/')
-    cfg.apiFolder += '/';
+  // This parameter allows us to spawn an optimal number of crypto workers.
+  // For any chromium-based host navigator.hardwareConcurrency should be enough.
+  // For iOS (safari-based webview) apps, please use cordova-plugin-chrome-apps-system-cpu
+  // and reconfigure this parameter based on plugin cpu report.
+  cfg.cpuCount = navigator.hardwareConcurrency || 1;
+
 
 };

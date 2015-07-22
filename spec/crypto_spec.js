@@ -13,13 +13,13 @@ fdescribe('Crypto', function () {
   // shortcut
   var C = Peerio.Crypto;
 
-  beforeAll(function(done){
-    C.setDefaultUserData(testUser.username, testUser.keyPair)
-      .then(function(){
-        return C.setDefaultContacts(testUser.contacts);
-      })
-      .then(done)
-      .catch(done.fail);
+  beforeAll(function (done) {
+    C.getPublicKeyString(testUser.keyPair.publicKey)
+      .then(function (publicKey) {
+        C.setDefaultUserData(testUser.username, testUser.keyPair, publicKey);
+        C.setDefaultContacts(testUser.contacts);
+        done();
+      });
   });
 
   it('creates keypair from username and passphrase', function (done) {
@@ -184,6 +184,25 @@ fdescribe('Crypto', function () {
         done();
       })
       .catch(done.fail);
+  });
+
+  fit('executes multiple en/decryptions', function (done) {
+    var originalMessage = {subject: 'encryption test', message: 'this is an encryption unit test message'};
+    var doneOperations = 0;
+    var totalOperations = 200;
+    for (var i = 0; i < totalOperations; i++) {
+      C.encryptMessage(originalMessage, [testUser.username], testUser)
+        .then(function (data) {
+          expect(data.failed).toEqual([]);
+          return C.decryptMessage(data, testUser);
+        })
+        .then(function (decrypted) {
+          expect(decrypted).toEqual(originalMessage);
+          if (++doneOperations === totalOperations)
+            done();
+        })
+        .catch(done.fail);
+    }
   });
 
 });

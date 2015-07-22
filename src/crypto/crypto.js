@@ -66,19 +66,14 @@ Peerio.Crypto.init = function () {
    * Sets default user data for crypto operations to prevent repeated passing it to functions (and to workers)
    * @param {string} username
    * @param {object} keyPair
+   * @param {string} publicKey
    * @promise resolves with no value in case of success
    */
-  api.setDefaultUserData = function (username, keyPair) {
-    return new Promise(function (resolve, reject) {
-      defaultUser = defaultUser || {};
-      defaultUser.username = username;
-      defaultUser.keyPair = keyPair;
-
-      api.getPublicKeyString(keyPair.publicKey).then(function (publicKeyString) {
-        defaultUser.publicKey = publicKeyString;
-        resolve();
-      }).catch(reject);
-    });
+  api.setDefaultUserData = function (username, keyPair, publicKey) {
+    defaultUser = defaultUser || {};
+    defaultUser.username = username;
+    defaultUser.keyPair = keyPair;
+    defaultUser.publicKey = publicKey;
   };
 
   /**
@@ -89,7 +84,6 @@ Peerio.Crypto.init = function () {
   api.setDefaultContacts = function (contacts) {
     defaultUser = defaultUser || {};
     defaultUser.contacts = contacts;
-    return Promise.resolve();
   };
 
   /**
@@ -235,7 +229,7 @@ Peerio.Crypto.init = function () {
    * @promise {object} decrypted token
    */
   api.decryptAuthToken = function (data, keyPair) {
-    keyPair =  keyPair || getCachedKeyPair();
+    keyPair = keyPair || getCachedKeyPair();
     if (hasProp(data, 'error')) {
       console.error(data.error);
       return Promise.reject(data.error);

@@ -123,6 +123,7 @@ Peerio.PhraseGenerator.init = function () {
  *
  */
 
+
 var Peerio = this.Peerio || {};
 Peerio.Crypto = {};
 
@@ -133,29 +134,54 @@ Peerio.Crypto.init = function () {
   // malicious server safe hasOwnProperty function;
   var hasProp = Function.call.bind(Object.prototype.hasOwnProperty);
   // web worker instance
-  var worker;
+  var workers = []; // todo: maybe add a limit
   // pending promises callbacks
   // id: {resolve: resolve callback, reject: reject callback}
   var callbacks = {};
 
-  // worker instance holding the actual web socket
-  worker = new Worker(Peerio.Config.apiFolder + 'crypto_worker_bundle.js');
-  // handling a message from worker
-  worker.onmessage = function (message) {
-    var data = message.data;
-    var promise = callbacks[data.id];
+  // creating worker instances
+  for (var i = 0; i < Peerio.Config.cpuCount; i++) {
+    workers[i] = new Worker(Peerio.Config.apiFolder + 'crypto_worker_bundle.js');
+    // handling a message from worker
+    workers[i].onmessage = function (message) {
+      var data = message.data;
+      var promise = callbacks[data.id];
 
-    if (hasProp(data, 'error'))
-      promise.reject(data.error);
-    else
-      promise.resolve(data.result);
+      if (hasProp(data, 'error'))
+        promise.reject(data.error);
+      else
+        promise.resolve(data.result);
 
-    delete callbacks[data.id];
-  };
+      delete callbacks[data.id];
+    };
+  }
+  var lastWorkerIndex = -1;
+  // returns new worker instance in cycle
+  function getWorker() {
+    if (++lastWorkerIndex === workers.length)
+      lastWorkerIndex = 0;
+    return workers[lastWorkerIndex];
+  }
 
+  // this two methods should execute on all workers
+  // they don't expect a response from worker
   [
     'setDefaultUserData',
-    'setDefaultContacts',
+    'setDefaultContacts'
+  ].forEach(function (fnName) {
+      Peerio.Crypto[fnName] = function () {
+        var args = [];
+        for (var a = 0; a < arguments.length; a++)
+          args[a] = arguments[a];
+
+        for (var w = 0; w < workers.length; w++)
+          workers[w].postMessage({fnName: fnName, args: args});
+      };
+    });
+
+  // this methods will execute on one of the workers,
+  // each of them expect response from worker
+  [
     'getKeyPair',
     'getPublicKeyString',
     'getPublicKeyBytes',
@@ -185,7 +211,7 @@ Peerio.Crypto.init = function () {
             reject: reject
           };
         });
-        worker.postMessage({id: id, fnName: fnName, args: args});
+        getWorker().postMessage({id: id, fnName: fnName, args: args});
         return ret;
       };
     });
@@ -997,6 +1023,8 @@ var Peerio = this.Peerio || {};
  */
 Peerio.initAPI = function () {
   Peerio.Config.init();
+  Peerio.Config.apiFolder = Peerio.apiFolder;
+  delete Peerio.apiFolder;
   Peerio.Util.init();
   Peerio.Crypto.init();
   Peerio.PhraseGenerator.init();
@@ -1005,5 +1033,16 @@ Peerio.initAPI = function () {
 
 //  Peerio.Socket.start();
 
-  Peerio.initAPI = null;
+  delete Peerio.initAPI;
 };
+
+// detecting api folder, this has to be done at script's first evaluation,
+// and assumes there are no async scripts
+(function () {
+  'use strict';
+
+  var path = document.currentScript && document.currentScript.getAttribute('src')
+    || document.scripts[document.scripts.length - 1].getAttribute('src');
+  // temporary saving api folder in rooot namespace until Config is initalized
+  Peerio.apiFolder = path.substring(0, path.lastIndexOf('/')) + '/';
+}());

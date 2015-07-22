@@ -14,7 +14,7 @@ module.exports = function (config) {
       'dist/peerio_client_api_bundle.js',
       {pattern: 'dist/socket_worker_bundle.js', watched: true, included: false, served: true},
       {pattern: 'dist/crypto_worker_bundle.js', watched: true, included: false, served: true},
-      {pattern: 'dist/dict/*.txt', watched: true, included: false, served: true},
+      {pattern: 'dist/dict/*.txt', watched: false, included: false, served: true},
       'spec/globals.js',
       'spec/*.js'
     ],
@@ -46,7 +46,7 @@ module.exports = function (config) {
     // enable / disable watching file and executing tests whenever any file changes
     autoWatch: true,
     // throttling in milliseconds
-    autoWatchBatchDelay: 3000,
+    autoWatchBatchDelay: 5000,
     browserNoActivityTimeout: 120000,
     // start these browsers
     // available browser launchers: https://npmjs.org/browse/keyword/karma-launcher

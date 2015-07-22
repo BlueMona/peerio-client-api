@@ -16,7 +16,8 @@ Peerio.Config.init = function () {
 
   var cfg = Peerio.Config = {};
 
-  // absolute url to the folder where Peerio client api files are installed
   cfg.webSocketServer = 'wss://treetrunks.peerio.com:443';
+
+  cfg.cpuCount = navigator.hardwareConcurrency || 1;
 
 };
