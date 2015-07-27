@@ -5,7 +5,7 @@
  *
  */
 
-fdescribe('Crypto', function () {
+describe('Crypto', function () {
   'use strict';
 
   jasmine.DEFAULT_TIMEOUT_INTERVAL = 15000;
@@ -186,23 +186,75 @@ fdescribe('Crypto', function () {
       .catch(done.fail);
   });
 
-  fit('executes multiple en/decryptions', function (done) {
-    var originalMessage = {subject: 'encryption test', message: 'this is an encryption unit test message'};
-    var doneOperations = 0;
-    var totalOperations = 200;
-    for (var i = 0; i < totalOperations; i++) {
+  xdescribe('benchmarks', function () {
+    var hugeMessage;
+    var testMsg = {subject: 'encryption test', message: 'this is an encryption unit test message'};
+    var messageCount = 100;//(0.1 * 1024 * 1024) / 80;
+    var timeout = 60000;
+    beforeAll(function () {
+      hugeMessage = [];
+      for (var i = 0; i < messageCount; i++) {
+        hugeMessage.push(testMsg);
+      }
+      var str = JSON.stringify(hugeMessage);
+      console.log('huge msg size:', str.length, str.length / 1024 / 1024);
+    });
+
+    it('executes multiple en/decryptions with normal encryption', function (done) {
+      var originalMessage = testMsg;
+      var doneOperations = 0;
+      var totalOperations = messageCount;
+      for (var i = 0; i < totalOperations; i++) {
+        C.encryptMessage(originalMessage, [testUser.username])
+          .then(function (data) {
+            return C.decryptMessage(data, testUser);
+          })
+          .then(function () {
+            if (++doneOperations === totalOperations)
+              done();
+          })
+          .catch(done.fail);
+      }
+    }, timeout);
+
+    it('executes multiple en/decryptions with secretbox', function (done) {
+      var originalMessage = testMsg;
+      var doneOperations = 0;
+      var totalOperations = messageCount;
+      for (var i = 0; i < totalOperations; i++) {
+        C.secretBoxEncrypt(originalMessage, testUser.keyPair.secretKey)
+          .then(function (data) {
+            return C.secretBoxDecrypt(data.ciphertext, data.nonce, testUser.keyPair.secretKey);
+          })
+          .then(function () {
+            if (++doneOperations === totalOperations)
+              done();
+          })
+          .catch(done.fail);
+      }
+    }, timeout);
+
+    it('encrypts and decrypts large string with normal encryption', function (done) {
+      var originalMessage = JSON.stringify(hugeMessage);
+
       C.encryptMessage(originalMessage, [testUser.username], testUser)
         .then(function (data) {
-          expect(data.failed).toEqual([]);
           return C.decryptMessage(data, testUser);
         })
-        .then(function (decrypted) {
-          expect(decrypted).toEqual(originalMessage);
-          if (++doneOperations === totalOperations)
-            done();
-        })
+        .then(done)
         .catch(done.fail);
-    }
+    }, timeout);
+
+    it('encrypts and decrypts large string with secretbox', function (done) {
+      var originalMessage = JSON.stringify(hugeMessage);
+
+      C.secretBoxEncrypt(originalMessage, testUser.keyPair.secretKey)
+        .then(function (encrypted) {
+          return C.secretBoxDecrypt(encrypted.ciphertext, encrypted.nonce, testUser.keyPair.secretKey);
+        })
+        .then(done)
+        .catch(done.fail);
+    }, timeout);
   });
 
 });

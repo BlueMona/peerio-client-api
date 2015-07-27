@@ -7,7 +7,7 @@
  * - Depends on Peerio.Crypto
  */
 
-describe('Peerio network protocol', function () {
+fdescribe('Peerio network protocol', function () {
   'use strict';
 
   function generateUsername() {
@@ -38,9 +38,9 @@ describe('Peerio network protocol', function () {
     }).catch(done.fail);
   });
 
+  var self = this;
   // spec order matters
-  describe('registration', function () {
-    var self = this;
+  describe('registration & auth', function () {
 
     beforeAll(function (done) {
       self.serverResponses = {};
@@ -49,60 +49,59 @@ describe('Peerio network protocol', function () {
       self.user.lastName = 'User';
       self.user.username = generateUsername();
       self.user.email = self.user.username + '@mailinator.com';
-      Peerio.Crypto.getKeyPair(self.user.username, 'lalalala').then(function (keys) {
+      self.user.passphrase = 'lalalala';
+      Peerio.Crypto.getKeyPair(self.user.username, self.user.passphrase).then(function (keys) {
         self.user.keyPair = keys;
-        self.user.publicKey = Peerio.Crypto.getPublicKeyString(self.user.keyPair.publicKey);
-        self.accountInfo = new Peerio.Model.AccountInfo(self.user.username, self.user.firstName,
-          self.user.lastName, self.user.email, self.user.publicKey, 'en');
-        done();
-      });
+        return Peerio.Crypto.getPublicKeyString(self.user.keyPair.publicKey);
+      })
+        .then(function (publicKey) {
+          self.user.publicKey = publicKey;
+          self.accountInfo = new Peerio.Model.AccountInfo(self.user.username, self.user.firstName,
+            self.user.lastName, self.user.publicKey, 'en');
+          done();
+        })
+        .catch(done.fail);
     });
 
     afterAll(function () {
-      self.user = null;
       self.serverResponses = null;
     });
 
     it('requests account registration', function (done) {
-
-      Peerio.Net.registerAccount(self.accountInfo).then(function (response) {
-        expect(response).toBeDefined();
-        self.serverResponses.creationToken = response;
-        done();
-      }).catch(done.fail);
+      Peerio.Net.registerAccount(self.accountInfo)
+        .then(function (response) {
+          expect(response).toBeDefined();
+          self.serverResponses.creationToken = response;
+          done();
+        }).catch(done.fail);
     });
 
-    it('sends back account creation token', function (done) {
-      expect(self.serverResponses.creationToken).toBeDefined();
-      if (!self.serverResponses.creationToken) {
-        done();
-        return;
-      }
+    it('activates account', function (done) {
+     window.setTimeout(function() {
+       if (!self.serverResponses.creationToken) {
+         done.fail();
+         return;
+       }
 
-      var token = Peerio.Crypto.decryptAccountCreationToken(self.serverResponses.creationToken, self.user.username, self.user.keyPair);
-      expect(token).not.toBe(false);
-
-      Peerio.Net.returnAccountCreationToken(token).then(function () {
-        done();
-      }).catch(done.fail);
-
+       Peerio.Crypto.decryptAccountCreationToken(self.serverResponses.creationToken, self.user.username, self.user.keyPair)
+         .then(function (token) {
+           expect(token).not.toBe(false);
+           return Peerio.Net.activateAccount(token);
+         })
+         .then(function () {
+           done();
+         })
+         .catch(done.fail);
+     },3000);
     });
 
-    // this spec does a few attempts to read peerio server email with mailinator api
-    // delays make sure message has a chance to arrive
-    it('confirms account address', function (done) {
-
-      var actualTest = function() {
-        TestUtil.getConfirmCodeFromMailinator(self.user.email);
-      };
-
-
+    it('authenticates session', function () {
+      Peerio.Net.setCredentials(self.user.username, self.user.passphrase);
     });
 
   });
-  it('authenticates session', function (done) {});
 
-  it('checks account information', function (done) {
+  xit('checks account information', function (done) {
     //expect(response.username).toBe(self.user.username);
     //expect(response.firstName).toBe(self.user.firstName);
     //expect(response.lastName).toBe(self.user.lastName);

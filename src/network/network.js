@@ -174,19 +174,19 @@ Peerio.Net.init = function () {
    * @param {string} decryptedToken - Contains account information.
    * @promise {Boolean} - always returns true or throws a PeerioServerError
    */
-  api.returnAccountCreationToken = function (decryptedToken) {
+  api.activateAccount = function (decryptedToken) {
     return sendToSocket('activateAccount', {accountCreationToken: decryptedToken})
       .return(true);
   };
 
   /**
-   * Sends back an account confirmation code for the user's email/phone number.
+   * Sends back an address confirmation code for the user's email/phone number.
    * @param {string} username
    * @param {number} confirmationCode - 8 digit number.
    * @promise {Boolean}
    */
-  api.sendAccountConfirmation = function (username, confirmationCode) {
-    return sendToSocket('accountConfirmation', {username: username, confirmationCode: confirmationCode})
+  api.confirmAddress = function (username, confirmationCode) {
+    return sendToSocket('confirmAddress', {username: username, confirmationCode: confirmationCode})
       .return(true);
   };
 
@@ -202,12 +202,15 @@ Peerio.Net.init = function () {
     Peerio.Crypto.getKeyPair(passphrase, username).then(function (keys) {
       credentials = {
         username: username,
-        publicKeyString: Peerio.Crypto.getPublicKeyString(keys.publicKey),
+        publicKeyString: null,
         keyPair: {
           publicKey: keys.publicKey,
           secretKey: keys.secretKey
         }
       };
+      return Peerio.Crypto.getPublicKeyString(keys.publicKey);
+    }).then(function (publicKey) {
+      credentials.publicKeyString = publicKey;
       login();
     });
   };

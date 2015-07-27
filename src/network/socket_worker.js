@@ -29,7 +29,7 @@
   // cfg - Peerio.Config object
   function initialize(cfg) {
     // creating socket.io client instance
-    self.peerioSocket = io.connect(cfg.server, {transports: ['websocket']});
+    self.peerioSocket = io.connect(cfg.webSocketServer, {transports: ['websocket']});
     // socket events should be passed to UI thread
 
     // socket.io events

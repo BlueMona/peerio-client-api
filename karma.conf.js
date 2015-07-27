@@ -29,9 +29,9 @@ module.exports = function (config) {
     preprocessors: {},
 
     // test results reporter to use
-    // possible values: 'dots', 'progress', 'nyan'
+    // possible values: 'dots', 'progress', 'nyan', 'verbose'
     // available reporters: https://npmjs.org/browse/keyword/karma-reporter
-    reporters: ['nyan', 'verbose'],
+    reporters: ['verbose', 'nyan'],
 
     // web server port
     port: 9876,
@@ -56,7 +56,7 @@ module.exports = function (config) {
     // if true, Karma captures browsers, runs the tests and exits
     singleRun: false,
     client: {
-      useIframe: false,
+      useIframe: true,
       captureConsole: true
     },
     customLaunchers: {

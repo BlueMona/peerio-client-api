@@ -23,9 +23,9 @@ Peerio.Crypto.init = function () {
   // pending promises callbacks
   // id: {resolve: resolve callback, reject: reject callback}
   var callbacks = {};
-
+  var workerCount = Math.min(Peerio.Config.cpuCount, 4);
   // creating worker instances
-  for (var i = 0; i < Peerio.Config.cpuCount; i++) {
+  for (var i = 0; i < workerCount; i++) {
     workers[i] = new Worker(Peerio.Config.apiFolder + 'crypto_worker_bundle.js');
     // handling a message from worker
     workers[i].onmessage = function (message) {

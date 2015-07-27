@@ -8515,7 +8515,7 @@ Peerio.Crypto.init = function () {
    * Decrypts an account creation token.
    * Does not use cached user data.
    * @param {{ username: string,
-   *           ephemeralServerID: string,
+   *           ephemeralServerPublicKey: string,
    *           accountCreationToken: {token: string, nonce: string}
    *         }} data - account creation challenge JSON as received from server.
    * @param {string} username - username
@@ -8523,7 +8523,7 @@ Peerio.Crypto.init = function () {
    * @promise {string} decryptedToken
    */
   api.decryptAccountCreationToken = function (data, username, keyPair) {
-    if (!hasAllProps(data, ['username', 'accountCreationToken', 'ephemeralServerID'])
+    if (!hasAllProps(data, ['username', 'accountCreationToken', 'ephemeralServerPublicKey'])
       || !hasAllProps(data.accountCreationToken, ['token', 'nonce'])) {
       console.log('Invalid account creation token.');
       return false;
@@ -8534,7 +8534,7 @@ Peerio.Crypto.init = function () {
       return false;
     }
 
-    return api.getPublicKeyBytes(data.ephemeralServerID)
+    return api.getPublicKeyBytes(data.ephemeralServerPublicKey)
       .then(function (serverKey) {
         var token = nacl.box.open(
           nacl.util.decodeBase64(data.accountCreationToken.token),
@@ -8555,7 +8555,7 @@ Peerio.Crypto.init = function () {
   /**
    * Decrypts authToken.
    * Uses cached user data.
-   * @param {{ephemeralServerID:string, token:string, nonce:string}} data - authToken data as received from server.
+   * @param {{ephemeralServerPublicKey:string, token:string, nonce:string}} data - authToken data as received from server.
    * @param {object} [keyPair]
    * @promise {object} decrypted token
    */
@@ -8566,7 +8566,7 @@ Peerio.Crypto.init = function () {
       return Promise.reject(data.error);
     }
 
-    return api.getPublicKeyBytes(data.ephemeralServerID)
+    return api.getPublicKeyBytes(data.ephemeralServerPublicKey)
       .then(function (serverKey) {
         var dToken = nacl.box.open(
           nacl.util.decodeBase64(data.token),

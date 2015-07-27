@@ -138,9 +138,9 @@ Peerio.Crypto.init = function () {
   // pending promises callbacks
   // id: {resolve: resolve callback, reject: reject callback}
   var callbacks = {};
-
+  var workerCount = Math.min(Peerio.Config.cpuCount, 4);
   // creating worker instances
-  for (var i = 0; i < Peerio.Config.cpuCount; i++) {
+  for (var i = 0; i < workerCount; i++) {
     workers[i] = new Worker(Peerio.Config.apiFolder + 'crypto_worker_bundle.js');
     // handling a message from worker
     workers[i].onmessage = function (message) {
@@ -230,19 +230,17 @@ Peerio.Model = Peerio.Model || {};
    * @param username
    * @param firstName
    * @param lastName
-   * @param address - email or phone
    * @param publicKey - base58 string
    * @param localeCode
    * @constructor
    */
-  Peerio.Model.AccountInfo = function (username, firstName, lastName, address, publicKey, localeCode) {
+  Peerio.Model.AccountInfo = function (username, firstName, lastName, publicKey, localeCode) {
 
     this.username = username;
     this.firstName = firstName;
     this.lastName = lastName;
-    this.localeCode = localeCode;
-    this.address = Peerio.Util.parseAddress(address);
     this.publicKeyString = publicKey;
+    this.localeCode = localeCode || 'en';
   };
 
 })();
@@ -470,19 +468,19 @@ Peerio.Net.init = function () {
    * @param {string} decryptedToken - Contains account information.
    * @promise {Boolean} - always returns true or throws a PeerioServerError
    */
-  api.returnAccountCreationToken = function (decryptedToken) {
+  api.activateAccount = function (decryptedToken) {
     return sendToSocket('activateAccount', {accountCreationToken: decryptedToken})
       .return(true);
   };
 
   /**
-   * Sends back an account confirmation code for the user's email/phone number.
+   * Sends back an address confirmation code for the user's email/phone number.
    * @param {string} username
    * @param {number} confirmationCode - 8 digit number.
    * @promise {Boolean}
    */
-  api.sendAccountConfirmation = function (username, confirmationCode) {
-    return sendToSocket('accountConfirmation', {username: username, confirmationCode: confirmationCode})
+  api.confirmAddress = function (username, confirmationCode) {
+    return sendToSocket('confirmAddress', {username: username, confirmationCode: confirmationCode})
       .return(true);
   };
 
@@ -498,12 +496,15 @@ Peerio.Net.init = function () {
     Peerio.Crypto.getKeyPair(passphrase, username).then(function (keys) {
       credentials = {
         username: username,
-        publicKeyString: Peerio.Crypto.getPublicKeyString(keys.publicKey),
+        publicKeyString: null,
         keyPair: {
           publicKey: keys.publicKey,
           secretKey: keys.secretKey
         }
       };
+      return Peerio.Crypto.getPublicKeyString(keys.publicKey);
+    }).then(function (publicKey) {
+      credentials.publicKeyString = publicKey;
       login();
     });
   };
@@ -1028,10 +1029,10 @@ Peerio.initAPI = function () {
   Peerio.Util.init();
   Peerio.Crypto.init();
   Peerio.PhraseGenerator.init();
- // Peerio.Socket.init();
- // Peerio.Net.init();
+  Peerio.Socket.init();
+  Peerio.Net.init();
 
-//  Peerio.Socket.start();
+  Peerio.Socket.start();
 
   delete Peerio.initAPI;
 };
