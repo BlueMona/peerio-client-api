@@ -296,11 +296,11 @@ Peerio.Model = Peerio.Model || {};
  * Peerio network protocol implementation
  */
 
+// todo: socket should not attempt reconnection when device is offline
+
 var Peerio = this.Peerio || {};
 Peerio.Net = {};
-/**
- * Initialises network layer
- */
+
 Peerio.Net.init = function () {
   'use strict';
   var API_VERSION = '2.0.0';
@@ -311,52 +311,91 @@ Peerio.Net.init = function () {
   var authenticated = false;
   var credentials = null;
 
-  function socketEventHandler(eventName) {
-    switch (eventName) {
-      case 'connect':
-        onConnect();
-        break;
-      case 'reconnecting':
-        onDisconnect();
-        break;
-    }
+  // some events, Peerio.Net consumer might be interested in
+  api.EVENTS = {
+    onConnect: 'onConnect',
+    onDisconnect: 'onDisconnect',
+    onAuthenticated: 'onAuthenticated',
+    onAuthFail: 'onAuthFail'
+  };
+
+  // Peerio.Net.EVENT handlers grouped by event types
+  // - subscription is available through public api
+  // - there is no way to unsubscribe atm, it's not needed
+  var netEventHandlers = {};
+  _.forOwn(api.EVENTS, function (val) {
+    netEventHandlers[val] = [];
+  });
+
+  // calls Peerio.Net.EVENTS handlers
+  function fireEvent(name) {
+    netEventHandlers[name].forEach(function (handler) {
+      window.setTimeout(function () {
+        try {
+          handler();
+        } catch (e) {
+          console.error(e);
+        }
+      }, 0);
+    });
   }
 
-  Peerio.Socket.injectEventHandler(socketEventHandler);
+  var socketEventHandlers = {connect: onConnect, disconnect: onDisconnect};
+  // this listens to socket.io events
+  Peerio.Socket.injectEventHandler(function (eventName) {
+    socketEventHandlers[eventName]();
+  });
 
   function onConnect() {
-    connected = true;
-    sendToSocket('setApiVersion', {version: API_VERSION});
-    // todo retry on fail, notify on retry fail
-    if (credentials)
-      login(credentials.username, credentials.passphrase);
-    // todo: notify logic layer
+    sendToSocket('setApiVersion', {version: API_VERSION})
+      .then(function () {
+        connected = true;
+        fireEvent(api.EVENTS.onConnect);
+        login();
+      })
+      .timeout(15000)// no crazy science behind this magic number, just common sense
+      .catch(function (err) {
+        // todo: this should not really happen
+        // todo: if it does and it's a server problem, we should limit the number of attempts, or make them sparse
+        console.error('setApiVersion ' + API_VERSION + ' failed', err);
+        Peerio.Socket.reconnect();
+      });
   }
 
   function onDisconnect() {
-    if (connected) {
-      rejectAllPromises();
-    }
+    // in case of errors disconnect events might be fired without 'connect' event between them
+    // so we make sure we handle first event only
+    if (!connected) return;
+
+    rejectAllPromises();
     connected = false;
     authenticated = false;
-    // todo: notify logic layer
+    fireEvent(api.EVENTS.onDisconnect);
   }
 
   function login() {
-    if (!credentials) throw 'Credentials are not set for login.';
-    // todo notify progress
+    if (!credentials) return;
+
     sendToSocket('getAuthenticationToken', {
       username: credentials.username,
       publicKeyString: credentials.publicKeyString
-    }).then(function (authToken) {
-      var decryptedToken = Peerio.Crypto.decryptAuthToken(authToken, credentials.keyPair);
-      return sendToSocket('login', {authToken: decryptedToken});
-    }).timeout(60000).then(function () {
-      authenticated = true;
-      // todo notify
-    }).catch(function () {
-      // todo notify
-    });
+    })
+      .then(function (encryptedAuthToken) {
+        return Peerio.Crypto.decryptAuthToken(encryptedAuthToken, credentials.keyPair);
+      })
+      .then(function (authToken) {
+        return sendToSocket('login', {authToken: authToken});
+      })
+      .then(function () {
+        authenticated = true;
+        console.log('authenticated');
+        fireEvent(api.EVENTS.onAuthenticated);
+      })
+      .timeout(60000) // magic number based on common sense
+      .catch(function () {
+        console.log('authentication failed');
+        fireEvent(api.EVENTS.onAuthFail);
+      });
   }
 
   //-- PROMISE MANAGEMENT ----------------------------------------------------------------------------------------------
@@ -416,6 +455,16 @@ Peerio.Net.init = function () {
   }
 
   //-- PUBLIC API ------------------------------------------------------------------------------------------------------
+
+  /**
+   * Subscribes a handler to network event
+   * @param {string} eventName - one of the Peerio.Net.EVENTS values
+   * @param {function} handler - event handler, no arguments will be passed
+   */
+  api.addEventListener = function (eventName, handler) {
+    netEventHandlers[eventName].push(handler);
+  };
+
   /**
    * Asks the server to validate a username.
    * @param {string}  username - Username to validate.
@@ -456,7 +505,7 @@ Peerio.Net.init = function () {
    *              token: 'Encrypted token (Base64 String)',
    *              nonce: 'Nonce used to encrypt the token (Base64 string)'
    *            },
-   *            ephemeralServerID: 'server's public key (Base58 String)'
+   *            ephemeralServerKey: 'server's public key (Base58 String)'
    *          }} - server response
    */
   api.registerAccount = function (accountInfo) {
@@ -493,7 +542,7 @@ Peerio.Net.init = function () {
    * @returns nothing. Provides api to read connection/auth state and events.
    */
   api.setCredentials = function (username, passphrase) {
-    Peerio.Crypto.getKeyPair(passphrase, username).then(function (keys) {
+    Peerio.Crypto.getKeyPair(username, passphrase).then(function (keys) {
       credentials = {
         username: username,
         publicKeyString: null,
@@ -909,7 +958,7 @@ Peerio.Socket.init = function () {
     worker.postMessage(Peerio.Config);
   };
 
-  function messageHandler(message){
+  function messageHandler(message) {
     var data = message.data;
 
     if (hasProp(data, 'callbackID') && data.callbackID) {
@@ -954,6 +1003,12 @@ Peerio.Socket.init = function () {
     }
 
     worker.postMessage(message, transfer);
+  };
+  /**
+   * Breaks current connection and reconnects
+   */
+  Peerio.Socket.reconnect = function () {
+    worker.postMessage({name: 'reconnectSocket'});
   };
 };
 

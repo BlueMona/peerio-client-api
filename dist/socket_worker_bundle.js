@@ -34,20 +34,35 @@
 
     // socket.io events
     // 'connect' is fired on every connection (including reconnection)
-    self.peerioSocket.on('connect', self.postMessage.bind(self, {socketEvent: 'connect'}));
+    self.peerioSocket.on('connect', function () {
+      console.log('socket.io connect event');
+      self.postMessage({socketEvent: 'connect'});
+    });
+
+    // 'disconnect' is fired on every disconnection
+    self.peerioSocket.on('disconnect', function (reason) {
+      console.log('socket.io disconnect event. reason: ', reason);
+      self.postMessage({socketEvent: 'disconnect'});
+    });
+
+    // we don't need this events atm:
+
     // 'reconnect' is fired on every reconnection
-    self.peerioSocket.on('reconnect', function (attempt) {
-      self.postMessage({socketEvent: 'reconnect'});
-    });
+    // self.peerioSocket.on('reconnect', function (attempt) {
+    //  console.log('socket.io reconnect event. attempt: ', attempt);
+    //  self.postMessage({socketEvent: 'reconnect'});
+    // });
     // 'reconnecting' is fired every time after connection is broken and reconnect is attempted
-    self.peerioSocket.on('reconnecting', function (attempt) {
-      self.postMessage({socketEvent: 'reconnecting'});
-    });
+    // self.peerioSocket.on('reconnecting', function (attempt) {
+    //   console.log('socket.io reconnecting event. attempt: ', attempt);
+    //  self.postMessage({socketEvent: 'reconnecting'});
+    // });
     // 'connect_error' is fired in case of an error during connection attempt
-    self.peerioSocket.on('connect_error', function (error) {
-      // todo: automatic clone of error object fails, need to clone it manually
-      self.postMessage({socketEvent: 'connect_error'});
-    });
+    // self.peerioSocket.on('connect_error', function (error) {
+    //  console.log('socket.io reconnect event. err: ', error);
+    //  // todo: automatic clone of error object fails, need to clone it manually
+    //  self.postMessage({socketEvent: 'connect_error'});
+    // });
 
     // peerio events
     ['receivedContactRequestsAvailable',
@@ -62,9 +77,21 @@
       });
   }
 
-  // sends data from UI thread through socket
+  // this function receives data from UI thread and sends it through socket
   function messageHandler(payload) {
     var message = payload.data;
+
+    if (message.name === 'reconnectSocket') {
+      self.peerioSocket.disconnect();
+
+      // timeout 'just in case' :)
+      // Noticed a few times socket.io duplicating connections
+      setTimeout(function () {
+        self.peerioSocket.connect();
+      }, 1000);
+
+      return;
+    }
 
     self.peerioSocket.emit(message.name, message.data, function (response) {
       self.postMessage({

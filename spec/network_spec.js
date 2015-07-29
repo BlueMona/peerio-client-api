@@ -77,26 +77,24 @@ fdescribe('Peerio network protocol', function () {
     });
 
     it('activates account', function (done) {
-     window.setTimeout(function() {
-       if (!self.serverResponses.creationToken) {
-         done.fail();
-         return;
-       }
+        if (!self.serverResponses.creationToken) {
+          done.fail();
+          return;
+        }
 
-       Peerio.Crypto.decryptAccountCreationToken(self.serverResponses.creationToken, self.user.username, self.user.keyPair)
-         .then(function (token) {
-           expect(token).not.toBe(false);
-           return Peerio.Net.activateAccount(token);
-         })
-         .then(function () {
-           done();
-         })
-         .catch(done.fail);
-     },3000);
+        Peerio.Crypto.decryptAccountCreationToken(self.serverResponses.creationToken, self.user.username, self.user.keyPair)
+          .then(function (token) {
+            expect(token).not.toBe(false);
+            return Peerio.Net.activateAccount(token);
+          })
+          .then(function () {
+            done();
+          })
+          .catch(done.fail);
     });
 
     it('authenticates session', function () {
-      Peerio.Net.setCredentials(self.user.username, self.user.passphrase);
+        Peerio.Net.setCredentials(self.user.username, self.user.passphrase);
     });
 
   });

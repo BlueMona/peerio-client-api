@@ -43,7 +43,7 @@ Peerio.Socket.init = function () {
     worker.postMessage(Peerio.Config);
   };
 
-  function messageHandler(message){
+  function messageHandler(message) {
     var data = message.data;
 
     if (hasProp(data, 'callbackID') && data.callbackID) {
@@ -88,5 +88,11 @@ Peerio.Socket.init = function () {
     }
 
     worker.postMessage(message, transfer);
+  };
+  /**
+   * Breaks current connection and reconnects
+   */
+  Peerio.Socket.reconnect = function () {
+    worker.postMessage({name: 'reconnectSocket'});
   };
 };
