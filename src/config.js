@@ -20,5 +20,6 @@ Peerio.Config.init = function () {
 
   // ios does not support navigator.hardwareConcurrency atm, use cpu info plugin
   cfg.cpuCount = navigator.hardwareConcurrency || 1;
-
+  // if client will not receive pings for pingTimeout, connection will be considered broken
+  cfg.pingTimeout = 20000;
 };

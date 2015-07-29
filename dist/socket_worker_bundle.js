@@ -28,6 +28,8 @@
 
   // cfg - Peerio.Config object
   function initialize(cfg) {
+    var lastPing = null;
+    var intervalId = null;
     // creating socket.io client instance
     self.peerioSocket = io.connect(cfg.webSocketServer, {transports: ['websocket']});
     // socket events should be passed to UI thread
@@ -37,13 +39,60 @@
     self.peerioSocket.on('connect', function () {
       console.log('socket.io connect event');
       self.postMessage({socketEvent: 'connect'});
+      startPingChecks();
     });
 
     // 'disconnect' is fired on every disconnection
     self.peerioSocket.on('disconnect', function (reason) {
       console.log('socket.io disconnect event. reason: ', reason);
       self.postMessage({socketEvent: 'disconnect'});
+      stopPingChecks();
     });
+
+    self.peerioSocket.on('userPing', function () {
+      self.setLastPing();
+    });
+
+    // BROKEN CONNECTION DETECTION SYSTEM
+    // Every time client receives a message, it saves the timestamp.
+    // Interval function checks if last message was received more then pingTimeout milliseconds ago and restarts connection.
+    // Server sends ping messages every 5 seconds to make this work in case of no meaningful messages are sent for some time
+
+    // saves timestamp of last received ping
+    self.setLastPing = function () {
+      lastPing = Date.now();
+    };
+
+    // starts timeout checking interval
+    function startPingChecks() {
+      if (cfg.pingTimeout === 0) return;
+      stopPingChecks();
+      intervalId = setInterval(checkPings, Math.ceil(cfg.pingTimeout / 2));
+    }
+
+    // stops timeout checking interval interval
+    function stopPingChecks() {
+      if (intervalId != null)
+        clearInterval(intervalId);
+
+      intervalId = null;
+      lastPing = null;
+    }
+
+    // detects timeout and resets connection
+    function checkPings() {
+      if (!lastPing) return;
+      if ((Date.now() - lastPing) > cfg.pingTimeout) resetConnection();
+    }
+
+    // resets (restarts) connection
+    function resetConnection() {
+      self.peerioSocket.disconnect();
+      // Timeout 'just in case' :) Noticed a few times socket.io duplicating connections
+      setTimeout(function () {
+        self.peerioSocket.connect();
+      }, 1000);
+    }
 
     // we don't need this events atm:
 
@@ -73,6 +122,7 @@
       'sentContactRequestsAvailable',
       'contactsAvailable'
     ].forEach(function (eventName) {
+        self.setLastPing();
         self.peerioSocket.on(eventName, self.postMessage.bind(self, {socketEvent: eventName}));
       });
   }
@@ -82,18 +132,12 @@
     var message = payload.data;
 
     if (message.name === 'reconnectSocket') {
-      self.peerioSocket.disconnect();
-
-      // timeout 'just in case' :)
-      // Noticed a few times socket.io duplicating connections
-      setTimeout(function () {
-        self.peerioSocket.connect();
-      }, 1000);
-
+      resetConnection();
       return;
     }
 
     self.peerioSocket.emit(message.name, message.data, function (response) {
+      self.setLastPing();
       self.postMessage({
         callbackID: message.callbackID,
         data: response

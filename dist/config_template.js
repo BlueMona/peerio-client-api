@@ -19,5 +19,8 @@ Peerio.Config.init = function () {
   // and reconfigure this parameter based on plugin cpu report.
   cfg.cpuCount = navigator.hardwareConcurrency || 1;
 
+  // if client will not receive pings for pingTimeout, connection will be considered broken
+  // set to 0 to disable ping timeout
+  cfg.pingTimeout = 20000;
 
 };

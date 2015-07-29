@@ -46,10 +46,20 @@ Peerio.Net.init = function () {
     });
   }
 
-  var socketEventHandlers = {connect: onConnect, disconnect: onDisconnect};
+  var socketEventHandlers = {
+    connect: onConnect,
+    disconnect: onDisconnect
+  };
+
   // this listens to socket.io events
   Peerio.Socket.injectEventHandler(function (eventName) {
-    socketEventHandlers[eventName]();
+    var handler = socketEventHandlers[eventName];
+    if (handler) {
+      handler();
+    } else {
+      console.log('unknown socket event ', eventName);
+    }
+
   });
 
   function onConnect() {
