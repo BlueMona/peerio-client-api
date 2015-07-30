@@ -95,20 +95,23 @@ Peerio.PhraseGenerator.init = function () {
   }
 
   function getRandomWord() {
-    return loadedDictionary.dict[Math.floor(secureRandom() * loadedDictionary.dict.length)];
+    return loadedDictionary.dict[secureRandom(loadedDictionary.dict.length)];
   }
+  
+  function secureRandom(count) {
+    var rand = new Uint32Array(1);
+    var skip = 0x7fffffff - 0x7fffffff % count;
+    var result;
 
-  // todo move to Util?
-  function secureRandom() {
-    var result = '0.';
-    var buffer = new Uint8Array(32);
-    //todo this is not environment agnostic, move to Peerio.Util and polyfill
-    window.crypto.getRandomValues(buffer);
-    for (var i = 0; i < buffer.length; i++) {
-      if (buffer[i] <= 249)
-        result += (buffer[i] % 10).toString();
+    if (((count - 1) & count) === 0) {
+      window.crypto.getRandomValues(rand);
+      return rand[0] & (count - 1);
     }
-    return parseFloat(result);
+    do {
+      window.crypto.getRandomValues(rand);
+      result = rand[0] & 0x7fffffff;
+    } while (result >= skip);
+    return result % count;
   }
 
 };
