@@ -18,6 +18,9 @@ Peerio.initAPI = function () {
   Peerio.PhraseGenerator.init();
   Peerio.Socket.init();
   Peerio.Net.init();
+  Peerio.Dispatcher.init();
+  Peerio.Action.init();
+  Peerio.ActionOverrides.init();
 
   Peerio.Socket.start();
 

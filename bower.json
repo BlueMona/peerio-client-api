@@ -24,7 +24,7 @@
     "/src"
   ],
   "dependencies": {
-    "lokijs": "~1.3.7"
+    "identicon": "*"
   },
   "devDependencies": {
     "axios": "~0.5.4",

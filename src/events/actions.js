@@ -2,17 +2,36 @@
  *  Peerio Actions to use with Dispatcher
  *  -------------------------------------
  *
- *  use Peerio.Actions.ACTION_NAME to reference action name string
- *  use Peerio.Actions.ACTION_NAME([params]) to execute action function (first letter of the method is in lower case)
+ *  use Peerio.Action.ACTION_NAME to reference action name string
+ *  use Peerio.Action.ACTION_NAME([params]) to execute action function (first letter of the method is in lower case)
  *  use Peerio.Dispatcher.onACTION_NAME(callback) to subscribe to action
  */
-(function () {
+
+var Peerio = this.Peerio || {};
+Peerio.Action = {};
+
+Peerio.Action.init = function () {
   'use strict';
 
-  window.Peerio = window.Peerio || {};
-  Peerio.Actions = {};
+  Peerio.Action = {};
 
-  // Actions list with parameter information
+  /**
+   * Adds an action to Event System. Creates convenience functions.
+   * Use this at any time to add a new action type.
+   * There is no way to remove action type atm, as it is not needed.
+   * @param {string} actionName - the name of new action. Important: PascalCase.
+   */
+  Peerio.Action.add = function(actionName){
+    if(Peerio.Action[actionName]) throw 'Illegal attempt to register existing Action. Or other property with same name exists.';
+
+    Peerio.Action[actionName] = actionName;
+
+    var actionMethodName = actionName.charAt(0).toLowerCase() + actionName.substring(1);
+    // creating action function
+    Peerio.Action[actionMethodName] = Peerio.Dispatcher.notify.bind(null, actionName);
+  }
+
+  // Default actions list with parameter information
   // preferable naming style: "Action", "ObjectAction" or "ActionDetail"
   // IMPORTANT NOTE ABOUT NAMING:
   // 1. Action names should always
@@ -23,10 +42,10 @@
   //      Peerio.Dispatcher.onMyAction(...subscriber)
   //      e.g. action name will be prefixed with "on"
   // 3. Action names will be available as properties on Actions object like so:
-  //      Peerio.Actions.MyAction
+  //      Peerio.Action.MyAction
   //      value of the property === Action name ("MyAction")
   // 4. Action execution methods will have action name but with first letter in lower case
-  //      Peerio.Actions.myAction(...params)
+  //      Peerio.Action.myAction(...params)
   [
     //------- ACTIONS EMITTED BY CORE -------
     'SocketConnect',       // WebSocket reported successful connect
@@ -40,7 +59,7 @@
     'TwoFAValidateSuccess',// 2fa code validation success
     'TwoFAValidateFail',   // 2fa code validation fail
     'TOFUFail',            // Contact loader detected TOFU check fail
-    'MessageSentStatus',   // progress report on sending message {object, Peerio.Actions.Statuses} internal temporary guid
+    'MessageSentStatus',   // progress report on sending message {object, Peerio.Action.Statuses} internal temporary guid
     'ConversationUpdated', // messages were updated in single conversation thread {id} conversation id
     'MessagesUpdated',     // there was an update to the messages in the following conversations {array} conversation ids
     'ConversationsLoaded', // Peerio.user.conversations was created/replaced from cache or network. Full update.
@@ -76,16 +95,15 @@
     'Pause',               // OS sent app to background
     'Resume'               // app was restored from background
   ].forEach(function (action) {
-      // creating action name property
-      Peerio.Actions[action] = action;
+      Peerio.Action.add(action);
     });
 
   // Enums
-  Peerio.Actions.Statuses = {
+  Peerio.Action.Statuses = {
     Pending: 0,
     Success: 1,
     Fail: 2
   };
 
-}());
+}();
 

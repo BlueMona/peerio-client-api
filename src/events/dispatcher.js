@@ -1,12 +1,12 @@
 /**
- *  Dispatcher is a glue between React UI components and Data/Business logic layers
+ *  Dispatcher manages system-wide events
  *  --------------------------------------------------------------
- *  1. It provides a set of Peerio.Actions.*([args]) functions which can be called
+ *  1. It provides a set of Peerio.Action.*([args]) functions which can be called
  *  by different components to notify other interested components.
- *  (see separate actions.js file)
+ *  (see separate actions.js file).
  *
  *  2. It provides subscription/unsubscription mechanism to allow components to be notified when action happen
- *  Peerio.Dispatcher.subscribe(Peerio.Actions.ACTION_NAME, callback_function)
+ *  Peerio.Dispatcher.subscribe(Peerio.Action.ACTION_NAME, callback_function)
  *  or use syntactic sugar: Peerio.Dispatcher.onACTION_NAME(callback_function)
  *  Peerio.Dispatcher.unsubscribe(subscription_id or callback_function,...)
  *
@@ -15,21 +15,21 @@
  *  If subscriber returns true (===) processing stops (a la preventDefault).
  *
  *  No other logic is performed here, just dispatching.
- *  Except some special cases where matching "Done" event should not fire
- *  while original "Start" event was called more then once.
- *
+ *  In some special cases custom dispatching logic is implemented, see overrides.js
  *
  */
-(function () {
+
+var Peerio = this.Peerio || {};
+Peerio.Dispatcher = {};
+
+Peerio.Dispatcher.init = function () {
   'use strict';
 
-  window.Peerio = window.Peerio || {};
+  var api = Peerio.Dispatcher = {};
 
   // subscribers container
-  // action for a key and [{id, handler},..] objects array as value
+  // KEY: action. VALUE: [{id, handler},..] objects array
   var subscribers = {};
-
-  Peerio.Dispatcher = {};
 
   /**
    * subscribes callback to action
@@ -37,7 +37,7 @@
    * @param {function} handler - action handler
    * @returns {number} - subscription uuid. You can use this id, or the same callback to unsubscribe later.
    */
-  Peerio.Dispatcher.subscribe = function (action, handler) {
+  api.subscribe = function (action, handler) {
     var id = uuid.v4();
     subscribers[action].push({
       id: id,
@@ -48,11 +48,11 @@
 
   /**
    * Unsubscribes from action
-   * @param {...number|...function|[]} - subscription id or the actual subscribed callback.
+   * @param {...number|...function|[]} arguments -  subscription id or the actual subscribed callback.
    * You can pass one or more parameters with ids or callbacks or arrays containing mixed ids and callbacks
    * Note that if callback is passed, it will be unsubscribed from all actions.
    */
-  Peerio.Dispatcher.unsubscribe = function () {
+  api.unsubscribe = function () {
     var removeSubscriber = function (subscriber) {
       var predicate = typeof (subscriber) === 'function' ? {handler: subscriber} : {id: subscriber};
       _.forIn(subscribers, function (value) {
@@ -70,11 +70,11 @@
   /**
    * Notifies subscribers on action and passes optional arguments.
    * This is an abstract function, more convenient specialized functions
-   * from Peerio.Actions namespace should be used by components
-   * @param {string} action - one of Peerio.Actions names
+   * from Peerio.Action namespace should be used by components
+   * @param {string} action - one of Peerio.Action names
    * @param arguments - any additional arguments will be passed to subscribers
    */
-  Peerio.Dispatcher.notify = function (action) {
+  api.notify = function (action) {
     var args = _.rest(arguments);
     var subs = subscribers[action];
     for (var i = subs.length - 1; i >= 0; i--) {
@@ -82,20 +82,21 @@
     }
   };
 
-  // initialisation
-  _.forIn(Peerio.Actions, function (actionName, key) {
-    if (!Peerio.Actions.hasOwnProperty(key) || typeof(actionName) !== 'string') return;
-
-    var actionMethodName = actionName.charAt(0).toLowerCase() + actionName.substring(1);
+  /**
+   * Registers new Action with dispatcher.
+   * Adds a onActionName convenience function to Peerio.Dispatcher.
+   * YOU SHOULD NOT NORMALLY USE THIS FUNCTION.
+   * Instead, register new actions with Peerio.Action.add(actionName).
+   * @param {string} actionName - the name of new action. Important: PascalCase.
+   */
+  api.addActionType = function(actionName){
+    if(subscribers[actionName]) throw 'Illegal attempt to register existing Action';
     // pre-creating action subscribers array
     subscribers[actionName] = [];
     // creating syntactic sugar method wrapping Peerio.Dispatcher.subscribe
-    Peerio.Dispatcher['on' + actionName] = function (handler) {
-      return Peerio.Dispatcher.subscribe(actionName, handler);
+    api['on' + actionName] = function (handler) {
+      return api.subscribe(actionName, handler);
     };
-    // creating action function
-    Peerio.Actions[actionMethodName] = Peerio.Dispatcher.notify.bind(null, actionName);
+  };
 
-  });
-
-}());
+}();

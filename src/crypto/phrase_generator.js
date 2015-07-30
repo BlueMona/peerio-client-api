@@ -97,7 +97,7 @@ Peerio.PhraseGenerator.init = function () {
   function getRandomWord() {
     return loadedDictionary.dict[secureRandom(loadedDictionary.dict.length)];
   }
-  
+
   function secureRandom(count) {
     var rand = new Uint32Array(1);
     var skip = 0x7fffffff - 0x7fffffff % count;

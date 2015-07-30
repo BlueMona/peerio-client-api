@@ -71,6 +71,7 @@ gulp.task('build-api', function () {
     'src/model/**/*',
     'src/app_logic/**/*',
     'src/network/**/*',
+    'src/events/**/*',
     'src/util.js',
     'src/peerio.js'
   ]).pipe(concat('peerio_client_api_bundle.js'))
@@ -82,7 +83,9 @@ gulp.task('build-ext-lib', function () {
   return gulp.src([
     'bower_components/lodash/lodash.js',
     'bower_components/bluebird/js/browser/bluebird.js',
-    'bower_components/node-uuid/uuid.js'
+    'bower_components/node-uuid/uuid.js',
+    'bower_components/identicon/pnglib.js',
+    'bower_components/identicon/identicon.js'
   ]).pipe(concat('ext_lib_bundle.js'))
     .pipe(gulp.dest(outputDir));
 });
@@ -92,8 +95,10 @@ gulp.task('build-clean', function () {
     .pipe(clean());
 });
 //----------------------------------------------------------------------------------------------------------------------
-gulp.task('test', ['build'], function () {
-  gulp.watch('src/**/*', ['build']);
+gulp.task('test', ['watch'], function () {
   karma.start({configFile: __dirname + '/karma.conf.js'});
 });
 //----------------------------------------------------------------------------------------------------------------------
+gulp.task('watch',['build'], function(){
+  gulp.watch('src/**/*', ['build']);
+});
