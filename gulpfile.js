@@ -73,6 +73,8 @@ gulp.task('build-api', function () {
     'src/network/**/*',
     'src/events/**/*',
     'src/util.js',
+    'src/extensions.js',
+    'src/error_reporter.js',
     'src/peerio.js'
   ]).pipe(concat('peerio_client_api_bundle.js'))
     .pipe(gulp.dest(outputDir));
