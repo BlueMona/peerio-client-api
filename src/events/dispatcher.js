@@ -99,4 +99,4 @@ Peerio.Dispatcher.init = function () {
     };
   };
 
-}();
+};

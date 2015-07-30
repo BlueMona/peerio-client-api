@@ -26,10 +26,11 @@ Peerio.Action.init = function () {
 
     Peerio.Action[actionName] = actionName;
 
-    var actionMethodName = actionName.charAt(0).toLowerCase() + actionName.substring(1);
+    var actionMethodName = actionName[0].toLowerCase() + actionName.substring(1);
     // creating action function
     Peerio.Action[actionMethodName] = Peerio.Dispatcher.notify.bind(null, actionName);
-  }
+    Peerio.Dispatcher.addActionType(actionName);
+  };
 
   // Default actions list with parameter information
   // preferable naming style: "Action", "ObjectAction" or "ActionDetail"
@@ -105,5 +106,5 @@ Peerio.Action.init = function () {
     Fail: 2
   };
 
-}();
+};
 

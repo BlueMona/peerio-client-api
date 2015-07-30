@@ -19,7 +19,7 @@ Peerio.Config.init = function () {
   cfg.webSocketServer = 'wss://treetrunks.peerio.com:443';
 
   // ios does not support navigator.hardwareConcurrency atm, use cpu info plugin
-  cfg.cpuCount = navigator.hardwareConcurrency || 1;
+  cfg.cpuCount = 1;//navigator.hardwareConcurrency || 1;
   // if client will not receive pings for pingTimeout, connection will be considered broken
   cfg.pingTimeout = 20000;
 };

@@ -7,7 +7,7 @@
  * - Depends on Peerio.Crypto
  */
 
-fdescribe('Peerio network protocol', function () {
+xdescribe('Peerio network protocol', function () {
   'use strict';
 
   function generateUsername() {
