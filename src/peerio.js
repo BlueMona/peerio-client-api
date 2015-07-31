@@ -14,6 +14,7 @@ Peerio.initAPI = function () {
   Peerio.Config.apiFolder = Peerio.apiFolder;
   delete Peerio.apiFolder;
   Peerio.ErrorReporter.init(); // this does not enable error reporting, just initializes.
+  Peerio.TinyDB.init();
   Peerio.Util.init();
   Peerio.Crypto.init();
   Peerio.PhraseGenerator.init();

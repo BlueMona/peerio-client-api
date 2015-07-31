@@ -71,6 +71,7 @@ gulp.task('build-api', function () {
     'src/model/**/*',
     'src/app_logic/**/*',
     'src/network/**/*',
+    'src/storage/**/*',
     'src/events/**/*',
     'src/util.js',
     'src/extensions.js',
