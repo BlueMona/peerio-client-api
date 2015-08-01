@@ -82,7 +82,11 @@
     // detects timeout and resets connection
     function checkPings() {
       if (!lastPing) return;
-      if ((Date.now() - lastPing) > cfg.pingTimeout) resetConnection();
+      var timePassed = Date.now() - lastPing;
+      if (timePassed > cfg.pingTimeout) {
+        console.log('Heartbeat service detected broken connection.', Math.round(timePassed / 1000), 'seconds without a ping.');
+        resetConnection();
+      }
     }
 
     // resets (restarts) connection
@@ -132,6 +136,7 @@
     var message = payload.data;
 
     if (message.name === 'reconnectSocket') {
+      console.log('Application logic requested connection reset.');
       resetConnection();
       return;
     }

@@ -296,6 +296,69 @@ Peerio.Model = Peerio.Model || {};
 
 })();
 /**
+ * Centralized place to collect and provide global application state information.
+ * This is useful for components which were instantiated too late to be able to handle previous events.
+ */
+
+var Peerio = this.Peerio || {};
+Peerio.AppState = {};
+
+Peerio.AppState.init = function () {
+  'use strict';
+
+  var api = Peerio.AppState = {};
+  var d = Peerio.Dispatcher;
+
+  // initial state
+  api.loading = false;     // is app currently transferring/waiting for data
+  api.connected = false;   // is app connected to peerio server socket
+  api.authenticated = false; // is current connection authenticated
+
+  /**
+   * Adds a custom state rule to AppState.
+   * You can provide your own logic of how AppState properties change on Dispatcher events.
+   * On *action* event, *property* will be set to *value* or to return value of the *value* function.
+   * @param {string} action - action name that will trigger this rule
+   * @param {string} property - app state property name (will be available as AppState.property)
+   * @param {null|string|number|object|Function} value - the value to set to property. Or function that will return such value.
+   */
+  api.addStateRule = function (action, property, value) {
+    var setFn;
+    if (typeof(value) === 'function') {
+      setFn = value.bind(api);
+    } else {
+      setFn = setState.bind(api, property, value);
+    }
+    d['on' + action](setFn);
+  };
+  /**
+   * Executes specified function on specified action.
+   * This is pretty much the same as addStateRule, but manipulates state inside of passed function.
+   * @param {string} action - action name that will trigger handler execution
+   * @param {function} handler - function that will handle the action event
+   */
+  api.addStateTrigger = function (action, handler) {
+    d['on' + action](handler.bind(api));
+  };
+
+  function setState(prop, value) {
+    this[prop] = value;
+  }
+
+  // subscribing to state-changing events
+  d.onLoading(setState.bind(api, 'loading', true));
+  d.onLoadingDone(setState.bind(api, 'loading', false));
+
+  d.onSocketConnect(setState.bind(api, 'connected', true));
+  d.onSocketDisconnect(function () {
+    api.connected = false;
+    api.authenticated = false;
+  });
+
+  d.onAuthenticated(setState.bind(api, 'authenticated', true));
+
+};
+/**
  * Peerio network protocol implementation
  */
 
@@ -1026,6 +1089,92 @@ Peerio.Socket.init = function () {
 };
 
 /**
+ * Tiny permanent storage abstraction/wrapper.
+ * Use it for storing small (few megabytes) data only.
+ */
+
+var Peerio = this.Peerio || {};
+Peerio.TinyDB = {};
+
+Peerio.TinyDB.init = function () {
+  'use strict';
+
+  var api = Peerio.TinyDB = {};
+  // currently, localStorage is fine for all platforms
+  var db = window.localStorage;
+
+  /**
+   * Saves scalar value to storage.
+   * @param {string} key - unique key. Existing value with the same key will be overwritten.
+   * @param {string|number|boolean|null} value - should have toString() function, because storage accepts only strings.
+   */
+  api.setVar = function (key, value) {
+    db.setItem(key, value.toString());
+  };
+
+  /**
+   * Saves object or array to storage.
+   * @param {string} key - unique key. Existing value with the same key will be overwritten.
+   * @param {object|Array} value - Will be serialized with JSON.stringify(), because storage accepts only strings.
+   */
+  api.setObject = function (key, value) {
+    db.setItem(key, JSON.stringify(value));
+  };
+
+  /**
+   * Removes item from storage
+   * @param {string} key
+   */
+  api.removeItem = db.removeItem.bind(db);
+
+  /**
+   * Removes all items from storage
+   */
+  api.clearStorage = db.clear.bind(db);
+
+  /**
+   * Retrieves value as string
+   * @params {string} key - unique key
+   * @returns {string|null} value
+   */
+  api.getString = function (key) {
+    return db.getItem(key);
+  };
+
+  /**
+   * Retrieves value as number
+   * @params {string} key - unique key
+   * @returns {number|null} value
+   */
+  api.getNumber = function (key) {
+    var val = db.getItem(key);
+    return val == null ? null : +val;
+  };
+
+  /**
+   * Retrieves value as boolean
+   * @params {string} key - unique key
+   * @returns {boolean|null} value
+   */
+  api.getBool = function (key) {
+    var val = db.getItem(key);
+    return val == null ? null : val === 'true';
+  };
+
+  /**
+   * Retrieves value as parsed object using JSON.parse()
+   * @params {string} key - unique key
+   * @returns {object|null} value
+   */
+  api.getObject = function (key) {
+    var val = db.getItem(key);
+    return val == null ? null : JSON.parse(val);
+  };
+
+
+
+};
+/**
  *  Peerio Actions to use with Dispatcher
  *  -------------------------------------
  *
@@ -1078,50 +1227,23 @@ Peerio.Action.init = function () {
     //------- ACTIONS EMITTED BY CORE -------
     'SocketConnect',       // WebSocket reported successful connect
     'SocketDisconnect',    // WebSocket reported disconnected(and reconnecting) state
+    'Authenticated',       // WebSocket connection was authenticated
     'Loading',             // Data transfer is in process
-    'LoadingDone',         // Data transfer ended
-    'LoginProgress',       // {string} state
-    'LoginSuccess',        // login attempt succeeded
-    'LoginFail',           // login attempt failed
-    'TwoFARequest',        // server requested 2fa code
-    'TwoFAValidateSuccess',// 2fa code validation success
-    'TwoFAValidateFail',   // 2fa code validation fail
-    'TOFUFail',            // Contact loader detected TOFU check fail
-    'MessageSentStatus',   // progress report on sending message {object, Peerio.Action.Statuses} internal temporary guid
-    'ConversationUpdated', // messages were updated in single conversation thread {id} conversation id
-    'MessagesUpdated',     // there was an update to the messages in the following conversations {array} conversation ids
-    'ConversationsLoaded', // Peerio.user.conversations was created/replaced from cache or network. Full update.
-    'FilesUpdated',        // Something in user files collection has changed, so you better rerender it
-    'ContactsUpdated',     // One or more contacts loaded/modified/deleted
-    //------- ACTIONS EMITTED BY UI -------
-    'SignOut',             // User wants to sign out
-    'TabChange',           // Active tab changed to (index)
-    'SidebarToggle',       // User wants to change show/hide state of sidebar
-    'SwipeLeft',           // Global swipe left event detected by app root
-    'SwipeRight',          // Global swipe right event detected by app root
-    // Navigate* events allow opening nested views and navigating back from them(closing)
-    // When calling NavigatedIn action, parameter can be passed to change "universal action button" in footer
-    // If no parameters were passed - action button will remain the same.
-    // When calling NavigatedOut "universal action button will be reverted to previous state"
-    // NavigatedIn and Out are navigation change FACTS
-    // NavigateBack - is a REQUEST that may lead to NavigatedOut
-    'NavigatedIn',         // {Object{string actionName, function actionFn}} subview was opened (may be called several times sequentially)
-    'NavigatedOut',        // subview was closed
-    'NavigateBack',        // user wants to go back from subview
-    'NewMessageViewOpen',  // open new message composition view requested
-    'NewMessageViewClose', // open new message composition view requested
-    'UploadFile',          // user wants to upload file
-    'AddContact',          // user wants to add a new contact
-    'TabBarShow',          // show tab bar requested
-    'TabBarHide',          // show tab bar requested
-    'SendCurrentMessage',  // user wants to send the message that he is currently typing
-    'ShowFileSelect',      // {string[]} open file selector, optionally pass array of preselected file id's
-    'FilesSelected',       // file selector was closed accepting selection
-    //------- HARDWARE/OS ACTIONS
-    'HardMenuButton',      // hardware "menu" button was pressed
-    'HardBackButton',      // hardware "back" button was pressed
-    'Pause',               // OS sent app to background
-    'Resume'               // app was restored from background
+    'LoadingDone'         // Data transfer ended
+    //'LoginProgress',       // {string} state
+    //'LoginSuccess',        // login attempt succeeded
+    //'LoginFail',           // login attempt failed
+    //'TwoFARequest',        // server requested 2fa code
+    //'TwoFAValidateSuccess',// 2fa code validation success
+    //'TwoFAValidateFail',   // 2fa code validation fail
+    //'TOFUFail',            // Contact loader detected TOFU check fail
+    //'MessageSentStatus',   // progress report on sending message {object, Peerio.Action.Statuses} internal temporary guid
+    //'ConversationUpdated', // messages were updated in single conversation thread {id} conversation id
+    //'MessagesUpdated',     // there was an update to the messages in the following conversations {array} conversation ids
+    //'ConversationsLoaded', // Peerio.user.conversations was created/replaced from cache or network. Full update.
+    //'FilesUpdated',        // Something in user files collection has changed, so you better rerender it
+    //'ContactsUpdated',     // One or more contacts loaded/modified/deleted
+
   ].forEach(function (action) {
       Peerio.Action.add(action);
     });
@@ -1325,6 +1447,111 @@ Peerio.Util.init = function () {
 
 };
 /**
+ * Various extensions to system/lib objects
+ * ------------------------------------------------------
+ */
+(function () {
+  'use strict';
+
+  String.prototype.isEmpty = function() {
+    return (this.length === 0 || !this.trim());
+  };
+
+}());
+
+/**
+ * Starts Error interceptor and reporter.
+ *
+ * This script should ideally use vanilla js only,
+ * so it won't fail in case of errors in some lib it uses.
+ *
+ * It also tries to minimize performance impact and be unobtrusive,
+ * not reporting the same errors more then once and not caching too much while offline.
+ *
+ */
+
+var Peerio = this.Peerio || {};
+Peerio.ErrorReporter = {};
+
+Peerio.ErrorReporter.init = function () {
+  'use strict';
+
+  // Cache of reported errors.
+  var reported = {};
+  // How many reports are awaiting transmission.
+  var queueLength = 0;
+  // How many reports are allowed to await transmission.
+  var maxQueueLength = 100;
+  // in case there is already a handler, we'll save it here
+  var oldHandler;
+
+  /**
+   * Allows error reporting
+   */
+  Peerio.ErrorReporter.enable = function () {
+    oldHandler = window.onerror;
+    window.onerror = errorHandler;
+  };
+
+  /**
+   * Disables error reporting
+   */
+  Peerio.ErrorReporter.disable = function () {
+    window.onerror = oldHandler;
+  };
+
+  function errorHandler(aMessage, aUrl, aRow, aCol, aError) {
+    if (oldHandler) oldHandler(aMessage, aUrl, aRow, aCol, aError);
+
+    if (queueLength >= maxQueueLength) return false;
+    // check if this error was already reported
+    var known = reported[aUrl];
+    if (known && known.row === aRow && known.col === aCol) return false;
+
+    // cache this report to prevent reporting it again
+    reported[aUrl] = {row: aRow, col: aCol};
+
+    var report = {
+      ts: Math.floor(getUTCTimeStamp() / 1000),
+      url: aUrl,
+      row: aRow,
+      col: aCol,
+      msg: aMessage,
+      version: Peerio.Config.appVersion
+    };
+
+    if (aError != null) {
+      report.msg = aError.message;
+      report.errType = aError.name;
+      report.stack = aError.stack;
+    }
+    queueLength++;
+    sendWhenOnline(JSON.stringify(report));
+    return false;
+  }
+
+  // Forever delays report for 5 minutes while device is offline.
+  // Attempts sending the report when device is online.
+  function sendWhenOnline(msg) {
+    if (navigator.onLine === false) {
+      window.setTimeout(sendWhenOnline.bind(window, msg), 5 * 60 * 1000);
+      return;
+    }
+    queueLength--;
+    var request = new XMLHttpRequest();
+    request.open('POST', Peerio.Config.errorReportServer);
+    request.setRequestHeader('Content-Type', 'application/json;charset=UTF-8');
+    request.send(msg);
+  }
+
+  function getUTCTimeStamp() {
+    var now = new Date();
+    return now.valueOf() + now.getTimezoneOffset() * 60000;
+  }
+
+
+};
+/**
  * Main library file, contains initialisation code
  */
 
@@ -1340,6 +1567,7 @@ Peerio.initAPI = function () {
   Peerio.Config.apiFolder = Peerio.apiFolder;
   delete Peerio.apiFolder;
   Peerio.ErrorReporter.init(); // this does not enable error reporting, just initializes.
+  Peerio.TinyDB.init();
   Peerio.Util.init();
   Peerio.Crypto.init();
   Peerio.PhraseGenerator.init();
@@ -1348,6 +1576,7 @@ Peerio.initAPI = function () {
   Peerio.Dispatcher.init();
   Peerio.Action.init();
   Peerio.ActionOverrides.init();
+  Peerio.AppState.init();
 
   Peerio.Socket.start();
 

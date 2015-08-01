@@ -35,12 +35,12 @@ Peerio.TinyDB.init = function () {
    * Removes item from storage
    * @param {string} key
    */
-  api.removeItem = localStorage.removeItem;
+  api.removeItem = db.removeItem.bind(db);
 
   /**
    * Removes all items from storage
    */
-  api.clearStorage = localStorage.clear;
+  api.clearStorage = db.clear.bind(db);
 
   /**
    * Retrieves value as string

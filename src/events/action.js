@@ -51,50 +51,23 @@ Peerio.Action.init = function () {
     //------- ACTIONS EMITTED BY CORE -------
     'SocketConnect',       // WebSocket reported successful connect
     'SocketDisconnect',    // WebSocket reported disconnected(and reconnecting) state
+    'Authenticated',       // WebSocket connection was authenticated
     'Loading',             // Data transfer is in process
-    'LoadingDone',         // Data transfer ended
-    'LoginProgress',       // {string} state
-    'LoginSuccess',        // login attempt succeeded
-    'LoginFail',           // login attempt failed
-    'TwoFARequest',        // server requested 2fa code
-    'TwoFAValidateSuccess',// 2fa code validation success
-    'TwoFAValidateFail',   // 2fa code validation fail
-    'TOFUFail',            // Contact loader detected TOFU check fail
-    'MessageSentStatus',   // progress report on sending message {object, Peerio.Action.Statuses} internal temporary guid
-    'ConversationUpdated', // messages were updated in single conversation thread {id} conversation id
-    'MessagesUpdated',     // there was an update to the messages in the following conversations {array} conversation ids
-    'ConversationsLoaded', // Peerio.user.conversations was created/replaced from cache or network. Full update.
-    'FilesUpdated',        // Something in user files collection has changed, so you better rerender it
-    'ContactsUpdated',     // One or more contacts loaded/modified/deleted
-    //------- ACTIONS EMITTED BY UI -------
-    'SignOut',             // User wants to sign out
-    'TabChange',           // Active tab changed to (index)
-    'SidebarToggle',       // User wants to change show/hide state of sidebar
-    'SwipeLeft',           // Global swipe left event detected by app root
-    'SwipeRight',          // Global swipe right event detected by app root
-    // Navigate* events allow opening nested views and navigating back from them(closing)
-    // When calling NavigatedIn action, parameter can be passed to change "universal action button" in footer
-    // If no parameters were passed - action button will remain the same.
-    // When calling NavigatedOut "universal action button will be reverted to previous state"
-    // NavigatedIn and Out are navigation change FACTS
-    // NavigateBack - is a REQUEST that may lead to NavigatedOut
-    'NavigatedIn',         // {Object{string actionName, function actionFn}} subview was opened (may be called several times sequentially)
-    'NavigatedOut',        // subview was closed
-    'NavigateBack',        // user wants to go back from subview
-    'NewMessageViewOpen',  // open new message composition view requested
-    'NewMessageViewClose', // open new message composition view requested
-    'UploadFile',          // user wants to upload file
-    'AddContact',          // user wants to add a new contact
-    'TabBarShow',          // show tab bar requested
-    'TabBarHide',          // show tab bar requested
-    'SendCurrentMessage',  // user wants to send the message that he is currently typing
-    'ShowFileSelect',      // {string[]} open file selector, optionally pass array of preselected file id's
-    'FilesSelected',       // file selector was closed accepting selection
-    //------- HARDWARE/OS ACTIONS
-    'HardMenuButton',      // hardware "menu" button was pressed
-    'HardBackButton',      // hardware "back" button was pressed
-    'Pause',               // OS sent app to background
-    'Resume'               // app was restored from background
+    'LoadingDone'         // Data transfer ended
+    //'LoginProgress',       // {string} state
+    //'LoginSuccess',        // login attempt succeeded
+    //'LoginFail',           // login attempt failed
+    //'TwoFARequest',        // server requested 2fa code
+    //'TwoFAValidateSuccess',// 2fa code validation success
+    //'TwoFAValidateFail',   // 2fa code validation fail
+    //'TOFUFail',            // Contact loader detected TOFU check fail
+    //'MessageSentStatus',   // progress report on sending message {object, Peerio.Action.Statuses} internal temporary guid
+    //'ConversationUpdated', // messages were updated in single conversation thread {id} conversation id
+    //'MessagesUpdated',     // there was an update to the messages in the following conversations {array} conversation ids
+    //'ConversationsLoaded', // Peerio.user.conversations was created/replaced from cache or network. Full update.
+    //'FilesUpdated',        // Something in user files collection has changed, so you better rerender it
+    //'ContactsUpdated',     // One or more contacts loaded/modified/deleted
+
   ].forEach(function (action) {
       Peerio.Action.add(action);
     });

@@ -10,11 +10,18 @@ describe('TinyDB storage', function () {
     db = Peerio.TinyDB;
   });
 
-  it('sets a string value', function () {
+  afterAll(function(){
+    db.clear();
+    expect(localStorage.key(0)).toBe(null);
+  });
+
+  it('sets and deletes a string value', function () {
     var key = 'stringValKey';
     var val = 'stringVal';
     db.setVar(key, val);
     expect(db.getString(key)).toBe(val);
+    db.removeItem(key);
+    expect(db.getString(key)).toBe(null);
   });
 
   it('sets an integer number value', function () {
@@ -44,5 +51,5 @@ describe('TinyDB storage', function () {
     db.setObject(key, val);
     expect(db.getObject(key)).toEqual(val);
   });
-  
+
 });

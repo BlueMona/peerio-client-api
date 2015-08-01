@@ -23,6 +23,7 @@ Peerio.initAPI = function () {
   Peerio.Dispatcher.init();
   Peerio.Action.init();
   Peerio.ActionOverrides.init();
+  Peerio.AppState.init();
 
   Peerio.Socket.start();
 
