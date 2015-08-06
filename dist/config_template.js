@@ -26,6 +26,10 @@ Peerio.Config.init = function () {
 
   cfg.appVersion = 'n/a';
 
+  // Set this dynamically to something related to device where app is currently running.
+  // This secret key will be used for low-importance data encryption to store in on device.
+  cfg.lowImportanceDeviceKey = '12345';
+
   // Attempt to retrieve app version.
   // deviceready will not fire in desktop browser, and we don't want it to.
   // todo: do the same for desktop
