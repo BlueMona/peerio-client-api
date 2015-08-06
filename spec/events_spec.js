@@ -12,41 +12,7 @@ describe('Events', function () {
       'SocketConnect',
       'SocketDisconnect',
       'Loading',
-      'LoadingDone',
-      'LoginProgress',
-      'LoginSuccess',
-      'LoginFail',
-      'TwoFARequest',
-      'TwoFAValidateSuccess',
-      'TwoFAValidateFail',
-      'TOFUFail',
-      'MessageSentStatus',
-      'ConversationUpdated',
-      'MessagesUpdated',
-      'ConversationsLoaded',
-      'FilesUpdated',
-      'ContactsUpdated',
-      'SignOut',
-      'TabChange',
-      'SidebarToggle',
-      'SwipeLeft',
-      'SwipeRight',
-      'NavigatedIn',
-      'NavigatedOut',
-      'NavigateBack',
-      'NewMessageViewOpen',
-      'NewMessageViewClose',
-      'UploadFile',
-      'AddContact',
-      'TabBarShow',
-      'TabBarHide',
-      'SendCurrentMessage',
-      'ShowFileSelect',
-      'FilesSelected',
-      'HardMenuButton',
-      'HardBackButton',
-      'Pause',
-      'Resume'
+      'LoadingDone'
     ];
     var callCount = 0;
     actions.forEach(function (action) {
@@ -55,7 +21,7 @@ describe('Events', function () {
 
       var subscribeFn = Peerio.Dispatcher[subscribeFnName];
       var actionFn = Peerio.Action[actionFnName];
-
+      if (!subscribeFn) console.log('unknown action:', action);
       subscribeFn(function () { callCount++; });
       actionFn();
     });
