@@ -53,10 +53,10 @@ Peerio.Action.init = function () {
     'SocketDisconnect',    // WebSocket reported disconnected(and reconnecting) state
     'Authenticated',       // WebSocket connection was authenticated
     'Loading',             // Data transfer is in process
-    'LoadingDone'         // Data transfer ended
+    'LoadingDone',         // Data transfer ended
     //'LoginProgress',       // {string} state
-    //'LoginSuccess',        // login attempt succeeded
-    //'LoginFail',           // login attempt failed
+    'LoginSuccess',        // login attempt succeeded
+    'LoginFail'           // login attempt failed
     //'TwoFARequest',        // server requested 2fa code
     //'TwoFAValidateSuccess',// 2fa code validation success
     //'TwoFAValidateFail',   // 2fa code validation fail

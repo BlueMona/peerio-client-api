@@ -24,6 +24,7 @@ Peerio.initAPI = function () {
   Peerio.Action.init();
   Peerio.ActionOverrides.init();
   Peerio.AppState.init();
+  Peerio.Auth.init();
 
   Peerio.Socket.start();
 
@@ -37,6 +38,6 @@ Peerio.initAPI = function () {
 
   var path = document.currentScript && document.currentScript.getAttribute('src')
     || document.scripts[document.scripts.length - 1].getAttribute('src');
-  // temporary saving api folder in rooot namespace until Config is initalized
+  // temporary saving api folder in root namespace until Config is initalized
   Peerio.apiFolder = path.substring(0, path.lastIndexOf('/')) + '/';
 }());

@@ -12,7 +12,9 @@ describe('Events', function () {
       'SocketConnect',
       'SocketDisconnect',
       'Loading',
-      'LoadingDone'
+      'LoadingDone',
+      'LoginSuccess',
+      'LoginFail'
     ];
     var callCount = 0;
     actions.forEach(function (action) {
