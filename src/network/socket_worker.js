@@ -15,8 +15,6 @@
  *       and it will be covered by networking tests anyway.
  */
 
-(function () {
-  'use strict';
 
   // First message from UI thread should contain configuration data to initialise worker.
   // All the following messages will be considered data to send through socket.
@@ -149,5 +147,3 @@
       });
     });
   }
-
-})();

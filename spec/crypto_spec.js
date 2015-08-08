@@ -24,7 +24,7 @@ describe('Crypto', function () {
 
   it('creates keypair from username and passphrase', function (done) {
 
-    C.getKeyPair(testUser.username, testUser.passPhrase)
+    C.getKeyPair(testUser.username, testUser.passphrase)
       .then(function (keyPair) {
         expect(keyPair).toEqual(testUser.keyPair);
         done();

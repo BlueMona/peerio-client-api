@@ -2694,24 +2694,51 @@ PeerioServerError.prototype.errorCodes = {
   425: 'The account has been throttled (sent too many requests that failed to authenticate).',
   426: 'User blacklisted.'
 };
-// Peerio User object
+/**
+ * Peerio User object
+ *
+ * todo: not sure if it is really needed, current idea is to put some validations and other simple user-related logic in here
+ */
 
 var Peerio = this.Peerio || {};
 Peerio.Model = Peerio.Model || {};
 
-(function(){
+(function () {
   'use strict';
 
-  Peerio.Model.User = function(username, publicKey, isMe){
+  /**
+   * Creates User object asynchronously populating it will keys.
+   * Executes callback when User object
+   * @param username
+   * @param passphrase
+   * @param callback
+   * @constructor
+   */
+  var u = Peerio.Model.User = function (username, passphrase) {
     this.username = username;
-    this.publicKey = publicKey;
-    this.isMe = !!isMe;
+    this.passphrase = passphrase;
+    this.isMe = !!passphrase;
 
-    if(this.isMe){
+    if (this.isMe) {
       this.contacts = {};
       this.keyPair = {};
     }
+  };
 
+  /**
+   * Generates keyPair and publicKeyString and fills corresponding properties
+   * @promise - resolved when ready
+   */
+  u.prototype.generateKeys = function () {
+    var self = this;
+    return Peerio.Crypto.getKeyPair(self.username, self.passphrase)
+      .then(function (keys) {
+        self.keyPair = keys;
+        return Peerio.Crypto.getPublicKeyString(keys.publicKey);
+      })
+      .then(function (publicKey) {
+        self.publicKey = publicKey;
+      });
   };
 
 })();
@@ -2797,6 +2824,7 @@ Peerio.Auth.init = function () {
   // Peerio.Net is a low-level service and it does not know about event system, so we bridge events.
   net.addEventListener(net.EVENTS.onConnect, Peerio.Action.socketConnect);
   net.addEventListener(net.EVENTS.onDisconnect, Peerio.Action.socketDisonnect);
+  // this events will be fired on automatic re-login attempts only
   net.addEventListener(net.EVENTS.onAuthenticated, Peerio.Action.loginSuccess);
   net.addEventListener(net.EVENTS.onAuthFail, Peerio.Action.loginFail);
 
@@ -2804,9 +2832,17 @@ Peerio.Auth.init = function () {
    * Initiates session authentication
    * @param username
    * @param passphraseOrPIN
+   * @promise
    */
   api.login = function (username, passphraseOrPIN) {
-    net.setCredentials(username, passphraseOrPIN);
+    return new Promise(function (resolve) {
+      // todo PIN
+      var passphrase = passphraseOrPIN;
+      Peerio.user = new Peerio.Model.User(username, passphrase);
+      resolve();
+    })
+      .then(Peerio.user.generateKeys.bind(Peerio.user))
+      .then(net.login.bind(net, Peerio.user));
   };
 
   /**
@@ -2837,6 +2873,25 @@ Peerio.Auth.init = function () {
   api.clearSavedLogin = function () {
     Peerio.TinyDB.removeItem(lastLoginKey);
   };
+
+  api.signup = function (username, passphrase) {
+    var keys;
+    return Peerio.Crypto.getKeyPair(username, passphrase)
+      .then(function (keyPair) {
+        keys = keyPair;
+        return Peerio.Crypto.getPublicKeyString(keyPair.publicKey);
+      })
+      .then(function (publicKeyString) {
+        var info = new Peerio.Model.AccountInfo(username, username, username, publicKeyString, 'en');
+        return net.registerAccount(info);
+      })
+      .then(function (creationToken) {
+        return Peerio.Crypto.decryptAccountCreationToken(creationToken, username, keys);
+      })
+      .then(function (decryptedToken) {
+        return net.activateAccount(decryptedToken);
+      });
+  };
 };
 /**
  * Peerio network protocol implementation
@@ -2855,7 +2910,7 @@ Peerio.Net.init = function () {
   //-- SOCKET EVENT HANDLING, AUTH & CONNECTION STATE ------------------------------------------------------------------
   var connected = false;
   var authenticated = false;
-  var credentials = null;
+  var user = null;
 
   // some events, Peerio.Net consumer might be interested in
   api.EVENTS = {
@@ -2903,11 +2958,14 @@ Peerio.Net.init = function () {
   });
 
   function onConnect() {
-    sendToSocket('setApiVersion', {version: API_VERSION})
+    sendToSocket('setApiVersion', {version: API_VERSION}, true)
       .then(function () {
         connected = true;
         fireEvent(api.EVENTS.onConnect);
-        login();
+        api.login(user, true)
+          .catch(function(err){
+            console.log('Auto re-login failed. No new attempts will be made until reconnect.', err);
+          });
       })
       .timeout(15000)// no crazy science behind this magic number, just common sense
       .catch(function (err) {
@@ -2929,15 +2987,22 @@ Peerio.Net.init = function () {
     fireEvent(api.EVENTS.onDisconnect);
   }
 
-  function login() {
-    if (!credentials) return;
+  /**
+   * Authenticates current socket session.
+   * Stores user object to re-login automatically in case of reconnection.
+   * @param {Peerio.Model.User} userObj
+   * @param {bool} [autoLogin] - true when login was called automatically after reconnect
+   */
+  api.login = function (userObj, autoLogin) {
+    if (!userObj) return Promise.reject();
+    user = userObj;
 
-    sendToSocket('getAuthenticationToken', {
-      username: credentials.username,
-      publicKeyString: credentials.publicKeyString
+    return sendToSocket('getAuthenticationToken', {
+      username: user.username,
+      publicKeyString: user.publicKey
     })
       .then(function (encryptedAuthToken) {
-        return Peerio.Crypto.decryptAuthToken(encryptedAuthToken, credentials.keyPair);
+        return Peerio.Crypto.decryptAuthToken(encryptedAuthToken, user.keyPair);
       })
       .then(function (authToken) {
         return sendToSocket('login', {authToken: authToken});
@@ -2945,14 +3010,18 @@ Peerio.Net.init = function () {
       .then(function () {
         authenticated = true;
         console.log('authenticated');
-        fireEvent(api.EVENTS.onAuthenticated);
+        if (autoLogin)
+          fireEvent(api.EVENTS.onAuthenticated);
       })
       .timeout(60000) // magic number based on common sense
-      .catch(function () {
-        console.log('authentication failed');
-        fireEvent(api.EVENTS.onAuthFail);
+      .catch(function (err) {
+        // if it was a call from login page, we don't want to use wrong credentials upon reconnect
+        console.log('authentication failed.', err);
+        if (!autoLogin) user = null;
+        else fireEvent(api.EVENTS.onAuthFail);
+        return Promise.reject(err);
       });
-  }
+  };
 
   //-- PROMISE MANAGEMENT ----------------------------------------------------------------------------------------------
   // here we store all pending promises by unique id
@@ -2987,8 +3056,11 @@ Peerio.Net.init = function () {
    *  generalized DRY function to use from public api functions
    *  @param {string} name - message name
    *  @param {Object} [data] - object to send
+   *  @param {bool} [ignoreConnectionState] - only setApiVersion needs it, couldn't find more elegant way
+   *  @promise
    */
-  function sendToSocket(name, data) {
+  function sendToSocket(name, data, ignoreConnectionState) {
+    if(!connected && !ignoreConnectionState) return Promise.reject('Not connected.');
     // unique (within reasonable time frame) promise id
     var id = null;
 
@@ -3087,31 +3159,6 @@ Peerio.Net.init = function () {
   api.confirmAddress = function (username, confirmationCode) {
     return sendToSocket('confirmAddress', {username: username, confirmationCode: confirmationCode})
       .return(true);
-  };
-
-  /**
-   * Authenticates current websocket session.
-   * Only need to call this once per app runtime, because credentials are being cached
-   * and connection authenticates on every reconnect.
-   * @param {string} username
-   * @param {string} passphrase
-   * @returns nothing. Provides api to read connection/auth state and events.
-   */
-  api.setCredentials = function (username, passphrase) {
-    Peerio.Crypto.getKeyPair(username, passphrase).then(function (keys) {
-      credentials = {
-        username: username,
-        publicKeyString: null,
-        keyPair: {
-          publicKey: keys.publicKey,
-          secretKey: keys.secretKey
-        }
-      };
-      return Peerio.Crypto.getPublicKeyString(keys.publicKey);
-    }).then(function (publicKey) {
-      credentials.publicKeyString = publicKey;
-      login();
-    });
   };
 
   /**
