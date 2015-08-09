@@ -16,7 +16,7 @@ Peerio.Auth.init = function () {
 
   // Peerio.Net is a low-level service and it does not know about event system, so we bridge events.
   net.addEventListener(net.EVENTS.onConnect, Peerio.Action.socketConnect);
-  net.addEventListener(net.EVENTS.onDisconnect, Peerio.Action.socketDisonnect);
+  net.addEventListener(net.EVENTS.onDisconnect, Peerio.Action.socketDisconnect);
   // this events will be fired on automatic re-login attempts only
   net.addEventListener(net.EVENTS.onAuthenticated, Peerio.Action.loginSuccess);
   net.addEventListener(net.EVENTS.onAuthFail, Peerio.Action.loginFail);
