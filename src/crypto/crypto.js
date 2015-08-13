@@ -370,21 +370,22 @@ Peerio.Crypto.init = function () {
 
   /**
    * Decrypt a message.
-   * @param {object} messageObject - As received from server.
+   * @param {object} encMessage - As received from server.
    * @param {User} [user] - decrypting user
    * @promise {object} plaintext object.
    */
-  api.decryptMessage = function (messageObject, user) {
+  api.decryptMessage = function (encMessage, user) {
     user = defaultUser || user;
+    var decrypted;
     return new Promise(function (resolve, reject) {
 
-      var header = JSON.stringify(messageObject.header);
+      var header = JSON.stringify(encMessage.header);
 
       var messageBlob = new Blob([
         signature,
         numberToByteArray(header.length),
         header,
-        decodeB64(messageObject.body)
+        decodeB64(encMessage.body)
       ]);
 
       decryptBlob(messageBlob, user,
@@ -394,8 +395,8 @@ Peerio.Crypto.init = function () {
             return;
           }
           // validating sender public key
-          if (hasProp(user.contacts, messageObject.sender)
-            && user.contacts[messageObject.sender].publicKey !== senderID) {
+          if (hasProp(user.contacts, encMessage.sender)
+            && user.contacts[encMessage.sender].publicKey !== senderID) {
             reject();
             return;
           }
@@ -415,7 +416,29 @@ Peerio.Crypto.init = function () {
           reader.readAsArrayBuffer(decryptedBlob);
         }
       );
-    });
+    })
+      .then(function (message) {
+        decrypted = message;
+        decrypted.receipts = [];
+
+        return Promise.each(encMessage.recipients, function (recipient) {
+          if (recipient.username === user.username || !recipient.receipt || !recipient.receipt.encryptedReturnReceipt) return;
+
+          return api.decryptReceipt(recipient.username, recipient.receipt.encryptedReturnReceipt)
+            .then(function (decReceipt) {
+              if (decrypted.receipt === decReceipt.substring(0, decReceipt.length - timestampLength)) {
+                decrypted.receipts.push(recipient.username);
+              }
+            })
+            .catch(function (err) {
+              console.log(err);
+            });
+        });
+
+      })
+      .then(function () {
+        return decrypted;
+      });
   };
 
   /**

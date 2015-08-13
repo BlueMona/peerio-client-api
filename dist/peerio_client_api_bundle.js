@@ -2988,7 +2988,6 @@ Peerio.Messages.init = function () {
   function decryptMessage(encMessage) {
     return Peerio.Crypto.decryptMessage(encMessage)
       .then(function (message) {
-        // todo receipts
         delete message.ack;
         message.id = encMessage.id;
         message.sender = encMessage.sender;
@@ -2997,7 +2996,6 @@ Peerio.Messages.init = function () {
         return message;
       });
   }
-
 
 };
 /**
