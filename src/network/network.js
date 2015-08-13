@@ -97,6 +97,7 @@ Peerio.Net.init = function () {
    * Stores user object to re-login automatically in case of reconnection.
    * @param {Peerio.Model.User} userObj
    * @param {bool} [autoLogin] - true when login was called automatically after reconnect
+   * @promise {Peerio.Model.User} - resolves with authenticated user object
    */
   api.login = function (userObj, autoLogin) {
     if (!userObj) return Promise.reject();
@@ -117,6 +118,8 @@ Peerio.Net.init = function () {
         console.log('authenticated');
         if (autoLogin)
           fireEvent(api.EVENTS.onAuthenticated);
+
+        return user;
       })
       .timeout(60000) // magic number based on common sense
       .catch(function (err) {

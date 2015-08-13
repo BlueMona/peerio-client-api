@@ -138,6 +138,8 @@ describe('Crypto', function () {
         return C.decryptMessage(data, testUser);
       })
       .then(function (decrypted) {
+        expect(decrypted.receipt).toBeDefined();
+        delete decrypted.receipt;
         expect(decrypted).toEqual(originalMessage);
         done();
       })
@@ -184,6 +186,18 @@ describe('Crypto', function () {
         done();
       })
       .catch(done.fail);
+  });
+
+  it('encrypts and decrypts receipt', function (done) {
+    var original = nacl.util.encodeBase64(nacl.randomBytes(32)) + Date.now().toString();
+    C.encryptReceipt(original, testUser.username, testUser)
+      .then(function (encrypted) {
+        return C.decryptReceipt(testUser.username, encrypted, testUser);
+      })
+      .then(function (decrypted) {
+        expect(decrypted).toBe(original);
+        done();
+      });
   });
 
   xdescribe('benchmarks', function () {

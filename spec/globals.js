@@ -1,6 +1,6 @@
 // IMMUTABLE global spec data
 
-// this test user is(might be) unregistered, it's used to test crypto and contains all the needed data for that
+// this test user is(might be, depending on server) unregistered, it's used to test crypto and contains all the needed data for that
 testUser = new Peerio.Model.User();
 testUser.username = 'anritest1';
 testUser.publicKey = '24yZSy2gDbBbY9MV5fxD4krLEK3M7S74BcD4EwSz4RVCMS';

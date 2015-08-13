@@ -34,8 +34,31 @@ Peerio.Auth.init = function () {
       Peerio.user = new Peerio.Model.User(username, passphrase);
       resolve();
     })
-      .then(Peerio.user.generateKeys.bind(Peerio.user))
-      .then(net.login.bind(net, Peerio.user));
+      .then(function(){
+        return Peerio.user.generateKeys();
+      })
+      .then(function () {
+        return net.login(Peerio.user);
+      })
+      .then(function (user) {
+        Peerio.Crypto.setDefaultUserData(user.username, user.keyPair, user.publicKey);
+        return net.getSettings();
+      })
+      .then(function(settings){
+        Peerio.user.settings = settings;
+        return net.getContacts();
+      })
+      .then(function(contacts){
+        var contactMap = {};
+        contacts.contacts.forEach(function(c){
+          c.publicKey = c.miniLockID;// todo: remove after this gets renamed on server
+          contactMap[c.username] = c;
+        });
+        contactMap[Peerio.user.username] = Peerio.user;
+        Peerio.user.contacts = contactMap;
+        Peerio.Crypto.setDefaultContacts(contactMap);
+        return true;
+      });
   };
 
   /**

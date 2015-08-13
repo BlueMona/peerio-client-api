@@ -54,19 +54,8 @@ Peerio.Action.init = function () {
     'Authenticated',       // WebSocket connection was authenticated
     'Loading',             // Data transfer is in process
     'LoadingDone',         // Data transfer ended
-    //'LoginProgress',       // {string} state
     'LoginSuccess',        // login attempt succeeded
-    'LoginFail'           // login attempt failed
-    //'TwoFARequest',        // server requested 2fa code
-    //'TwoFAValidateSuccess',// 2fa code validation success
-    //'TwoFAValidateFail',   // 2fa code validation fail
-    //'TOFUFail',            // Contact loader detected TOFU check fail
-    //'MessageSentStatus',   // progress report on sending message {object, Peerio.Action.Statuses} internal temporary guid
-    //'ConversationUpdated', // messages were updated in single conversation thread {id} conversation id
-    //'MessagesUpdated',     // there was an update to the messages in the following conversations {array} conversation ids
-    //'ConversationsLoaded', // Peerio.user.conversations was created/replaced from cache or network. Full update.
-    //'FilesUpdated',        // Something in user files collection has changed, so you better rerender it
-    //'ContactsUpdated',     // One or more contacts loaded/modified/deleted
+    'LoginFail'            // login attempt failed
 
   ].forEach(function (action) {
       Peerio.Action.add(action);

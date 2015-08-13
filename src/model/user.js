@@ -31,7 +31,7 @@ Peerio.Model = Peerio.Model || {};
 
   /**
    * Generates keyPair and publicKeyString and fills corresponding properties
-   * @promise - resolved when ready
+   * @promise {Peerio.Model.User}- resolved with self when ready
    */
   u.prototype.generateKeys = function () {
     var self = this;

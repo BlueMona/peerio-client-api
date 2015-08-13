@@ -1,5 +1,6 @@
 /**
- * Some libraries are not worker-aware, so we help them
+ * Some libraries are not worker-aware, so we help them.
+ * Everything you put here will be included into worker bundles.
  */
 
 if(!this.window)
@@ -9351,6 +9352,11 @@ Peerio.Crypto.init = function () {
 
   var base58Match = new RegExp('^[1-9ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]+$');
   var base64Match = new RegExp('^(?:[A-Za-z0-9+\/]{4})*(?:[A-Za-z0-9+\/]{2}==|[A-Za-z0-9+\/]{3}=)?$');
+  // shortcuts
+  var decodeB64 = nacl.util.decodeBase64;
+  var encodeB64 = nacl.util.encodeBase64;
+  var decodeUTF8 = nacl.util.decodeUTF8;
+  var encodeUTF8 = nacl.util.encodeUTF8;
 
   var keySize = 32;
   var decryptInfoNonceSize = 24;
@@ -9359,6 +9365,7 @@ Peerio.Crypto.init = function () {
   var signatureSize = 8;
   var headerStart = numberSize + signatureSize;
   var fileNameSize = 256;
+  var timestampLength = 13; // Date.now().toString().length
   // DO NOT CHANGE, it will change crypto output
   var scryptResourceCost = 14;
   var scryptBlockSize = 8;
@@ -9416,8 +9423,8 @@ Peerio.Crypto.init = function () {
   api.getKeyPair = function (username, passphrase) {
     return new Promise(function (resolve) {
       var keyHash = new BLAKE2s(keySize);
-      keyHash.update(nacl.util.decodeUTF8(passphrase));
-      username = nacl.util.decodeUTF8(username);
+      keyHash.update(decodeUTF8(passphrase));
+      username = decodeUTF8(username);
 
       // Generates 32 bytes of key material in a Uint8Array with scrypt
       scrypt(keyHash.digest(), username, scryptResourceCost, scryptBlockSize, keySize, scryptStepDuration, resolve);
@@ -9451,9 +9458,13 @@ Peerio.Crypto.init = function () {
    */
   api.getPublicKeyBytes = function (publicKey) {
     return Promise.resolve(
-      Base58.decode(publicKey).subarray(0, keySize)
+      getPublicKeyBytesSync(publicKey)
     );
   };
+
+  function getPublicKeyBytesSync(publicKey) {
+    return Base58.decode(publicKey).subarray(0, keySize);
+  }
 
   /**
    * Encrypts a plaintext using `nacl.secretbox` and returns the ciphertext and a random nonce.
@@ -9463,7 +9474,7 @@ Peerio.Crypto.init = function () {
    */
   api.secretBoxEncrypt = function (plaintext, key) {
     var nonce = nacl.randomBytes(decryptInfoNonceSize);
-    var ciphertext = nacl.secretbox(nacl.util.decodeUTF8(plaintext), nonce, key);
+    var ciphertext = nacl.secretbox(decodeUTF8(plaintext), nonce, key);
     return Promise.resolve({
       ciphertext: ciphertext,
       nonce: nonce
@@ -9479,7 +9490,7 @@ Peerio.Crypto.init = function () {
    */
   api.secretBoxDecrypt = function (ciphertext, nonce, key) {
     return Promise.resolve(
-      nacl.util.encodeUTF8(nacl.secretbox.open(ciphertext, nonce, key))
+      encodeUTF8(nacl.secretbox.open(ciphertext, nonce, key))
     );
   };
 
@@ -9493,8 +9504,8 @@ Peerio.Crypto.init = function () {
   api.getKeyFromPIN = function (PIN, username) {
     return new Promise(function (resolve) {
       var hash = new BLAKE2s(keySize);
-      hash.update(nacl.util.decodeUTF8(PIN));
-      scrypt(hash.hexDigest(), nacl.util.decodeUTF8(username), scryptResourceCost, scryptBlockSize,
+      hash.update(decodeUTF8(PIN));
+      scrypt(hash.hexDigest(), decodeUTF8(username), scryptResourceCost, scryptBlockSize,
         keySize, scryptStepDuration, resolve);
     }).then(function (keyBytes) {
         return new Uint8Array(keyBytes);
@@ -9527,15 +9538,15 @@ Peerio.Crypto.init = function () {
     return api.getPublicKeyBytes(data.ephemeralServerPublicKey)
       .then(function (serverKey) {
         var token = nacl.box.open(
-          nacl.util.decodeBase64(data.accountCreationToken.token),
-          nacl.util.decodeBase64(data.accountCreationToken.nonce),
+          decodeB64(data.accountCreationToken.token),
+          decodeB64(data.accountCreationToken.nonce),
           serverKey,
           keyPair.secretKey
         );
 
         //todo: explain magic numbers
         if (token && token.length === 0x20 && token[0] === 0x41 && token[1] === 0x43)
-          return Promise.resolve(nacl.util.encodeBase64(token));
+          return Promise.resolve(encodeB64(token));
 
         console.log('Decryption of account creation token failed.');
         return Promise.reject();
@@ -9559,14 +9570,14 @@ Peerio.Crypto.init = function () {
     return api.getPublicKeyBytes(data.ephemeralServerPublicKey)
       .then(function (serverKey) {
         var dToken = nacl.box.open(
-          nacl.util.decodeBase64(data.token),
-          nacl.util.decodeBase64(data.nonce),
+          decodeB64(data.token),
+          decodeB64(data.nonce),
           serverKey,
           keyPair.secretKey
         );
         //todo: explain magic numbers
         if (dToken && dToken.length === 0x20 && dToken[0] === 0x41 && dToken[1] === 0x54)
-          return Promise.resolve(nacl.util.encodeBase64(dToken));
+          return Promise.resolve(encodeB64(dToken));
 
         return Promise.reject();
       });
@@ -9592,12 +9603,12 @@ Peerio.Crypto.init = function () {
     }
 
     var hash1 = new BLAKE2s(keySize);
-    hash1.update(nacl.util.decodeUTF8(username));
+    hash1.update(decodeUTF8(username));
     hash1.update(Base58.decode(publicKey));
 
     var hash2 = new BLAKE2s(keySize);
     hash2.update(Base58.decode(publicKey));
-    hash2.update(nacl.util.decodeUTF8(username));
+    hash2.update(decodeUTF8(username));
 
     return Promise.resolve([hash1.hexDigest(), hash2.hexDigest()]);
   };
@@ -9611,12 +9622,14 @@ Peerio.Crypto.init = function () {
    */
   api.encryptMessage = function (message, recipients, sender) {
     sender = sender || defaultUser;
+    // recipients should send this back
+    message.receipt = encodeB64(nacl.randomBytes(32)) + Date.now();
     return new Promise(function (resolve, reject) {
 
       var validatedRecipients = validateRecipients(recipients, sender);
 
       encryptBlob(
-        new Blob([nacl.util.decodeUTF8(JSON.stringify(message))]),
+        new Blob([decodeUTF8(JSON.stringify(message))]),
         validatedRecipients.publicKeys,
         sender,
         function (encryptedChunks, header) {
@@ -9631,7 +9644,7 @@ Peerio.Crypto.init = function () {
             var encryptedBuffer = new Uint8Array(readerEvent.target.result);
             var headerLength = byteArrayToNumber(encryptedBuffer.subarray(signatureSize, headerStart));
             header = JSON.parse(header);
-            var body = nacl.util.encodeBase64(
+            var body = encodeB64(
               encryptedBuffer.subarray(headerStart + headerLength)
             );
             resolve({header: header, body: body, failed: validatedRecipients.failed});
@@ -9667,7 +9680,7 @@ Peerio.Crypto.init = function () {
           }
           encryptedChunks.splice(0, numberSize);
           resolve({
-            fileName: nacl.util.encodeBase64(fileName.subarray(4)),
+            fileName: encodeB64(fileName.subarray(4)),
             header: JSON.parse(header),
             chunks: encryptedChunks,
             failed: validatedRecipients.failed
@@ -9693,7 +9706,7 @@ Peerio.Crypto.init = function () {
         signature,
         numberToByteArray(header.length),
         header,
-        nacl.util.decodeBase64(messageObject.body)
+        decodeB64(messageObject.body)
       ]);
 
       decryptBlob(messageBlob, user,
@@ -9712,7 +9725,7 @@ Peerio.Crypto.init = function () {
           var decryptedBuffer;
           var reader = new FileReader();
           reader.onload = function (readerEvent) {
-            decryptedBuffer = nacl.util.encodeUTF8(
+            decryptedBuffer = encodeUTF8(
               new Uint8Array(readerEvent.target.result)
             );
 
@@ -9741,13 +9754,13 @@ Peerio.Crypto.init = function () {
     return new Promise(function (resolve, reject) {
 
       var headerString = JSON.stringify(header);
-      var headerStringLength = nacl.util.decodeUTF8(headerString).length;
+      var headerStringLength = decodeUTF8(headerString).length;
       var peerioBlob = new Blob([
         signature,
         numberToByteArray(headerStringLength),
         headerString,
         numberToByteArray(fileNameSize),
-        nacl.util.decodeBase64(id),
+        decodeB64(id),
         blob
       ]);
 
@@ -9782,14 +9795,14 @@ Peerio.Crypto.init = function () {
     user = user || defaultUser;
     var fileInfo = decryptHeader(header, user).fileInfo;
 
-    fileInfo.fileNonce = nacl.util.decodeBase64(fileInfo.fileNonce);
-    fileInfo.fileKey = nacl.util.decodeBase64(fileInfo.fileKey);
+    fileInfo.fileNonce = decodeB64(fileInfo.fileNonce);
+    fileInfo.fileKey = decodeB64(fileInfo.fileKey);
 
     var nonce = new Uint8Array(decryptInfoNonceSize);
     nonce.set(fileInfo.fileNonce);
 
-    var decrypted = nacl.secretbox.open(nacl.util.decodeBase64(id), nonce, fileInfo.fileKey);
-    decrypted = nacl.util.encodeUTF8(decrypted);
+    var decrypted = nacl.secretbox.open(decodeB64(id), nonce, fileInfo.fileKey);
+    decrypted = encodeUTF8(decrypted);
 
     while (decrypted[decrypted.length - 1] === '\0')
       decrypted = decrypted.slice(0, -1);
@@ -9797,7 +9810,74 @@ Peerio.Crypto.init = function () {
     return Promise.resolve(decrypted);
   };
 
+  /**
+   * Encrypts read receipt to send it as acknowledgement
+   * @param {string} receipt - utf8 receipt string
+   * @param {string} recipientUsername
+   * @param [user]
+   * @promise {string} encrypted and base64 encoded receipt and nonce in 'receipt:nonce' format
+   */
+  api.encryptReceipt = function (receipt, recipientUsername, user) {
+    user = user || defaultUser;
+
+    var recipient = getContact(recipientUsername, user);
+    if (!recipient) return Promise.reject();
+
+    var nonce = nacl.randomBytes(decryptInfoNonceSize);
+    var encReceipt = nacl.box(
+      decodeUTF8(receipt),
+      nonce,
+      recipient.publicKeyBytes,
+      user.keyPair.secretKey
+    );
+
+    encReceipt = encodeB64(encReceipt) + ':' + encodeB64(nonce);
+    return Promise.resolve(encReceipt);
+  };
+
+  /**
+   * Decrypts received read receipt
+   * @param {string} username - receipt sender
+   * @param {string} receipt
+   * @param [user]
+   * @promise
+   */
+  api.decryptReceipt = function (username, receipt, user) {
+    user = user || defaultUser;
+    var receiptParts;
+
+    if (typeof(receipt) !== 'string' || (receiptParts = receipt.split(':')).length !== 2)
+      return Promise.reject('Invalid receipt value.');
+
+    var sender = getContact(username, user);
+    if (!sender) return Promise.reject();
+
+    var decrypted = nacl.box.open(
+      decodeB64(receiptParts[0]),
+      decodeB64(receiptParts[1]),
+      sender.publicKeyBytes,
+      user.keyPair.secretKey
+    );
+
+    if (!decrypted) return Promise.reject('Failed to decrypt receipt.');
+
+    decrypted = encodeUTF8(decrypted);//.substring(0, decrypted.length - timestampLength);
+    return Promise.resolve(decrypted);
+  };
   //-- INTERNALS -------------------------------------------------------------------------------------------------------
+
+  function getContact(username, user) {
+    user = user || defaultUser;
+
+    var contact = user.contacts[username];
+    if (!contact || !contact.publicKey)
+      return false;
+
+    if (!contact.publicKeyBytes)
+      contact.publicKeyBytes = getPublicKeyBytesSync(contact.publicKey);
+
+    return contact;
+  }
 
   /**
    * Validates and builds a list of recipient public keys
@@ -9857,7 +9937,7 @@ Peerio.Crypto.init = function () {
       return false;
 
     if (base64Match.test(nonce))
-      return nacl.util.decodeBase64(nonce).length === expectedLength;
+      return decodeB64(nonce).length === expectedLength;
 
     return false;
   }
@@ -9872,7 +9952,7 @@ Peerio.Crypto.init = function () {
       return false;
 
     if (base64Match.test(key))
-      return nacl.util.decodeBase64(key).length === keySize;
+      return decodeB64(key).length === keySize;
 
     return false;
   }
@@ -9921,7 +10001,7 @@ Peerio.Crypto.init = function () {
 
     var header = {
       version: 1,
-      ephemeral: nacl.util.encodeBase64(ephemeral.publicKey),
+      ephemeral: encodeB64(ephemeral.publicKey),
       decryptInfo: {}
     };
 
@@ -9934,27 +10014,27 @@ Peerio.Crypto.init = function () {
         senderID: sender.publicKey,
         recipientID: publicKeys[i],
         fileInfo: {
-          fileKey: nacl.util.encodeBase64(fileKey),
-          fileNonce: nacl.util.encodeBase64(fileNonce),
-          fileHash: nacl.util.encodeBase64(fileHash)
+          fileKey: encodeB64(fileKey),
+          fileNonce: encodeB64(fileNonce),
+          fileHash: encodeB64(fileHash)
         }
       };
 
-      decryptInfo.fileInfo = nacl.util.encodeBase64(nacl.box(
-        nacl.util.decodeUTF8(JSON.stringify(decryptInfo.fileInfo)),
+      decryptInfo.fileInfo = encodeB64(nacl.box(
+        decodeUTF8(JSON.stringify(decryptInfo.fileInfo)),
         decryptInfoNonces[i],
         Base58.decode(publicKeys[i]).subarray(0, keySize),
         sender.keyPair.secretKey
       ));
 
-      decryptInfo = nacl.util.encodeBase64(nacl.box(
-        nacl.util.decodeUTF8(JSON.stringify(decryptInfo)),
+      decryptInfo = encodeB64(nacl.box(
+        decodeUTF8(JSON.stringify(decryptInfo)),
         decryptInfoNonces[i],
         Base58.decode(publicKeys[i]).subarray(0, keySize),
         ephemeral.secretKey
       ));
 
-      header.decryptInfo[nacl.util.encodeBase64(decryptInfoNonces[i])] = decryptInfo;
+      header.decryptInfo[encodeB64(decryptInfoNonces[i])] = decryptInfo;
     }
 
     return header;
@@ -9981,15 +10061,15 @@ Peerio.Crypto.init = function () {
     for (var i in header.decryptInfo) {
       if (hasProp(header.decryptInfo, i) && validateNonce(i, decryptInfoNonceSize)) {
         actualDecryptInfo = nacl.box.open(
-          nacl.util.decodeBase64(header.decryptInfo[i]),
-          nacl.util.decodeBase64(i),
-          nacl.util.decodeBase64(header.ephemeral),
+          decodeB64(header.decryptInfo[i]),
+          decodeB64(i),
+          decodeB64(header.ephemeral),
           user.keyPair.secretKey
         );
 
         if (actualDecryptInfo) {
-          actualDecryptInfo = JSON.parse(nacl.util.encodeUTF8(actualDecryptInfo));
-          actualDecryptInfoNonce = nacl.util.decodeBase64(i);
+          actualDecryptInfo = JSON.parse(encodeUTF8(actualDecryptInfo));
+          actualDecryptInfoNonce = decodeB64(i);
           break;
         }
       }
@@ -10004,12 +10084,12 @@ Peerio.Crypto.init = function () {
 
     try {
       actualFileInfo = nacl.box.open(
-        nacl.util.decodeBase64(actualDecryptInfo.fileInfo),
+        decodeB64(actualDecryptInfo.fileInfo),
         actualDecryptInfoNonce,
         Base58.decode(actualDecryptInfo.senderID).subarray(0, keySize),
         user.keyPair.secretKey
       );
-      actualFileInfo = JSON.parse(nacl.util.encodeUTF8(actualFileInfo));
+      actualFileInfo = JSON.parse(encodeUTF8(actualFileInfo));
     }
     catch (err) {
       return false;
@@ -10060,7 +10140,7 @@ Peerio.Crypto.init = function () {
     );
 
     var paddedFileName = new Uint8Array(256);
-    var fileNameBytes = nacl.util.decodeUTF8(blob.name);
+    var fileNameBytes = decodeUTF8(blob.name);
     if (fileNameBytes.length > paddedFileName.length) {
       //blob name is too long
       callback(false);
@@ -10102,7 +10182,7 @@ Peerio.Crypto.init = function () {
 
       readBlob(blob, 12, headerLength + 12, function (header) {
         try {
-          header = nacl.util.encodeUTF8(header.data);
+          header = encodeUTF8(header.data);
           header = JSON.parse(header);
         }
         catch (error) {
@@ -10118,8 +10198,8 @@ Peerio.Crypto.init = function () {
         // Begin actual ciphertext decryption
         var dataPosition = headerStart + headerLength;
         var streamDecryptor = nacl.stream.createDecryptor(
-          nacl.util.decodeBase64(actualDecryptInfo.fileInfo.fileKey),
-          nacl.util.decodeBase64(actualDecryptInfo.fileInfo.fileNonce),
+          decodeB64(actualDecryptInfo.fileInfo.fileKey),
+          decodeB64(actualDecryptInfo.fileInfo.fileNonce),
           api.chunkSize
         );
         var hashObject = new BLAKE2s(keySize);
@@ -10231,7 +10311,7 @@ Peerio.Crypto.init = function () {
             return false;
           }
 
-          var fileName = nacl.util.encodeUTF8(decryptedChunk.subarray(0, fileNameSize));
+          var fileName = encodeUTF8(decryptedChunk.subarray(0, fileNameSize));
           var trimStart = fileName.indexOf('\0');
           d.fileName = trimStart >= 0 ? fileName.slice(trimStart) : fileName;
 
@@ -10251,7 +10331,7 @@ Peerio.Crypto.init = function () {
         d.dataPosition += chunk.length;
         if (!isLast) return decryptNextChunk(d);
 
-        if (!nacl.verify(new Uint8Array(d.hashObject.digest()), nacl.util.decodeBase64(d.fileInfo.fileHash))) {
+        if (!nacl.verify(new Uint8Array(d.hashObject.digest()), decodeB64(d.fileInfo.fileHash))) {
           d.callbackOnComplete(false);
           throw new Error('Failed to verify decrypted data hash');
         }
@@ -10319,7 +10399,7 @@ Peerio.Crypto.init = function () {
           response.result = result;
         })
         .catch(function (err) {
-          response.error = err || 'Unknown error';
+          response.error = (err && err.toString()) || 'Unknown error';
         })
         .finally(function () {
           self.postMessage(response);
@@ -10327,7 +10407,7 @@ Peerio.Crypto.init = function () {
 
     } catch (e) {
       // warning, don't try to postMessage(e), error object can't be cloned automatically
-      response.error = (e && e.message) || 'Unknown error';
+      response.error = (e && e.toString()) || 'Unknown error';
       self.postMessage(response);
     }
   };

@@ -7048,7 +7048,7 @@ function toArray(list, index) {
       stopPingChecks();
     });
 
-    self.peerioSocket.on('userPing', function () {
+    self.peerioSocket.on('ping', function () {
       self.setLastPing();
     });
 

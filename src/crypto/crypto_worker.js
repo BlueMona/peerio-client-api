@@ -41,7 +41,7 @@
           response.result = result;
         })
         .catch(function (err) {
-          response.error = err || 'Unknown error';
+          response.error = (err && err.toString()) || 'Unknown error';
         })
         .finally(function () {
           self.postMessage(response);
@@ -49,7 +49,7 @@
 
     } catch (e) {
       // warning, don't try to postMessage(e), error object can't be cloned automatically
-      response.error = (e && e.message) || 'Unknown error';
+      response.error = (e && e.toString()) || 'Unknown error';
       self.postMessage(response);
     }
   };

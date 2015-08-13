@@ -2561,7 +2561,7 @@ Peerio.Crypto.init = function () {
   // pending promises callbacks
   // id: {resolve: resolve callback, reject: reject callback}
   var callbacks = {};
-  var workerCount = Math.min(Peerio.Config.cpuCount, 4);
+  var workerCount = Peerio.Crypto.wokerInstanceCount = Math.min(Peerio.Config.cpuCount, 4);
   // creating worker instances
   for (var i = 0; i < workerCount; i++) {
     workers[i] = new Worker(Peerio.Config.apiFolder + 'crypto_worker_bundle.js');
@@ -2615,10 +2615,12 @@ Peerio.Crypto.init = function () {
     'decryptAuthToken',
     'getAvatar',
     'encryptMessage',
-    'encryptFile',
     'decryptMessage',
+    'encryptFile',
     'decryptFile',
-    'decryptFileName'
+    'decryptFileName',
+    'encryptReceipt',
+    'decryptReceipt'
   ].forEach(function (fnName) {
       Peerio.Crypto[fnName] = function () {
         var id = uuid();
@@ -2727,7 +2729,7 @@ Peerio.Model = Peerio.Model || {};
 
   /**
    * Generates keyPair and publicKeyString and fills corresponding properties
-   * @promise - resolved when ready
+   * @promise {Peerio.Model.User}- resolved with self when ready
    */
   u.prototype.generateKeys = function () {
     var self = this;
@@ -2823,7 +2825,7 @@ Peerio.Auth.init = function () {
 
   // Peerio.Net is a low-level service and it does not know about event system, so we bridge events.
   net.addEventListener(net.EVENTS.onConnect, Peerio.Action.socketConnect);
-  net.addEventListener(net.EVENTS.onDisconnect, Peerio.Action.socketDisonnect);
+  net.addEventListener(net.EVENTS.onDisconnect, Peerio.Action.socketDisconnect);
   // this events will be fired on automatic re-login attempts only
   net.addEventListener(net.EVENTS.onAuthenticated, Peerio.Action.loginSuccess);
   net.addEventListener(net.EVENTS.onAuthFail, Peerio.Action.loginFail);
@@ -2841,8 +2843,31 @@ Peerio.Auth.init = function () {
       Peerio.user = new Peerio.Model.User(username, passphrase);
       resolve();
     })
-      .then(Peerio.user.generateKeys.bind(Peerio.user))
-      .then(net.login.bind(net, Peerio.user));
+      .then(function(){
+        return Peerio.user.generateKeys();
+      })
+      .then(function () {
+        return net.login(Peerio.user);
+      })
+      .then(function (user) {
+        Peerio.Crypto.setDefaultUserData(user.username, user.keyPair, user.publicKey);
+        return net.getSettings();
+      })
+      .then(function(settings){
+        Peerio.user.settings = settings;
+        return net.getContacts();
+      })
+      .then(function(contacts){
+        var contactMap = {};
+        contacts.contacts.forEach(function(c){
+          c.publicKey = c.miniLockID;// todo: remove after this gets renamed on server
+          contactMap[c.username] = c;
+        });
+        contactMap[Peerio.user.username] = Peerio.user;
+        Peerio.user.contacts = contactMap;
+        Peerio.Crypto.setDefaultContacts(contactMap);
+        return true;
+      });
   };
 
   /**
@@ -2892,6 +2917,88 @@ Peerio.Auth.init = function () {
         return net.activateAccount(decryptedToken);
       });
   };
+};
+/**
+ * Peerio App logic: messages
+ */
+
+var Peerio = this.Peerio || {};
+Peerio.Messages = {};
+
+Peerio.Messages.init = function () {
+  'use strict';
+
+  var api = Peerio.Messages = {};
+  var net = Peerio.Net;
+
+  var conversationsCache = null;
+
+  api.getAllConversations = function () {
+    if (conversationsCache)
+      return Promise.resolve(conversationsCache);
+
+    return net.getAllConversations()
+      .then(function (response) {
+        return decryptConversations(response.conversations);
+      })
+      .then(function (decryptedConversations) {
+        conversationsCache = decryptedConversations;
+        return conversationsCache;
+      });
+  };
+
+  function decryptConversations(conversations) {
+    var start = Date.now();
+    var decryptedConversations = {data: [], index: {}};
+    var keys = Object.keys(conversations);
+
+    return Promise.map(keys, function (convId) {
+        //console.log(convId);
+        var conv = conversations[convId];
+
+        if (!conv.original || !conv.messages[conv.original]) {
+          decryptedConversations.index[convId] = conv;
+          decryptedConversations.data.push(conv);
+          conv.messages = [];
+          return;
+        }
+
+        var encMessage = conv.messages[conv.original];
+
+        return decryptMessage(encMessage)
+          .then(function (message) {
+            conv.messages = [];
+            conv.messages[0] = message;
+            decryptedConversations.index[convId] = conv;
+            decryptedConversations.data.push(conv);
+          });
+      },
+      {
+        concurrency: Peerio.Crypto.wokerInstanceCount * 2
+      }
+    ).then(function () {
+        decryptedConversations.data.sort(function (a, b) {
+          return a.lastTimestamp > b.lastTimestamp ? -1 : (a.lastTimestamp < b.lastTimestamp ? 1 : 0);
+        });
+        console.log((Date.now() - start) / 1000);
+        return decryptedConversations;
+      });
+  }
+
+  function decryptMessage(encMessage) {
+    return Peerio.Crypto.decryptMessage(encMessage)
+      .then(function (message) {
+        // todo receipts
+        delete message.ack;
+        message.id = encMessage.id;
+        message.sender = encMessage.sender;
+        message.timestamp = encMessage.timestamp;
+        message.isModified = encMessage.isModified;
+        return message;
+      });
+  }
+
+
 };
 /**
  * Peerio network protocol implementation
@@ -2992,6 +3099,7 @@ Peerio.Net.init = function () {
    * Stores user object to re-login automatically in case of reconnection.
    * @param {Peerio.Model.User} userObj
    * @param {bool} [autoLogin] - true when login was called automatically after reconnect
+   * @promise {Peerio.Model.User} - resolves with authenticated user object
    */
   api.login = function (userObj, autoLogin) {
     if (!userObj) return Promise.reject();
@@ -3012,6 +3120,8 @@ Peerio.Net.init = function () {
         console.log('authenticated');
         if (autoLogin)
           fireEvent(api.EVENTS.onAuthenticated);
+
+        return user;
       })
       .timeout(60000) // magic number based on common sense
       .catch(function (err) {
@@ -3804,19 +3914,8 @@ Peerio.Action.init = function () {
     'Authenticated',       // WebSocket connection was authenticated
     'Loading',             // Data transfer is in process
     'LoadingDone',         // Data transfer ended
-    //'LoginProgress',       // {string} state
     'LoginSuccess',        // login attempt succeeded
-    'LoginFail'           // login attempt failed
-    //'TwoFARequest',        // server requested 2fa code
-    //'TwoFAValidateSuccess',// 2fa code validation success
-    //'TwoFAValidateFail',   // 2fa code validation fail
-    //'TOFUFail',            // Contact loader detected TOFU check fail
-    //'MessageSentStatus',   // progress report on sending message {object, Peerio.Action.Statuses} internal temporary guid
-    //'ConversationUpdated', // messages were updated in single conversation thread {id} conversation id
-    //'MessagesUpdated',     // there was an update to the messages in the following conversations {array} conversation ids
-    //'ConversationsLoaded', // Peerio.user.conversations was created/replaced from cache or network. Full update.
-    //'FilesUpdated',        // Something in user files collection has changed, so you better rerender it
-    //'ContactsUpdated',     // One or more contacts loaded/modified/deleted
+    'LoginFail'            // login attempt failed
 
   ].forEach(function (action) {
       Peerio.Action.add(action);
@@ -4152,6 +4251,7 @@ Peerio.initAPI = function () {
   Peerio.ActionOverrides.init();
   Peerio.AppState.init();
   Peerio.Auth.init();
+  Peerio.Messages.init();
 
   Peerio.Socket.start();
 
