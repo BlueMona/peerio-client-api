@@ -7,8 +7,7 @@ what
 this
 for
 your
-have
-don
+hav
 are
 not
 was
@@ -4084,7 +4083,6 @@ turf
 flirt
 semi
 hound
-sahib
 pint
 wretch
 seldom
@@ -5003,7 +5001,6 @@ camels
 plasma
 routes
 farce
-ludwig
 pools
 fags
 gauge
@@ -7238,7 +7235,6 @@ mildly
 plated
 kennel
 gopher
-nev
 uncool
 elixir
 pleas
@@ -7247,13 +7243,11 @@ juggle
 eros
 takers
 taipei
-phi
 mendel
 almond
 sweats
 tarot
 sparta
-zeta
 gull
 keel
 slid
@@ -7274,7 +7268,6 @@ smarty
 witted
 figs
 vixen
-dorado
 seams
 claps
 condor
@@ -9347,7 +9340,6 @@ orphans
 cruelty
 gambler
 busting
-suzanne
 pyramid
 blanche
 shaving
@@ -10716,7 +10708,6 @@ firearm
 folding
 endowed
 escorts
-suzette
 shaping
 sardine
 parched
@@ -10726,7 +10717,6 @@ revived
 bazooka
 preview
 dormant
-winslow
 sipping
 eyebrow
 dossier
@@ -12023,7 +12013,6 @@ authority
 committee
 ambulance
 convinced
-elizabeth
 miserable
 customers
 treatment
