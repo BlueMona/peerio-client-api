@@ -11,6 +11,9 @@
   // service functions are there for performance reasons and they don't provide response
   var serviceFunctions = ['setDefaultUserData', 'setDefaultContacts'];
 
+  // if getRandomValues polyfill will be needed, here we will stock our random bytes received from UI thread
+  var randomBytesStock = [];
+
   // expects message in following format:
   // {
   //   id:      unique message id. Will be sent back as is
@@ -26,6 +29,12 @@
   // }
   self.onmessage = function (payload) {
     var message = payload.data;
+
+    if (message.randomBytes) {
+      var newArray = Array.prototype.slice.call(new Uint8Array(message.randomBytes));
+      Array.prototype.push.apply(randomBytesStock, newArray);
+      return;
+    }
 
     if (serviceFunctions.indexOf(message.fnName) >= 0) {
       Peerio.Crypto[message.fnName].apply(Peerio.Crypto, message.args);
@@ -53,5 +62,29 @@
       self.postMessage(response);
     }
   };
+
+  var randomBytesNeeded = !self.crypto;
+  if (randomBytesNeeded) {
+    var nativePostFn = self.postMessage;
+    // overriding postMessage to attach stock report
+    self.postMessage = function (message) {
+      message.randomBytesStock = randomBytesStock.length;
+      nativePostFn(message);
+    };
+
+    // getRandomValues partial polyfill
+    self.cryptoShim.getRandomValues = function (arr) {
+      if (arr.length > randomBytesStock.length) throw 'Not enough random bytes in polyfill stock.';
+
+      for (var i = 0; i < arr.length; i++)
+        arr[i] = randomBytesStock[i];
+
+      randomBytesStock.splice(0, arr.length);
+      return arr;
+    };
+  }
+
+  // informing UI thread on getRandomValues situation
+  self.postMessage({provideRandomBytes: randomBytesNeeded});
 
 })();

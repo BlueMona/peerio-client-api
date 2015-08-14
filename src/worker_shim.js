@@ -5,3 +5,5 @@
 
 if(!this.window)
   this.window = self;
+
+this.window.cryptoShim = {};

@@ -15,37 +15,76 @@ Peerio.Crypto = {};
 Peerio.Crypto.init = function () {
   'use strict';
 
+  var self = this;
+
   Peerio.Crypto = {};
   // malicious server safe hasOwnProperty function;
   var hasProp = Function.call.bind(Object.prototype.hasOwnProperty);
+  var workerScriptPath = Peerio.Config.apiFolder + 'crypto_worker_bundle.js';
   // web worker instance
   var workers = []; // todo: maybe add a limit
   // pending promises callbacks
   // id: {resolve: resolve callback, reject: reject callback}
   var callbacks = {};
   var workerCount = Peerio.Crypto.wokerInstanceCount = Math.min(Peerio.Config.cpuCount, 4);
-  // creating worker instances
-  for (var i = 0; i < workerCount; i++) {
-    workers[i] = new Worker(Peerio.Config.apiFolder + 'crypto_worker_bundle.js');
-    // handling a message from worker
-    workers[i].onmessage = function (message) {
-      var data = message.data;
-      var promise = callbacks[data.id];
 
-      if (hasProp(data, 'error'))
-        promise.reject(data.error);
-      else
-        promise.resolve(data.result);
+  // when started, workers will report if they need random values provided to them
+  var provideRandomBytes = false;
+  // when worker reports that he has less then this number of random bytes left - we post more data to it
+  var randomBytesThreshold = 100;
 
-      delete callbacks[data.id];
+  // worker message handler
+  function messageHandler(index, message) {
+    var data = message.data;
+
+    provideRandomBytes && ensureRandomBytesStock(index, data.randomBytesStock);
+
+    var promise = callbacks[data.id];
+
+    if (hasProp(data, 'error'))
+      promise.reject(data.error);
+    else
+      promise.resolve(data.result);
+
+    delete callbacks[data.id];
+  }
+
+  // starts a single worker instance and adds in to workers array at specified index
+  function startWorker(index) {
+    var worker = workers[index] = new Worker(workerScriptPath);
+    // first message will be a feature report from worker
+    worker.onmessage = function (message) {
+      // all next messages are for different handler
+      worker.onmessage = messageHandler.bind(self, index);
+      // init random bytes provider system, unless already initialized or not needed
+      if (provideRandomBytes || !message.data.provideRandomBytes) return;
+      provideRandomBytes = true;
+      // sending the first portion of random bytes
+      ensureRandomBytesStock(index, 0);
     };
   }
-  var lastWorkerIndex = -1;
+
+  // this function is supposed to be called from worker.onmessage when worker reports it's random bytes stock
+  // to make sure it has enough
+  function ensureRandomBytesStock(index, currentStock) {
+    if (currentStock >= randomBytesThreshold) return;
+    var data = crypto.getRandomValues(new Uint8Array(randomBytesThreshold));
+    workers[index].postMessage({randomBytes: data.buffer}, [data.buffer]);
+  }
+
+  // creating worker instances
+  for (var n = 0; n < workerCount; n++) {
+    startWorker(n);
+  }
+
+  // worker round-robin tracker var
+  var lastUsedWorkerIndex = -1;
+
   // returns new worker instance in cycle
   function getWorker() {
-    if (++lastWorkerIndex === workers.length)
-      lastWorkerIndex = 0;
-    return workers[lastWorkerIndex];
+    if (++lastUsedWorkerIndex === workers.length)
+      lastUsedWorkerIndex = 0;
+    return workers[lastUsedWorkerIndex];
   }
 
   // this two methods should execute on all workers

@@ -130,16 +130,19 @@ describe('Crypto', function () {
   });
 
   it('encrypts and decrypts message', function (done) {
+    // todo, add recipients/receipts
     var originalMessage = {subject: 'encryption test', message: 'this is an encryption unit test message'};
 
     C.encryptMessage(originalMessage, [testUser.username], testUser)
       .then(function (data) {
         expect(data.failed).toEqual([]);
+        data.recipients = [];
         return C.decryptMessage(data, testUser);
       })
       .then(function (decrypted) {
         expect(decrypted.receipt).toBeDefined();
         delete decrypted.receipt;
+        delete decrypted.receipts;
         expect(decrypted).toEqual(originalMessage);
         done();
       })

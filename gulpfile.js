@@ -67,6 +67,7 @@ gulp.task('build-api', function () {
   // all other scripts are concatenated, excluding external libraries
   return gulp.src([
     '!src/network/socket_worker.js',
+    'src/crypto/lib/base64shim.js',
     'src/crypto/lib/nacl.js',
     'src/crypto/phrase_generator.js',
     'src/crypto/crypto_hub.js',

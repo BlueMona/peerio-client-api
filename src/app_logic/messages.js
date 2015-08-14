@@ -49,6 +49,7 @@ Peerio.Messages.init = function () {
           .then(function (message) {
             conv.messages = [];
             conv.messages[0] = message;
+            conv.original = message;
             decryptedConversations.index[convId] = conv;
             decryptedConversations.data.push(conv);
           });

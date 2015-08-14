@@ -16,7 +16,7 @@ Peerio.Config.init = function () {
 
   var cfg = Peerio.Config = {};
 
-  cfg.webSocketServer = 'wss://treetrunks.peerio.com:443';
+  cfg.webSocketServer = 'wss://marcyhome.peerio.com:443';
   cfg.errorReportServer = 'https://debug.peerio.com/api/report';
 
   // ios does not support navigator.hardwareConcurrency atm, use cpu info plugin
