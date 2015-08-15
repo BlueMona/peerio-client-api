@@ -8,6 +8,9 @@
  *
  */
 
+// todo: throttle/queue high request rate might lead to:
+// 1. randomBytesStock depletion (if shim is active)
+// 2. overall performance degradation
 
 var Peerio = this.Peerio || {};
 Peerio.Crypto = {};
@@ -31,7 +34,7 @@ Peerio.Crypto.init = function () {
   // when started, workers will report if they need random values provided to them
   var provideRandomBytes = false;
   // when worker reports that he has less then this number of random bytes left - we post more data to it
-  var randomBytesThreshold = 100;
+  var randomBytesThreshold = 3000;
 
   // worker message handler
   function messageHandler(index, message) {
