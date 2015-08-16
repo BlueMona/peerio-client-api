@@ -27,6 +27,41 @@ Peerio.Messages.init = function () {
       });
   };
 
+  api.getAllConversationsGradually = function (progress) {
+    if (conversationsCache)
+      return Promise.resolve(conversationsCache);
+
+    return net.getConversationIDs()
+      .then(function (response) {
+        var ids = response.conversationID;
+        var pages = [];
+        for (var i = 0; i < ids.length; i++) {
+          var request = [];
+          for (var j = 0; j < 10 && i < ids.length; j++, i++) {
+            request.push({id: ids[i], page:'none'});
+          }
+          pages.push(request);
+        }
+
+        return Promise.each(pages, function(page){
+          return net.getConversationPages(page)
+            .then(function(response){
+              return decryptConversations(response.conversations);
+            })
+            .then(mergeWithCache)
+            .then(function(){
+              progress(conversationsCache);
+            });
+        });
+      });
+  };
+
+  function mergeWithCache(conversations){
+    //todo dupe check
+    conversationsCache = conversationsCache || {data:[], index: {}};
+    Array.prototype.push.apply(conversationsCache.data, conversations.data);
+    _.assign(conversationsCache.index, conversations.index);
+  }
   function decryptConversations(conversations) {
     var start = Date.now();
     var decryptedConversations = {data: [], index: {}};

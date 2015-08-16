@@ -1,6 +1,7 @@
 /**
- * Peerio client API configuration.
- * Has to be loaded before other API code.
+ *       Use config_template.js to make your own config.js
+ *
+ * todo: environment-specific configuration?
  */
 
 var Peerio = this.Peerio || {};
@@ -9,33 +10,39 @@ Peerio.Config = {};
 Peerio.Config.init = function () {
   'use strict';
 
-  var cfg = Peerio.Config = {};
+  return new Promise(function (resolve) {
 
-  cfg.webSocketServer = 'wss://........peerio.com:443';
-  cfg.errorReportServer = 'https://debug.peerio.com/api/report';
+    var cfg = Peerio.Config = {};
 
-  // This parameter allows us to spawn an optimal number of crypto workers.
-  // For any chromium-based host navigator.hardwareConcurrency should be enough.
-  // For iOS (safari-based webview) apps, please use cordova-plugin-chrome-apps-system-cpu
-  // and reconfigure this parameter based on plugin cpu report.
-  cfg.cpuCount = navigator.hardwareConcurrency || 1;
+    cfg.webSocketServer = 'wss://marcyhome.peerio.com:443';
+    cfg.errorReportServer = 'https://debug.peerio.com/api/report';
 
-  // if client will not receive pings for pingTimeout, connection will be considered broken
-  // set to 0 to disable ping timeout
-  cfg.pingTimeout = 20000;
+    cfg.cpuCount = navigator.hardwareConcurrency || 1;
+    // if client will not receive pings for pingTimeout, connection will be considered broken
+    cfg.pingTimeout = 20000;
 
-  cfg.appVersion = 'n/a';
+    cfg.appVersion = 'n/a';
 
-  // Set this dynamically to something related to device where app is currently running.
-  // This secret key will be used for low-importance data encryption to store in on device.
-  cfg.lowImportanceDeviceKey = '12345';
+    // Set this dynamically to something related to device where app is currently running.
+    // This secret key will be used for low-importance data encryption to store in on device.
+    cfg.lowImportanceDeviceKey = '12345';
 
-  // Attempt to retrieve app version.
-  // deviceready will not fire in desktop browser, and we don't want it to.
-  // todo: do the same for desktop
-  document.addEventListener('deviceready', function () {
     // using cordova AppVersion plugin if available
-    if (AppVersion && AppVersion.version) cfg.appVersion = AppVersion.version;
-  }, false);
+    if (window.AppVersion && AppVersion.version)
+      cfg.appVersion = AppVersion.version;
+
+    // using cordova device plugin if available
+    if (window.device && device.uuid) cfg.lowImportanceDeviceKey = device.uuid;
+
+    // using cordova cpu info plugin if available
+    if (!navigator.hardwareConcurrency && window.chrome && chrome.system && chrome.system.cpu && chrome.system.cpu.getInfo) {
+      chrome.system.cpu.getInfo(function (info) {
+        var cpuCount = info.numOfProcessors || info.processors.length || 0;
+        if (cpuCount) cfg.cpuCount = cpuCount;
+        resolve();
+      });
+    } else resolve();
+
+  });
 
 };

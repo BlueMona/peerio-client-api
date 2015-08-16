@@ -7,6 +7,18 @@ if(!this.window)
   this.window = self;
 
 this.window.cryptoShim = {};
+
+
+if(!self.console) self.console = {
+  log:function(){
+    var args = [];
+    for(var i=0;i<arguments.length;i++)
+    args[i]= typeof(arguments[i]) === 'undefined' ? 'undefined': arguments[i].toString();
+    self.postMessage({'console.log':args});
+  }
+ // error:function(){},
+ // debug:function(){}
+};
 var Base58 = {};
 
 (function () {
@@ -10533,8 +10545,10 @@ Peerio.Crypto.init = function () {
     var message = payload.data;
 
     if (message.randomBytes) {
+      console.log(message.randomBytes.length, 'random bytes received');
       var newArray = Array.prototype.slice.call(new Uint8Array(message.randomBytes));
       Array.prototype.push.apply(randomBytesStock, newArray);
+      console.log(randomBytesStock.length,'randombytes now in stock');
       return;
     }
 
@@ -10576,6 +10590,7 @@ Peerio.Crypto.init = function () {
 
     // getRandomValues partial polyfill
     self.cryptoShim.getRandomValues = function (arr) {
+      console.log(arr.length, 'random bytes requested', randomBytesStock.length, 'is in stock');
       if (arr.length > randomBytesStock.length) throw 'Not enough random bytes in polyfill stock.';
 
       for (var i = 0; i < arr.length; i++)

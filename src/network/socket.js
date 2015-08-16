@@ -45,6 +45,7 @@ Peerio.Socket.init = function () {
 
   function messageHandler(message) {
     var data = message.data;
+    if(Peerio.Util.processWorkerConsoleLog(data)) return;
 
     if (hasProp(data, 'callbackID') && data.callbackID) {
       callbacks[data.callbackID](data.data);

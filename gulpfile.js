@@ -39,6 +39,7 @@ gulp.task('build-socket', function () {
   // socket worker should reside in separate script,
   // we also concatenate it with dependencies
   return gulp.src([
+    'src/worker_shim.js',
     'bower_components/socket.io-client/socket.io.js',
     'src/network/socket_worker.js'
   ]).pipe(concat('socket_worker_bundle.js'))

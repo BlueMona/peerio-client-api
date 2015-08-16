@@ -14,32 +14,39 @@ Peerio.Config = {};
 Peerio.Config.init = function () {
   'use strict';
 
-  var cfg = Peerio.Config = {};
+  return new Promise(function (resolve) {
 
-  cfg.webSocketServer = 'wss://marcyhome.peerio.com:443';
-  cfg.errorReportServer = 'https://debug.peerio.com/api/report';
+    var cfg = Peerio.Config = {};
 
-  // ios does not support navigator.hardwareConcurrency atm, use cpu info plugin
-  cfg.cpuCount = 4;//navigator.hardwareConcurrency || 1;
-  // if client will not receive pings for pingTimeout, connection will be considered broken
-  cfg.pingTimeout = 20000;
+    cfg.webSocketServer = 'wss://marcyhome.peerio.com:443';
+    cfg.errorReportServer = 'https://debug.peerio.com/api/report';
 
-  cfg.appVersion = 'n/a';
+    cfg.cpuCount = navigator.hardwareConcurrency || 1;
+    // if client will not receive pings for pingTimeout, connection will be considered broken
+    cfg.pingTimeout = 20000;
 
-  // Set this dynamically to something related to device where app is currently running.
-  // This secret key will be used for low-importance data encryption to store in on device.
-  cfg.lowImportanceDeviceKey = '12345';
+    cfg.appVersion = 'n/a';
 
-    // todo: do the same for desktop
-  document.addEventListener('deviceready', function () {
+    // Set this dynamically to something related to device where app is currently running.
+    // This secret key will be used for low-importance data encryption to store in on device.
+    cfg.lowImportanceDeviceKey = '12345';
 
     // using cordova AppVersion plugin if available
-    if (AppVersion && AppVersion.version)
+    if (window.AppVersion && AppVersion.version)
       cfg.appVersion = AppVersion.version;
 
     // using cordova device plugin if available
-    if(device && device.uuid) cfg.lowImportanceDeviceKey = device.uuid;
+    if (window.device && device.uuid) cfg.lowImportanceDeviceKey = device.uuid;
 
-  }, false);
+    // using cordova cpu info plugin if available
+    if (!navigator.hardwareConcurrency && window.chrome && chrome.system && chrome.system.cpu && chrome.system.cpu.getInfo) {
+      chrome.system.cpu.getInfo(function (info) {
+        var cpuCount = info.numOfProcessors || info.processors.length || 0;
+        if (cpuCount) cfg.cpuCount = cpuCount;
+        resolve();
+      });
+    } else resolve();
+
+  });
 
 };

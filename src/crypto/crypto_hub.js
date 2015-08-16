@@ -39,10 +39,12 @@ Peerio.Crypto.init = function () {
   // worker message handler
   function messageHandler(index, message) {
     var data = message.data;
+    if(Peerio.Util.processWorkerConsoleLog(data)) return;
 
     provideRandomBytes && ensureRandomBytesStock(index, data.randomBytesStock);
 
     var promise = callbacks[data.id];
+    if(!promise) return;
 
     if (hasProp(data, 'error'))
       promise.reject(data.error);
@@ -57,14 +59,18 @@ Peerio.Crypto.init = function () {
     var worker = workers[index] = new Worker(workerScriptPath);
     // first message will be a feature report from worker
     worker.onmessage = function (message) {
+      if(Peerio.Util.processWorkerConsoleLog(message.data)) return;
       // all next messages are for different handler
       worker.onmessage = messageHandler.bind(self, index);
-      // init random bytes provider system, unless already initialized or not needed
-      if (provideRandomBytes || !message.data.provideRandomBytes) return;
-      provideRandomBytes = true;
-      // sending the first portion of random bytes
-      ensureRandomBytesStock(index, 0);
+
+      if (provideRandomBytes = message.data.provideRandomBytes){
+        ensureRandomBytesStock(index, 0);
+      }
     };
+    worker.onerror = function(error){
+      console.log('crypto worker error:', error);
+    };
+
   }
 
   // this function is supposed to be called from worker.onmessage when worker reports it's random bytes stock

@@ -2696,10 +2696,12 @@ Peerio.Crypto.init = function () {
   // worker message handler
   function messageHandler(index, message) {
     var data = message.data;
+    if(Peerio.Util.processWorkerConsoleLog(data)) return;
 
     provideRandomBytes && ensureRandomBytesStock(index, data.randomBytesStock);
 
     var promise = callbacks[data.id];
+    if(!promise) return;
 
     if (hasProp(data, 'error'))
       promise.reject(data.error);
@@ -2714,14 +2716,18 @@ Peerio.Crypto.init = function () {
     var worker = workers[index] = new Worker(workerScriptPath);
     // first message will be a feature report from worker
     worker.onmessage = function (message) {
+      if(Peerio.Util.processWorkerConsoleLog(message.data)) return;
       // all next messages are for different handler
       worker.onmessage = messageHandler.bind(self, index);
-      // init random bytes provider system, unless already initialized or not needed
-      if (provideRandomBytes || !message.data.provideRandomBytes) return;
-      provideRandomBytes = true;
-      // sending the first portion of random bytes
-      ensureRandomBytesStock(index, 0);
+
+      if (provideRandomBytes = message.data.provideRandomBytes){
+        ensureRandomBytesStock(index, 0);
+      }
     };
+    worker.onerror = function(error){
+      console.log('crypto worker error:', error);
+    };
+
   }
 
   // this function is supposed to be called from worker.onmessage when worker reports it's random bytes stock
@@ -3108,6 +3114,41 @@ Peerio.Messages.init = function () {
       });
   };
 
+  api.getAllConversationsGradually = function (progress) {
+    if (conversationsCache)
+      return Promise.resolve(conversationsCache);
+
+    return net.getConversationIDs()
+      .then(function (response) {
+        var ids = response.conversationID;
+        var pages = [];
+        for (var i = 0; i < ids.length; i++) {
+          var request = [];
+          for (var j = 0; j < 10 && i < ids.length; j++, i++) {
+            request.push({id: ids[i], page:'none'});
+          }
+          pages.push(request);
+        }
+
+        return Promise.each(pages, function(page){
+          return net.getConversationPages(page)
+            .then(function(response){
+              return decryptConversations(response.conversations);
+            })
+            .then(mergeWithCache)
+            .then(function(){
+              progress(conversationsCache);
+            });
+        });
+      });
+  };
+
+  function mergeWithCache(conversations){
+    //todo dupe check
+    conversationsCache = conversationsCache || {data:[], index: {}};
+    Array.prototype.push.apply(conversationsCache.data, conversations.data);
+    _.assign(conversationsCache.index, conversations.index);
+  }
   function decryptConversations(conversations) {
     var start = Date.now();
     var decryptedConversations = {data: [], index: {}};
@@ -3833,6 +3874,7 @@ Peerio.Socket.init = function () {
 
   function messageHandler(message) {
     var data = message.data;
+    if(Peerio.Util.processWorkerConsoleLog(data)) return;
 
     if (hasProp(data, 'callbackID') && data.callbackID) {
       callbacks[data.callbackID](data.data);
@@ -4278,6 +4320,20 @@ Peerio.Util.init = function () {
     return false;
   };
 
+  /**
+   *  1. detects if message from worker contains 'console.log' property
+   *  2. if it does, prints out value array
+   *  @param {Object} data - object passed by worker
+   *  @returns {boolean} true if it was a 'console.log' message
+   */
+  api.processWorkerConsoleLog = function (data) {
+    if (!data.hasOwnProperty('console.log')) return false;
+    var args = data['console.log'];
+    args.unshift('WORKER:');
+    console.log.apply(console, args);
+    return true;
+  };
+
 };
 /**
  * Various extensions to system/lib objects
@@ -4396,26 +4452,28 @@ var Peerio = this.Peerio || {};
  * Init order matters.
  */
 Peerio.initAPI = function () {
-  Peerio.Config.init();
-  Peerio.Config.apiFolder = Peerio.apiFolder;
-  delete Peerio.apiFolder;
-  Peerio.ErrorReporter.init(); // this does not enable error reporting, just initializes.
-  Peerio.TinyDB.init();
-  Peerio.Util.init();
-  Peerio.Crypto.init();
-  Peerio.PhraseGenerator.init();
-  Peerio.Socket.init();
-  Peerio.Net.init();
-  Peerio.Dispatcher.init();
-  Peerio.Action.init();
-  Peerio.ActionOverrides.init();
-  Peerio.AppState.init();
-  Peerio.Auth.init();
-  Peerio.Messages.init();
+  return Peerio.Config.init()
+    .then(function () {
+      Peerio.Config.apiFolder = Peerio.apiFolder;
+      delete Peerio.apiFolder;
+      Peerio.ErrorReporter.init(); // this does not enable error reporting, just initializes.
+      Peerio.TinyDB.init();
+      Peerio.Util.init();
+      Peerio.Crypto.init();
+      Peerio.PhraseGenerator.init();
+      Peerio.Socket.init();
+      Peerio.Net.init();
+      Peerio.Dispatcher.init();
+      Peerio.Action.init();
+      Peerio.ActionOverrides.init();
+      Peerio.AppState.init();
+      Peerio.Auth.init();
+      Peerio.Messages.init();
 
-  Peerio.Socket.start();
+      Peerio.Socket.start();
 
-  delete Peerio.initAPI;
+      delete Peerio.initAPI;
+    });
 };
 
 // detecting api folder, this has to be done at script's first evaluation,
