@@ -89,6 +89,7 @@ gulp.task('build-ext-lib', function () {
   // external libraries bundle
   return gulp.src([
     'bower_components/lodash/lodash.js',
+    'bower_components/moment/min/moment-with-locales.min.js',
     'bower_components/bluebird/js/browser/bluebird.js',
     'bower_components/node-uuid/uuid.js',
     'bower_components/identicon/pnglib.js',

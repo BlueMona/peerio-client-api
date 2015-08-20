@@ -488,7 +488,7 @@ Peerio.Net.init = function () {
 
   /**
    * Retrieve entire conversations.
-   * @param {array} conversations - Contains objects in format {id, page}
+   * @param {[]} conversations - Contains objects in format {id, page}
    * @promise
    */
   api.getConversationPages = function (conversations) {
