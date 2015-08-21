@@ -12,7 +12,7 @@ Peerio.Messages.init = function () {
   var net = Peerio.Net;
 
   // Array, but contains same objects accessible both by index and by id
-  var cache = null;
+  api.cache = null;
 
   /**
    * Loads conversations list with 1 original message in each of them.
@@ -23,10 +23,10 @@ Peerio.Messages.init = function () {
    * todo: resume support in case of disconnection/error in progress
    */
   api.getAllConversations = function (progress) {
-    if (cache)
-      return Promise.resolve(cache);
+    if (api.cache)
+      return Promise.resolve(api.cache);
 
-    cache = [];
+    api.cache = [];
     // temporary paging based on what getConversationIDs returns
     return net.getConversationIDs()
       .then(function (response) {
@@ -50,14 +50,14 @@ Peerio.Messages.init = function () {
             })
             .then(addConversationsToCache)
             .then(function () {
-              progress(cache);
+              progress(api.cache);
             });
         });
       });
   };
 
   api.loadAllConversationMessages = function (conversationId) {
-    var conversation = cache[conversationId];
+    var conversation = api.cache[conversationId];
     if (conversation._pendingLoadPromise) return conversation._pendingLoadPromise;
 
     return conversation._pendingLoadPromise = Peerio.Net.getConversationPages([{id: conversationId, page: '0'}])
@@ -77,12 +77,12 @@ Peerio.Messages.init = function () {
    */
   function addConversationsToCache(conversations) {
     conversations.forEach(function (item) {
-      if (cache[item.id]) return;
-      cache.push(item);
-      cache[item.id] = item;
+      if (api.cache[item.id]) return;
+      api.cache.push(item);
+      api.cache[item.id] = item;
     });
 
-    cache.sort(function (a, b) {
+    api.cache.sort(function (a, b) {
       return a.lastTimestamp > b.lastTimestamp ? -1 : (a.lastTimestamp < b.lastTimestamp ? 1 : 0);
     });
   }
