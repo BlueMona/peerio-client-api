@@ -31,6 +31,10 @@ Peerio.Crypto.init = function () {
   var callbacks = {};
   var workerCount = Peerio.Crypto.wokerInstanceCount = Math.min(Peerio.Config.cpuCount, 4);
 
+  // we use x2 concurrency so that workers always have one request in queue,
+  // making execution as fast as possible
+  Peerio.Crypto.recommendedPromiseConcurrency = {concurrency: Peerio.Crypto.wokerInstanceCount * 2};
+
   // when started, workers will report if they need random values provided to them
   var provideRandomBytes = false;
   // when worker reports that he has less then this number of random bytes left - we post more data to it
@@ -39,12 +43,12 @@ Peerio.Crypto.init = function () {
   // worker message handler
   function messageHandler(index, message) {
     var data = message.data;
-    if(Peerio.Util.processWorkerConsoleLog(data)) return;
+    if (Peerio.Util.processWorkerConsoleLog(data)) return;
 
     provideRandomBytes && ensureRandomBytesStock(index, data.randomBytesStock);
 
     var promise = callbacks[data.id];
-    if(!promise) return;
+    if (!promise) return;
 
     if (hasProp(data, 'error'))
       promise.reject(data.error);
@@ -59,15 +63,15 @@ Peerio.Crypto.init = function () {
     var worker = workers[index] = new Worker(workerScriptPath);
     // first message will be a feature report from worker
     worker.onmessage = function (message) {
-      if(Peerio.Util.processWorkerConsoleLog(message.data)) return;
+      if (Peerio.Util.processWorkerConsoleLog(message.data)) return;
       // all next messages are for different handler
       worker.onmessage = messageHandler.bind(self, index);
 
-      if (provideRandomBytes = message.data.provideRandomBytes){
+      if (provideRandomBytes = message.data.provideRandomBytes) {
         ensureRandomBytesStock(index, 0);
       }
     };
-    worker.onerror = function(error){
+    worker.onerror = function (error) {
       console.log('crypto worker error:', error);
     };
 

@@ -2688,6 +2688,10 @@ Peerio.Crypto.init = function () {
   var callbacks = {};
   var workerCount = Peerio.Crypto.wokerInstanceCount = Math.min(Peerio.Config.cpuCount, 4);
 
+  // we use x2 concurrency so that workers always have one request in queue,
+  // making execution as fast as possible
+  Peerio.Crypto.recommendedPromiseConcurrency = {concurrency: Peerio.Crypto.wokerInstanceCount * 2};
+
   // when started, workers will report if they need random values provided to them
   var provideRandomBytes = false;
   // when worker reports that he has less then this number of random bytes left - we post more data to it
@@ -2696,12 +2700,12 @@ Peerio.Crypto.init = function () {
   // worker message handler
   function messageHandler(index, message) {
     var data = message.data;
-    if(Peerio.Util.processWorkerConsoleLog(data)) return;
+    if (Peerio.Util.processWorkerConsoleLog(data)) return;
 
     provideRandomBytes && ensureRandomBytesStock(index, data.randomBytesStock);
 
     var promise = callbacks[data.id];
-    if(!promise) return;
+    if (!promise) return;
 
     if (hasProp(data, 'error'))
       promise.reject(data.error);
@@ -2716,15 +2720,15 @@ Peerio.Crypto.init = function () {
     var worker = workers[index] = new Worker(workerScriptPath);
     // first message will be a feature report from worker
     worker.onmessage = function (message) {
-      if(Peerio.Util.processWorkerConsoleLog(message.data)) return;
+      if (Peerio.Util.processWorkerConsoleLog(message.data)) return;
       // all next messages are for different handler
       worker.onmessage = messageHandler.bind(self, index);
 
-      if (provideRandomBytes = message.data.provideRandomBytes){
+      if (provideRandomBytes = message.data.provideRandomBytes) {
         ensureRandomBytesStock(index, 0);
       }
     };
-    worker.onerror = function(error){
+    worker.onerror = function (error) {
       console.log('crypto worker error:', error);
     };
 
@@ -3090,6 +3094,76 @@ Peerio.Auth.init = function () {
   };
 };
 /**
+ * Peerio App Logic: files
+ */
+
+var Peerio = this.Peerio || {};
+Peerio.Files = {};
+
+Peerio.Files.init = function () {
+  'use strict';
+
+  var api = Peerio.Files = {};
+  var net = Peerio.Net;
+
+  // Array, but contains same objects accessible both by index and by id
+  api.cache = null;
+
+  var getAllFilesPromise = null;
+
+  /**
+   * Loads file list.
+   * Resolves once everything is loaded and decrypted.
+   * @promise
+   */
+  api.getAllFiles = function () {
+    if (getAllFilesPromise) return getAllFilesPromise;
+
+    if (api.cache)
+      return Promise.resolve(api.cache);
+
+    var decrypted = [];
+    api.cache = [];
+    return getAllFilesPromise = net.getFiles()
+      .then(function (response) {
+        var files = response.files;
+        var keys = Object.keys(files);
+
+        return Promise.map(keys, function (fileId) {
+            var file = files[fileId];
+            return Peerio.Crypto.decryptFileName(fileId, file.header)
+              .then(function (name) {
+                file.name = name;
+                file.shortId = Peerio.Util.sha256(fileId);
+                decrypted.push(file);
+              });
+          }, Peerio.Crypto.recommendedPromiseConcurrency)
+          .return(decrypted);
+      })
+      .then(addFilesToCache)
+      .return(api.cache);
+  };
+
+  /**
+   * adds file to cache with duplicate checks
+   * and re-sorts the cache array by lastTimestamp
+   * @param files
+   */
+  function addFilesToCache(files) {
+    files.forEach(function (item) {
+      if (api.cache[item.id]) return;
+      api.cache.push(item);
+      api.cache[item.id] = item;
+      api.cache[item.shortId] = item;
+    });
+
+    api.cache.sort(function (a, b) {
+      return a.timestamp > b.timestamp ? -1 : (a.timestamp < b.timestamp ? 1 : 0);
+    });
+  }
+
+};
+/**
  * Peerio App Logic: messages
  */
 
@@ -3105,6 +3179,7 @@ Peerio.Messages.init = function () {
   // Array, but contains same objects accessible both by index and by id
   api.cache = null;
 
+  var getAllConversationsPromise = null;
   /**
    * Loads conversations list with 1 original message in each of them.
    * Loads and decrypts page by page, adds each page to the cache.
@@ -3114,14 +3189,14 @@ Peerio.Messages.init = function () {
    * todo: resume support in case of disconnection/error in progress
    */
   api.getAllConversations = function (progress) {
-    if (api.cache)
-      return Promise.resolve(api.cache);
+    if (getAllConversationsPromise) return getAllConversationsPromise;
+
+    if (api.cache) return Promise.resolve(api.cache);
 
     api.cache = [];
     // temporary paging based on what getConversationIDs returns
-    return net.getConversationIDs()
+    return getAllConversationsPromise = net.getConversationIDs()
       .then(function (response) {
-
         // building array with arrays of requests to pull conversation with 1 message
         var ids = response.conversationID;
         var pages = [];
@@ -3132,7 +3207,9 @@ Peerio.Messages.init = function () {
           }
           pages.push(request);
         }
-
+        return pages;
+      })
+      .then(function (pages) {
         // Promise.each executes next function call after previous promise is resolved
         return Promise.each(pages, function (page) {
           return net.getConversationPages(page)
@@ -3144,9 +3221,16 @@ Peerio.Messages.init = function () {
               progress(api.cache);
             });
         });
-      });
+      })
+      .then(function () {
+        getAllConversationsPromise = null;
+      })
+      .return(api.cache);
+
+    return getAllConversationsPromise;
   };
 
+  // todo
   api.loadAllConversationMessages = function (conversationId) {
     var conversation = api.cache[conversationId];
     if (conversation._pendingLoadPromise) return conversation._pendingLoadPromise;
@@ -3204,35 +3288,30 @@ Peerio.Messages.init = function () {
     // given the specific number of crypto workers running.
     // this makes sense because otherwise we have a chance to use too much resources on ui thread.
     return Promise.map(keys, function (convId) {
-        var conv = conversations[convId];
-        var encMessage = conv.messages[conv.original];
-        // no original message in conversation?
-        // not a normal case, but I think still exists somewhere in old conversations
-        if (!encMessage) {
-          console.log('Conversation misses original message', conv);
-          return;
-        }
-        // both indexed and associative ways to store conversation
-        decryptedConversations[convId] = conv;
-        decryptedConversations.push(conv);
-        // we will replace messages with decrypted ones
-        conv.messages = [];
-        conv.lastTimestamp = +conv.lastTimestamp;
-        conv.lastMoment = moment(conv.lastTimestamp);
-
-        return decryptMessage(encMessage)
-          .then(function (message) {
-            conv.messages.push(message);
-            conv.messages[message.id] = message;
-            conv.original = message;
-          });
-      },
-      {
-        // we use x2 concurrency so that workers always have one request in queue,
-        // making execution as fast as possible
-        concurrency: Peerio.Crypto.wokerInstanceCount * 2
+      var conv = conversations[convId];
+      var encMessage = conv.messages[conv.original];
+      // no original message in conversation?
+      // not a normal case, but I think still exists somewhere in old conversations
+      if (!encMessage) {
+        console.log('Conversation misses original message', conv);
+        return;
       }
-    ).return(decryptedConversations);
+      // both indexed and associative ways to store conversation
+      decryptedConversations[convId] = conv;
+      decryptedConversations.push(conv);
+      // we will replace messages with decrypted ones
+      conv.messages = [];
+      conv.lastTimestamp = +conv.lastTimestamp;
+      conv.lastMoment = moment(conv.lastTimestamp);
+
+      return decryptMessage(encMessage)
+        .then(function (message) {
+          conv.messages.push(message);
+          conv.messages[message.id] = message;
+          conv.original = message;
+        });
+    }, Peerio.Crypto.recommendedPromiseConcurrency)
+      .return(decryptedConversations);
 
   }
 
@@ -3241,8 +3320,7 @@ Peerio.Messages.init = function () {
 
     return Promise.map(keys, function (msgId) {
         return decryptMessage(messages[msgId]);
-      },
-      {concurrency: Peerio.Crypto.wokerInstanceCount * 2});
+      }, Peerio.Crypto.recommendedPromiseConcurrency);
   }
 
   /**
@@ -4396,6 +4474,17 @@ Peerio.Util.init = function () {
     return true;
   };
 
+  /**
+   * get string hash from string
+   * @param {string} text
+   * @returns {string} hash in HEX format
+   */
+  api.sha256 = function (text) {
+    var hash = new jsSHA('SHA-256', 'TEXT');
+    hash.update(text);
+    return hash.getHash('HEX');
+  };
+
 };
 /**
  * Various extensions to system/lib objects
@@ -4531,6 +4620,7 @@ Peerio.initAPI = function () {
       Peerio.AppState.init();
       Peerio.Auth.init();
       Peerio.Messages.init();
+      Peerio.Files.init();
 
       Peerio.Socket.start();
 

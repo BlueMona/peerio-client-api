@@ -14,6 +14,7 @@ Peerio.Messages.init = function () {
   // Array, but contains same objects accessible both by index and by id
   api.cache = null;
 
+  var getAllConversationsPromise = null;
   /**
    * Loads conversations list with 1 original message in each of them.
    * Loads and decrypts page by page, adds each page to the cache.
@@ -23,14 +24,14 @@ Peerio.Messages.init = function () {
    * todo: resume support in case of disconnection/error in progress
    */
   api.getAllConversations = function (progress) {
-    if (api.cache)
-      return Promise.resolve(api.cache);
+    if (getAllConversationsPromise) return getAllConversationsPromise;
+
+    if (api.cache) return Promise.resolve(api.cache);
 
     api.cache = [];
     // temporary paging based on what getConversationIDs returns
-    return net.getConversationIDs()
+    return getAllConversationsPromise = net.getConversationIDs()
       .then(function (response) {
-
         // building array with arrays of requests to pull conversation with 1 message
         var ids = response.conversationID;
         var pages = [];
@@ -41,7 +42,9 @@ Peerio.Messages.init = function () {
           }
           pages.push(request);
         }
-
+        return pages;
+      })
+      .then(function (pages) {
         // Promise.each executes next function call after previous promise is resolved
         return Promise.each(pages, function (page) {
           return net.getConversationPages(page)
@@ -53,9 +56,16 @@ Peerio.Messages.init = function () {
               progress(api.cache);
             });
         });
-      });
+      })
+      .then(function () {
+        getAllConversationsPromise = null;
+      })
+      .return(api.cache);
+
+    return getAllConversationsPromise;
   };
 
+  // todo
   api.loadAllConversationMessages = function (conversationId) {
     var conversation = api.cache[conversationId];
     if (conversation._pendingLoadPromise) return conversation._pendingLoadPromise;
@@ -113,35 +123,30 @@ Peerio.Messages.init = function () {
     // given the specific number of crypto workers running.
     // this makes sense because otherwise we have a chance to use too much resources on ui thread.
     return Promise.map(keys, function (convId) {
-        var conv = conversations[convId];
-        var encMessage = conv.messages[conv.original];
-        // no original message in conversation?
-        // not a normal case, but I think still exists somewhere in old conversations
-        if (!encMessage) {
-          console.log('Conversation misses original message', conv);
-          return;
-        }
-        // both indexed and associative ways to store conversation
-        decryptedConversations[convId] = conv;
-        decryptedConversations.push(conv);
-        // we will replace messages with decrypted ones
-        conv.messages = [];
-        conv.lastTimestamp = +conv.lastTimestamp;
-        conv.lastMoment = moment(conv.lastTimestamp);
-
-        return decryptMessage(encMessage)
-          .then(function (message) {
-            conv.messages.push(message);
-            conv.messages[message.id] = message;
-            conv.original = message;
-          });
-      },
-      {
-        // we use x2 concurrency so that workers always have one request in queue,
-        // making execution as fast as possible
-        concurrency: Peerio.Crypto.wokerInstanceCount * 2
+      var conv = conversations[convId];
+      var encMessage = conv.messages[conv.original];
+      // no original message in conversation?
+      // not a normal case, but I think still exists somewhere in old conversations
+      if (!encMessage) {
+        console.log('Conversation misses original message', conv);
+        return;
       }
-    ).return(decryptedConversations);
+      // both indexed and associative ways to store conversation
+      decryptedConversations[convId] = conv;
+      decryptedConversations.push(conv);
+      // we will replace messages with decrypted ones
+      conv.messages = [];
+      conv.lastTimestamp = +conv.lastTimestamp;
+      conv.lastMoment = moment(conv.lastTimestamp);
+
+      return decryptMessage(encMessage)
+        .then(function (message) {
+          conv.messages.push(message);
+          conv.messages[message.id] = message;
+          conv.original = message;
+        });
+    }, Peerio.Crypto.recommendedPromiseConcurrency)
+      .return(decryptedConversations);
 
   }
 
@@ -150,8 +155,7 @@ Peerio.Messages.init = function () {
 
     return Promise.map(keys, function (msgId) {
         return decryptMessage(messages[msgId]);
-      },
-      {concurrency: Peerio.Crypto.wokerInstanceCount * 2});
+      }, Peerio.Crypto.recommendedPromiseConcurrency);
   }
 
   /**

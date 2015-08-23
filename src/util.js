@@ -65,4 +65,15 @@ Peerio.Util.init = function () {
     return true;
   };
 
+  /**
+   * get string hash from string
+   * @param {string} text
+   * @returns {string} hash in HEX format
+   */
+  api.sha256 = function (text) {
+    var hash = new jsSHA('SHA-256', 'TEXT');
+    hash.update(text);
+    return hash.getHash('HEX');
+  };
+
 };

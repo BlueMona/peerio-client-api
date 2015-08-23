@@ -92,6 +92,7 @@ gulp.task('build-ext-lib', function () {
     'bower_components/moment/min/moment-with-locales.min.js',
     'bower_components/bluebird/js/browser/bluebird.js',
     'bower_components/node-uuid/uuid.js',
+    'bower_components/jssha/src/sha256.js',
     'bower_components/identicon/pnglib.js',
     'bower_components/identicon/identicon.js'
   ]).pipe(concat('ext_lib_bundle.js'))
