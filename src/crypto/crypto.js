@@ -565,6 +565,15 @@ Peerio.Crypto.init = function () {
     decrypted = encodeUTF8(decrypted);//.substring(0, decrypted.length - timestampLength);
     return Promise.resolve(decrypted);
   };
+
+  api.recreateHeader = function (publicKeys, header) {
+    var decryptInfo = decryptHeader(header);
+
+    return createHeader(publicKeys, defaultUser,
+      decryptInfo.fileInfo.fileKey,
+      decryptInfo.fileInfo.fileNonce,
+      decryptInfo.fileInfo.fileHash);
+  };
   //-- INTERNALS -------------------------------------------------------------------------------------------------------
 
   function getContact(username, user) {

@@ -134,7 +134,8 @@ Peerio.Crypto.init = function () {
     'decryptFile',
     'decryptFileName',
     'encryptReceipt',
-    'decryptReceipt'
+    'decryptReceipt',
+    'recreateHeader'
   ].forEach(function (fnName) {
       Peerio.Crypto[fnName] = function () {
         var id = uuid();

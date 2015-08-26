@@ -62,7 +62,6 @@ Peerio.Messages.init = function () {
       })
       .return(api.cache);
 
-    return getAllConversationsPromise;
   };
 
   // todo
@@ -78,6 +77,70 @@ Peerio.Messages.init = function () {
         addMessagesToCache(conversation, messages);
         return conversation;
       });
+  };
+
+  function getEncryptedMessage(recipients, subject, body, fileIDs) {
+    var message = {
+      subject: subject,
+      message: body,
+      receipt: nacl.util.encodeBase64(nacl.randomBytes(32)),
+      fileIDs: fileIDs || [],
+      participants: recipients,
+      sequence: 0
+    };
+    return Peerio.Crypto.encryptMessage(message, recipients);
+  }
+
+  function buildFileHeaders(recipients, fileIds) {
+    return Promise.map(fileIds, function (id) {
+
+      return generateFileHeader(recipients, id)
+        .then(function (header) {
+          return {id: id, header: header};
+        });
+
+    }, Peerio.Crypto.recommendedPromiseConcurrency);
+  }
+
+  function generateFileHeader(recipients, id) {
+    var publicKeys = [Peerio.user.publicKey];
+    recipients.forEach(function (username) {
+      var contact = Peerio.user.contacts[username];
+      if (contact && contact.publicKey && publicKeys.indexOf(contact.publicKey) < 0) {
+        publicKeys.push(contact.publicKey);
+      }
+    });
+    return Peerio.Crypto.recreateHeader(publicKeys, Peerio.Files.cache[id].header);
+  }
+
+  api.sendNewMessage = function (recipients, subject, body, fileIds, conversationID) {
+    recipients.push(Peerio.user.username);
+
+    return getEncryptedMessage(recipients, subject, body, fileIds)
+      // building data transfer object
+      .then(function (encrypted) {
+        if (!encrypted.header || !encrypted.body) return Promise.reject('Message encryption failed.');
+        return {
+          recipients: recipients,
+          header: encrypted.header,
+          body: encrypted.body,
+          conversationID: conversationID,
+          isDraft:false
+
+        };
+      })
+      // re-encrypting file headers (sharing files)
+      .then(function (messageDTO) {
+        return buildFileHeaders(recipients, fileIds)
+          .then(function (fileHeaders) {
+            messageDTO.files = fileHeaders;
+            return messageDTO;
+          });
+      })
+      .then(function(messageDTO){
+        return Peerio.Net.createMessage(messageDTO);
+      });
+
   };
 
   /**
@@ -154,8 +217,8 @@ Peerio.Messages.init = function () {
     var keys = Object.keys(messages);
 
     return Promise.map(keys, function (msgId) {
-        return decryptMessage(messages[msgId]);
-      }, Peerio.Crypto.recommendedPromiseConcurrency);
+      return decryptMessage(messages[msgId]);
+    }, Peerio.Crypto.recommendedPromiseConcurrency);
   }
 
   /**

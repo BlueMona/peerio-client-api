@@ -424,17 +424,7 @@ Peerio.Net.init = function () {
    * @promise
    */
   Peerio.Net.createMessage = function (msg) {
-    var socketMsg = {
-      isDraft: msg.isDraft,
-      recipients: msg.recipients,
-      header: msg.header,
-      body: msg.body,
-      files: msg.files
-    };
-    if (hasProp(msg, 'conversationID'))
-      socketMsg.conversationID = msg.conversationID;
-
-    return sendToSocket('createMessage', socketMsg);
+    return sendToSocket('createMessage', msg);
   };
 
   /**
