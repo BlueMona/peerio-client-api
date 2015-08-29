@@ -15,4 +15,4 @@ testUser.contacts = {};
 testUser.contacts[testUser.username] = testUser;
 
 
-Peerio.initAPI();
+var peerioInitPromise = Peerio.initAPI();

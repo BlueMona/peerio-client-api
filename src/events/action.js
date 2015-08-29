@@ -13,7 +13,7 @@ Peerio.Action = {};
 Peerio.Action.init = function () {
   'use strict';
 
-  Peerio.Action = {};
+  delete Peerio.Action.init;
 
   /**
    * Adds an action to Event System. Creates convenience functions.
@@ -55,8 +55,9 @@ Peerio.Action.init = function () {
     'Loading',             // Data transfer is in process
     'LoadingDone',         // Data transfer ended
     'LoginSuccess',        // login attempt succeeded
-    'LoginFail'            // login attempt failed
-
+    'LoginFail',            // login attempt failed
+    'MessageAdded',
+    'ConversationsUpdated'
   ].forEach(function (action) {
       Peerio.Action.add(action);
     });

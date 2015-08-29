@@ -14,12 +14,14 @@ describe('Crypto', function () {
   var C = Peerio.Crypto;
 
   beforeAll(function (done) {
-    C.getPublicKeyString(testUser.keyPair.publicKey)
-      .then(function (publicKey) {
-        C.setDefaultUserData(testUser.username, testUser.keyPair, publicKey);
-        C.setDefaultContacts(testUser.contacts);
-        done();
-      });
+    peerioInitPromise.then(function(){
+      C.getPublicKeyString(testUser.keyPair.publicKey)
+        .then(function (publicKey) {
+          C.setDefaultUserData(testUser.username, testUser.keyPair, publicKey);
+          C.setDefaultContacts(testUser.contacts);
+          done();
+        });
+    });
   });
 
   it('creates keypair from username and passphrase', function (done) {
@@ -161,6 +163,7 @@ describe('Crypto', function () {
       ephemeral: 'WdFT3Wqb8SjR9KBMIU+YhJ15z3AvyveDFwMgUym2s0Q=',
       version: 1
     };
+
     C.decryptFileName(encrypted, header, testUser)
       .then(function (decrypted) {
         expect(decrypted).toBe(original);
@@ -173,9 +176,10 @@ describe('Crypto', function () {
   it('encrypts and decrypts file', function (done) {
     var file = new Blob([1, 2, 3]);
     file.name = 'test';
-
-    C.encryptFile(file, [testUser.username], testUser)
+    var encrypted;
+    C.encryptFile(file, file.name, [testUser.username], testUser)
       .then(function (data) {
+        encrypted = data;
         expect(data.fileName).toBeDefined();
         expect(data.header).toBeDefined();
         expect(data.chunks).toBeDefined();
@@ -186,6 +190,10 @@ describe('Crypto', function () {
       .then(function (decrypted) {
         expect(decrypted).toBeDefined();
         expect(file.size).toBe(decrypted.size);
+      }).then(function(){
+        return C.decryptFileName(encrypted.fileName, encrypted.header);
+      }).then(function(decryptedName){
+        expect(decryptedName).toBe(file.name);
         done();
       })
       .catch(done.fail);

@@ -10,7 +10,8 @@ Peerio.Net = {};
 Peerio.Net.init = function () {
   'use strict';
   var API_VERSION = '2.0.0';
-  var api = Peerio.Net = {};
+  var api = Peerio.Net;
+  delete Peerio.Net.init;
   var hasProp = Peerio.Util.hasProp;
   //-- SOCKET EVENT HANDLING, AUTH & CONNECTION STATE ------------------------------------------------------------------
   var connected = false;
@@ -51,13 +52,25 @@ Peerio.Net.init = function () {
     disconnect: onDisconnect
   };
 
+  /**
+   * Injects Peerio socket event handlers.
+   * App logic is supposed to handle those events, but Net has nothing to do over this data,
+   * so we make a simple way for Net to transfer events to App Logic
+   * @param {string} eventName
+   * @param {function} handler
+   */
+  api.injectPeerioEventHandler = function (eventName, handler) {
+    if (socketEventHandlers[eventName]) throw eventName + ' handler already injected.';
+    socketEventHandlers[eventName] = handler;
+  };
+
   // this listens to socket.io events
-  Peerio.Socket.injectEventHandler(function (eventName) {
+  Peerio.Socket.injectEventHandler(function (eventName, data) {
     var handler = socketEventHandlers[eventName];
     if (handler) {
-      handler();
+      handler(data);
     } else {
-      console.log('unknown socket event ', eventName);
+      console.log('unhandled socket event ', eventName, data);
     }
 
   });
@@ -68,7 +81,7 @@ Peerio.Net.init = function () {
         connected = true;
         fireEvent(api.EVENTS.onConnect);
         api.login(user, true)
-          .catch(function(err){
+          .catch(function (err) {
             console.log('Auto re-login failed. No new attempts will be made until reconnect.', err);
           });
       })
@@ -168,7 +181,7 @@ Peerio.Net.init = function () {
    *  @promise
    */
   function sendToSocket(name, data, ignoreConnectionState) {
-    if(!connected && !ignoreConnectionState) return Promise.reject('Not connected.');
+    if (!connected && !ignoreConnectionState) return Promise.reject('Not connected.');
     // unique (within reasonable time frame) promise id
     var id = null;
 

@@ -15,6 +15,7 @@ Peerio.ErrorReporter = {};
 Peerio.ErrorReporter.init = function () {
   'use strict';
 
+  delete Peerio.ErrorReporter.init;
   // Cache of reported errors.
   var reported = {};
   // How many reports are awaiting transmission.

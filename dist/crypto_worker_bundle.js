@@ -9480,7 +9480,8 @@ Peerio.Crypto = {};
 Peerio.Crypto.init = function () {
   'use strict';
 
-  var api = Peerio.Crypto = {};
+  var api = Peerio.Crypto;
+  delete Peerio.Crypto.init;
   //-- PRIVATE ---------------------------------------------------------------------------------------------------------
 
   var base58Match = new RegExp('^[1-9ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]+$');
@@ -9795,15 +9796,14 @@ Peerio.Crypto.init = function () {
    * @param {User} [sender]
    * @promise {object} fileName(base64 encoded), header, body and failedRecipients parameters.
    */
-  api.encryptFile = function (file, recipients, sender) {
+  api.encryptFile = function (file, name, recipients, sender) {
     sender = sender || defaultUser;
     return new Promise(function (resolve, reject) {
       var validatedRecipients = validateRecipients(recipients, sender);
 
-      var blob = file.slice();
-      blob.name = file.name;
+      file.name = name;
       encryptBlob(
-        blob,
+        file,
         validatedRecipients.publicKeys,
         sender,
         function (encryptedChunks, header, fileName) {
@@ -10022,12 +10022,16 @@ Peerio.Crypto.init = function () {
   };
 
   api.recreateHeader = function (publicKeys, header) {
-    var decryptInfo = decryptHeader(header);
+    return new Promise(function (resolve) {
+      var decryptInfo = decryptHeader(header, defaultUser);
 
-    return createHeader(publicKeys, defaultUser,
-      decryptInfo.fileInfo.fileKey,
-      decryptInfo.fileInfo.fileNonce,
-      decryptInfo.fileInfo.fileHash);
+      var newHeader = createHeader(publicKeys, defaultUser,
+        decryptInfo.fileInfo.fileKey,
+        decryptInfo.fileInfo.fileNonce,
+        decryptInfo.fileInfo.fileHash);
+
+      resolve(newHeader);
+    });
   };
   //-- INTERNALS -------------------------------------------------------------------------------------------------------
 
@@ -10179,9 +10183,9 @@ Peerio.Crypto.init = function () {
         senderID: sender.publicKey,
         recipientID: publicKeys[i],
         fileInfo: {
-          fileKey: encodeB64(fileKey),
-          fileNonce: encodeB64(fileNonce),
-          fileHash: encodeB64(fileHash)
+          fileKey: typeof(fileKey) === 'string'? fileKey : encodeB64(fileKey),
+          fileNonce: typeof(fileNonce) === 'string'? fileNonce : encodeB64(fileNonce),
+          fileHash: typeof(fileHash) === 'string'? fileHash : encodeB64(fileHash)
         }
       };
 

@@ -9,7 +9,8 @@ Peerio.AppState = {};
 Peerio.AppState.init = function () {
   'use strict';
 
-  var api = Peerio.AppState = {};
+  var api = Peerio.AppState;
+  delete Peerio.AppState.init;
   var d = Peerio.Dispatcher;
 
   // initial state

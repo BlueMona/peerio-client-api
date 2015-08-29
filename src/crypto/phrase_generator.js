@@ -10,7 +10,8 @@ Peerio.PhraseGenerator = {};
 Peerio.PhraseGenerator.init = function () {
   'use strict';
 
-  var api = Peerio.PhraseGenerator = {};
+  var api = Peerio.PhraseGenerator;
+  delete Peerio.PhraseGenerator.init;
 
   // dictionary for the language required will be loaded here
   var loadedDictionary = null;

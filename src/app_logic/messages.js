@@ -8,13 +8,36 @@ Peerio.Messages = {};
 Peerio.Messages.init = function () {
   'use strict';
 
-  var api = Peerio.Messages = {};
+  var api = Peerio.Messages;
+  delete Peerio.Messages.init;
   var net = Peerio.Net;
-
+  Peerio.ACK_MSG = Peerio.ACK_MSG || ':::peerioAck:::';
   // Array, but contains same objects accessible both by index and by id
   api.cache = null;
 
   var getAllConversationsPromise = null;
+
+  api.onMessageAdded = function (message) {
+    var convPromise = api.cache[message.conversationID] ? Promise.resolve() : api.getOneConversation(message.conversationID);
+
+    convPromise.then(function () {return decryptMessage(message);})
+      .then(function (decrypted) {
+        return addMessageToCache(message.conversationID, decrypted);
+      })
+      .then(Peerio.Action.messageAdded);
+  };
+
+  net.injectPeerioEventHandler('messageAdded', api.onMessageAdded);
+
+  api.getOneConversation = function (id) {
+    if (api.cache[id]) Promise.resolve();
+    return net.getConversationPages([{id: id, page: -1}])
+      .then(function (response) {
+        return decryptConversations(response.conversations);
+      })
+      .then(addConversationsToCache);
+  };
+
   /**
    * Loads conversations list with 1 original message in each of them.
    * Loads and decrypts page by page, adds each page to the cache.
@@ -38,7 +61,7 @@ Peerio.Messages.init = function () {
         for (var i = 0; i < ids.length; i++) {
           var request = [];
           for (var j = 0; j < 10 && i < ids.length; j++, i++) {
-            request.push({id: ids[i], page: '-1'});
+            request.push({id: ids[i], page: -1});
           }
           pages.push(request);
         }
@@ -65,13 +88,13 @@ Peerio.Messages.init = function () {
   };
 
   // todo
-  api.loadAllConversationMessages = function (conversationId) {
-    var conversation = api.cache[conversationId];
+  api.loadAllConversationMessages = function (conversationID) {
+    var conversation = api.cache[conversationID];
     if (conversation._pendingLoadPromise) return conversation._pendingLoadPromise;
 
-    return conversation._pendingLoadPromise = Peerio.Net.getConversationPages([{id: conversationId, page: '0'}])
+    return conversation._pendingLoadPromise = Peerio.Net.getConversationPages([{id: conversationID, page: '0'}])
       .then(function (response) {
-        return decryptMessages(response.conversations[conversationId].messages);
+        return decryptMessages(response.conversations[conversationID].messages);
       })
       .then(function (messages) {
         addMessagesToCache(conversation, messages);
@@ -113,8 +136,9 @@ Peerio.Messages.init = function () {
     return Peerio.Crypto.recreateHeader(publicKeys, Peerio.Files.cache[id].header);
   }
 
-  api.sendNewMessage = function (recipients, subject, body, fileIds, conversationID) {
-    recipients.push(Peerio.user.username);
+  api.sendMessage = function (recipients, subject, body, fileIds, conversationID) {
+    if (recipients.indexOf(Peerio.user.username) < 0)
+      recipients.push(Peerio.user.username);
 
     return getEncryptedMessage(recipients, subject, body, fileIds)
       // building data transfer object
@@ -125,7 +149,7 @@ Peerio.Messages.init = function () {
           header: encrypted.header,
           body: encrypted.body,
           conversationID: conversationID,
-          isDraft:false
+          isDraft: false
 
         };
       })
@@ -137,10 +161,14 @@ Peerio.Messages.init = function () {
             return messageDTO;
           });
       })
-      .then(function(messageDTO){
+      .then(function (messageDTO) {
         return Peerio.Net.createMessage(messageDTO);
       });
 
+  };
+
+  api.sendACK = function (conversation) {
+    api.sendMessage(conversation.participants, '', Peerio.ACK_MSG, [], conversation.id);
   };
 
   /**
@@ -170,6 +198,20 @@ Peerio.Messages.init = function () {
     cachedMessages.sort(function (a, b) {
       return a.timestamp > b.timestamp ? -1 : (a.timestamp < b.timestamp ? 1 : 0);
     });
+  }
+
+  function addMessageToCache(conversationID, message) {
+    var cachedMessages = api.cache[conversationID].messages;
+    if (cachedMessages[message.id]) return cachedMessages[message.id];
+
+    cachedMessages.push(message);
+    cachedMessages[message.id] = message;
+
+    cachedMessages.sort(function (a, b) {
+      return a.timestamp > b.timestamp ? -1 : (a.timestamp < b.timestamp ? 1 : 0);
+    });
+
+    return message;
   }
 
   /**
@@ -238,4 +280,5 @@ Peerio.Messages.init = function () {
       });
   }
 
-};
+}
+;

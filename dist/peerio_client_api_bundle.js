@@ -2549,7 +2549,8 @@ Peerio.PhraseGenerator = {};
 Peerio.PhraseGenerator.init = function () {
   'use strict';
 
-  var api = Peerio.PhraseGenerator = {};
+  var api = Peerio.PhraseGenerator;
+  delete Peerio.PhraseGenerator.init;
 
   // dictionary for the language required will be loaded here
   var loadedDictionary = null;
@@ -2676,8 +2677,8 @@ Peerio.Crypto.init = function () {
   'use strict';
 
   var self = this;
+  delete Peerio.Crypto.init;
 
-  Peerio.Crypto = {};
   // malicious server safe hasOwnProperty function;
   var hasProp = Function.call.bind(Object.prototype.hasOwnProperty);
   var workerScriptPath = Peerio.Config.apiFolder + 'crypto_worker_bundle.js';
@@ -2927,7 +2928,8 @@ Peerio.AppState = {};
 Peerio.AppState.init = function () {
   'use strict';
 
-  var api = Peerio.AppState = {};
+  var api = Peerio.AppState;
+  delete Peerio.AppState.init;
   var d = Peerio.Dispatcher;
 
   // initial state
@@ -2990,7 +2992,8 @@ Peerio.Auth = {};
 Peerio.Auth.init = function () {
   'use strict';
 
-  var api = Peerio.Auth = {};
+  var api = Peerio.Auth;
+  delete Peerio.Auth.init;
   var net = Peerio.Net;
 
   var lastLoginKey = 'lastLogin';
@@ -3106,7 +3109,8 @@ Peerio.Files = {};
 Peerio.Files.init = function () {
   'use strict';
 
-  var api = Peerio.Files = {};
+  var api = Peerio.Files;
+  delete Peerio.Files.init;
   var net = Peerio.Net;
 
   // Array, but contains same objects accessible both by index and by id
@@ -3176,13 +3180,36 @@ Peerio.Messages = {};
 Peerio.Messages.init = function () {
   'use strict';
 
-  var api = Peerio.Messages = {};
+  var api = Peerio.Messages;
+  delete Peerio.Messages.init;
   var net = Peerio.Net;
-
+  Peerio.ACK_MSG = Peerio.ACK_MSG || ':::peerioAck:::';
   // Array, but contains same objects accessible both by index and by id
   api.cache = null;
 
   var getAllConversationsPromise = null;
+
+  api.onMessageAdded = function (message) {
+    var convPromise = api.cache[message.conversationID] ? Promise.resolve() : api.getOneConversation(message.conversationID);
+
+    convPromise.then(function () {return decryptMessage(message);})
+      .then(function (decrypted) {
+        return addMessageToCache(message.conversationID, decrypted);
+      })
+      .then(Peerio.Action.messageAdded);
+  };
+
+  net.injectPeerioEventHandler('messageAdded', api.onMessageAdded);
+
+  api.getOneConversation = function (id) {
+    if (api.cache[id]) Promise.resolve();
+    return net.getConversationPages([{id: id, page: -1}])
+      .then(function (response) {
+        return decryptConversations(response.conversations);
+      })
+      .then(addConversationsToCache);
+  };
+
   /**
    * Loads conversations list with 1 original message in each of them.
    * Loads and decrypts page by page, adds each page to the cache.
@@ -3206,7 +3233,7 @@ Peerio.Messages.init = function () {
         for (var i = 0; i < ids.length; i++) {
           var request = [];
           for (var j = 0; j < 10 && i < ids.length; j++, i++) {
-            request.push({id: ids[i], page: '-1'});
+            request.push({id: ids[i], page: -1});
           }
           pages.push(request);
         }
@@ -3233,13 +3260,13 @@ Peerio.Messages.init = function () {
   };
 
   // todo
-  api.loadAllConversationMessages = function (conversationId) {
-    var conversation = api.cache[conversationId];
+  api.loadAllConversationMessages = function (conversationID) {
+    var conversation = api.cache[conversationID];
     if (conversation._pendingLoadPromise) return conversation._pendingLoadPromise;
 
-    return conversation._pendingLoadPromise = Peerio.Net.getConversationPages([{id: conversationId, page: '0'}])
+    return conversation._pendingLoadPromise = Peerio.Net.getConversationPages([{id: conversationID, page: '0'}])
       .then(function (response) {
-        return decryptMessages(response.conversations[conversationId].messages);
+        return decryptMessages(response.conversations[conversationID].messages);
       })
       .then(function (messages) {
         addMessagesToCache(conversation, messages);
@@ -3281,8 +3308,9 @@ Peerio.Messages.init = function () {
     return Peerio.Crypto.recreateHeader(publicKeys, Peerio.Files.cache[id].header);
   }
 
-  api.sendNewMessage = function (recipients, subject, body, fileIds, conversationID) {
-    recipients.push(Peerio.user.username);
+  api.sendMessage = function (recipients, subject, body, fileIds, conversationID) {
+    if (recipients.indexOf(Peerio.user.username) < 0)
+      recipients.push(Peerio.user.username);
 
     return getEncryptedMessage(recipients, subject, body, fileIds)
       // building data transfer object
@@ -3293,7 +3321,7 @@ Peerio.Messages.init = function () {
           header: encrypted.header,
           body: encrypted.body,
           conversationID: conversationID,
-          isDraft:false
+          isDraft: false
 
         };
       })
@@ -3305,10 +3333,14 @@ Peerio.Messages.init = function () {
             return messageDTO;
           });
       })
-      .then(function(messageDTO){
+      .then(function (messageDTO) {
         return Peerio.Net.createMessage(messageDTO);
       });
 
+  };
+
+  api.sendACK = function (conversation) {
+    api.sendMessage(conversation.participants, '', Peerio.ACK_MSG, [], conversation.id);
   };
 
   /**
@@ -3338,6 +3370,20 @@ Peerio.Messages.init = function () {
     cachedMessages.sort(function (a, b) {
       return a.timestamp > b.timestamp ? -1 : (a.timestamp < b.timestamp ? 1 : 0);
     });
+  }
+
+  function addMessageToCache(conversationID, message) {
+    var cachedMessages = api.cache[conversationID].messages;
+    if (cachedMessages[message.id]) return cachedMessages[message.id];
+
+    cachedMessages.push(message);
+    cachedMessages[message.id] = message;
+
+    cachedMessages.sort(function (a, b) {
+      return a.timestamp > b.timestamp ? -1 : (a.timestamp < b.timestamp ? 1 : 0);
+    });
+
+    return message;
   }
 
   /**
@@ -3406,7 +3452,8 @@ Peerio.Messages.init = function () {
       });
   }
 
-};
+}
+;
 /**
  * Peerio network protocol implementation
  */
@@ -3419,7 +3466,8 @@ Peerio.Net = {};
 Peerio.Net.init = function () {
   'use strict';
   var API_VERSION = '2.0.0';
-  var api = Peerio.Net = {};
+  var api = Peerio.Net;
+  delete Peerio.Net.init;
   var hasProp = Peerio.Util.hasProp;
   //-- SOCKET EVENT HANDLING, AUTH & CONNECTION STATE ------------------------------------------------------------------
   var connected = false;
@@ -3460,13 +3508,25 @@ Peerio.Net.init = function () {
     disconnect: onDisconnect
   };
 
+  /**
+   * Injects Peerio socket event handlers.
+   * App logic is supposed to handle those events, but Net has nothing to do over this data,
+   * so we make a simple way for Net to transfer events to App Logic
+   * @param {string} eventName
+   * @param {function} handler
+   */
+  api.injectPeerioEventHandler = function (eventName, handler) {
+    if (socketEventHandlers[eventName]) throw eventName + ' handler already injected.';
+    socketEventHandlers[eventName] = handler;
+  };
+
   // this listens to socket.io events
-  Peerio.Socket.injectEventHandler(function (eventName) {
+  Peerio.Socket.injectEventHandler(function (eventName, data) {
     var handler = socketEventHandlers[eventName];
     if (handler) {
-      handler();
+      handler(data);
     } else {
-      console.log('unknown socket event ', eventName);
+      console.log('unhandled socket event ', eventName, data);
     }
 
   });
@@ -3477,7 +3537,7 @@ Peerio.Net.init = function () {
         connected = true;
         fireEvent(api.EVENTS.onConnect);
         api.login(user, true)
-          .catch(function(err){
+          .catch(function (err) {
             console.log('Auto re-login failed. No new attempts will be made until reconnect.', err);
           });
       })
@@ -3577,7 +3637,7 @@ Peerio.Net.init = function () {
    *  @promise
    */
   function sendToSocket(name, data, ignoreConnectionState) {
-    if(!connected && !ignoreConnectionState) return Promise.reject('Not connected.');
+    if (!connected && !ignoreConnectionState) return Promise.reject('Not connected.');
     // unique (within reasonable time frame) promise id
     var id = null;
 
@@ -4037,7 +4097,7 @@ Peerio.Socket = {};
 Peerio.Socket.init = function () {
   'use strict';
 
-  Peerio.Socket = {};
+  delete Peerio.Socket.init;
   // malicious server safe hasOwnProperty function;
   var hasProp = Function.call.bind(Object.prototype.hasOwnProperty);
   // webworker instance
@@ -4079,7 +4139,7 @@ Peerio.Socket.init = function () {
     }
 
     if (eventHandler && hasProp(data, 'socketEvent')) {
-      eventHandler(data.socketEvent);
+      eventHandler(data.socketEvent, data.data);
     }
   }
 
@@ -4271,7 +4331,7 @@ Peerio.Action = {};
 Peerio.Action.init = function () {
   'use strict';
 
-  Peerio.Action = {};
+  delete Peerio.Action.init;
 
   /**
    * Adds an action to Event System. Creates convenience functions.
@@ -4313,8 +4373,9 @@ Peerio.Action.init = function () {
     'Loading',             // Data transfer is in process
     'LoadingDone',         // Data transfer ended
     'LoginSuccess',        // login attempt succeeded
-    'LoginFail'            // login attempt failed
-
+    'LoginFail',            // login attempt failed
+    'MessageAdded',
+    'ConversationsUpdated'
   ].forEach(function (action) {
       Peerio.Action.add(action);
     });
@@ -4356,7 +4417,8 @@ Peerio.Dispatcher = {};
 Peerio.Dispatcher.init = function () {
   'use strict';
 
-  var api = Peerio.Dispatcher = {};
+  var api = Peerio.Dispatcher;
+  delete Peerio.Dispatcher.init;
 
   // subscribers container
   // KEY: action. VALUE: [{id, handler},..] objects array
@@ -4444,7 +4506,7 @@ Peerio.ActionOverrides = {};
 Peerio.ActionOverrides.init = function () {
   'use strict';
 
-  Peerio.ActionOverrides = {};
+  delete Peerio.ActionOverrides.init;
 
   // Following overrides make sure that Loading action will be dispatched only once until LoadingDone will be called.
   // And LoadingDone will only be dispatched if it corresponds to the number of previously called Loading actions.
@@ -4572,6 +4634,7 @@ Peerio.ErrorReporter = {};
 Peerio.ErrorReporter.init = function () {
   'use strict';
 
+  delete Peerio.ErrorReporter.init;
   // Cache of reported errors.
   var reported = {};
   // How many reports are awaiting transmission.

@@ -9,7 +9,8 @@ Peerio.Auth = {};
 Peerio.Auth.init = function () {
   'use strict';
 
-  var api = Peerio.Auth = {};
+  var api = Peerio.Auth;
+  delete Peerio.Auth.init;
   var net = Peerio.Net;
 
   var lastLoginKey = 'lastLogin';

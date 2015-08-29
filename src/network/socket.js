@@ -12,7 +12,7 @@ Peerio.Socket = {};
 Peerio.Socket.init = function () {
   'use strict';
 
-  Peerio.Socket = {};
+  delete Peerio.Socket.init;
   // malicious server safe hasOwnProperty function;
   var hasProp = Function.call.bind(Object.prototype.hasOwnProperty);
   // webworker instance
@@ -54,7 +54,7 @@ Peerio.Socket.init = function () {
     }
 
     if (eventHandler && hasProp(data, 'socketEvent')) {
-      eventHandler(data.socketEvent);
+      eventHandler(data.socketEvent, data.data);
     }
   }
 

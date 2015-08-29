@@ -11,7 +11,7 @@ Peerio.ActionOverrides = {};
 Peerio.ActionOverrides.init = function () {
   'use strict';
 
-  Peerio.ActionOverrides = {};
+  delete Peerio.ActionOverrides.init;
 
   // Following overrides make sure that Loading action will be dispatched only once until LoadingDone will be called.
   // And LoadingDone will only be dispatched if it corresponds to the number of previously called Loading actions.

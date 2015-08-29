@@ -19,8 +19,8 @@ Peerio.Crypto.init = function () {
   'use strict';
 
   var self = this;
+  delete Peerio.Crypto.init;
 
-  Peerio.Crypto = {};
   // malicious server safe hasOwnProperty function;
   var hasProp = Function.call.bind(Object.prototype.hasOwnProperty);
   var workerScriptPath = Peerio.Config.apiFolder + 'crypto_worker_bundle.js';

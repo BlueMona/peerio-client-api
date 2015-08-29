@@ -8,7 +8,8 @@ Peerio.Files = {};
 Peerio.Files.init = function () {
   'use strict';
 
-  var api = Peerio.Files = {};
+  var api = Peerio.Files;
+  delete Peerio.Files.init;
   var net = Peerio.Net;
 
   // Array, but contains same objects accessible both by index and by id
