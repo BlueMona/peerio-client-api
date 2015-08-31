@@ -54,13 +54,6 @@ Peerio.Auth.init = function () {
       });
   };
 
-  function buildFullName(user){
-   return ((user.firstName||'') +' ' + (user.lastName||'')).trim();
-  }
-  function buildFullNameAndUsername(user){
-    return (user.fullName + ' ('+user.username+')').trim();
-  }
-
   /**
    * Retrieves saved login (last successful one)
    * @promise {null|{username, firstName}}

@@ -122,7 +122,7 @@ Peerio.Messages.init = function () {
           return {id: id, header: header};
         });
 
-    }, Peerio.Crypto.recommendedPromiseConcurrency);
+    }, Peerio.Crypto.recommendedConcurrency);
   }
 
   function generateFileHeader(recipients, id) {
@@ -182,7 +182,7 @@ Peerio.Messages.init = function () {
       api.cache.push(item);
       api.cache[item.id] = item;
     });
-
+    // todo: this can be a potential bottleneck, replace with a sorted list
     Peerio.Util.sortDesc(api.cache, 'lastTimestamp');
   }
 
@@ -193,7 +193,8 @@ Peerio.Messages.init = function () {
       cachedMessages.push(item);
       cachedMessages[item.id] = item;
     });
-    Peerio.Util.sortDesc(cachedMessages, 'timestamp');
+    // todo: this can be a potential bottleneck, replace with a sorted list
+    Peerio.Util.sortAsc(cachedMessages, 'timestamp');
   }
 
   function addMessageToCache(conversationID, message) {
@@ -203,7 +204,8 @@ Peerio.Messages.init = function () {
     cachedMessages.push(message);
     cachedMessages[message.id] = message;
 
-    Peerio.Util.sortDesc(cachedMessages, 'timestamp');
+    // todo: this can be a potential bottleneck, replace with a sorted list
+    Peerio.Util.sortAsc(cachedMessages, 'timestamp');
     return message;
   }
 
@@ -251,7 +253,7 @@ Peerio.Messages.init = function () {
           conv.messages[message.id] = message;
           conv.original = message;
         });
-    }, Peerio.Crypto.recommendedPromiseConcurrency)
+    }, Peerio.Crypto.recommendedConcurrency)
       .return(decryptedConversations);
 
   }
@@ -261,7 +263,7 @@ Peerio.Messages.init = function () {
 
     return Promise.map(keys, function (msgId) {
       return decryptMessage(messages[msgId]);
-    }, Peerio.Crypto.recommendedPromiseConcurrency);
+    }, Peerio.Crypto.recommendedConcurrency);
   }
 
   /**

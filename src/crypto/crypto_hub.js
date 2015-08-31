@@ -33,7 +33,7 @@ Peerio.Crypto.init = function () {
 
   // we use x2 concurrency so that workers always have one request in queue,
   // making execution as fast as possible
-  Peerio.Crypto.recommendedPromiseConcurrency = {concurrency: Peerio.Crypto.wokerInstanceCount * 2};
+  Peerio.Crypto.recommendedConcurrency = {concurrency: Peerio.Crypto.wokerInstanceCount * 2};
 
   // when started, workers will report if they need random values provided to them
   var provideRandomBytes = false;

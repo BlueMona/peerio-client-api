@@ -2691,7 +2691,7 @@ Peerio.Crypto.init = function () {
 
   // we use x2 concurrency so that workers always have one request in queue,
   // making execution as fast as possible
-  Peerio.Crypto.recommendedPromiseConcurrency = {concurrency: Peerio.Crypto.wokerInstanceCount * 2};
+  Peerio.Crypto.recommendedConcurrency = {concurrency: Peerio.Crypto.wokerInstanceCount * 2};
 
   // when started, workers will report if they need random values provided to them
   var provideRandomBytes = false;
@@ -3037,13 +3037,6 @@ Peerio.Auth.init = function () {
       });
   };
 
-  function buildFullName(user){
-   return ((user.firstName||'') +' ' + (user.lastName||'')).trim();
-  }
-  function buildFullNameAndUsername(user){
-    return (user.fullName + ' ('+user.username+')').trim();
-  }
-
   /**
    * Retrieves saved login (last successful one)
    * @promise {null|{username, firstName}}
@@ -3123,7 +3116,7 @@ Peerio.Contacts.init = function () {
 
         return contactMap;
       })
-      .then(function(contacts){
+      .then(function (contacts) {
         var u = Peerio.user;
         u.fullName = getFullName(u);
         u.fullNameAndUsername = getFullNameAndUsername(u);
@@ -3135,8 +3128,38 @@ Peerio.Contacts.init = function () {
 
         Peerio.Crypto.setDefaultContacts(contacts);
         return contacts;
+      }).then(function (contacts) {
+        return buildIdenticons(contacts);
       });
   };
+
+  function buildIdenticons(contacts) {
+    var header = 'data:image/png;base64,';
+    Promise.map(contacts, function (c) {
+      if (!c.publicKey) return;
+
+      return Peerio.Crypto.getAvatar(c.username, c.publicKey)
+        .then(function (avatar) {
+
+          var size = 12;
+          c.icon12 = [];
+          c.icon12.push(header + new Identicon(avatar[0].substring(0, 32), size, 0).toString());
+          c.icon12.push(header + new Identicon(avatar[0].substring(32, 64), size, 0).toString());
+          c.icon12.push(header + new Identicon(avatar[1].substring(0, 32), size, 0).toString());
+          c.icon12.push(header + new Identicon(avatar[1].substring(32, 64), size, 0).toString());
+
+          size = 18;
+          c.icon18 = [];
+          c.icon18.push(header + new Identicon(avatar[0].substring(0, 32), size, 0).toString());
+          c.icon18.push(header + new Identicon(avatar[0].substring(32, 64), size, 0).toString());
+          c.icon18.push(header + new Identicon(avatar[1].substring(0, 32), size, 0).toString());
+          c.icon18.push(header + new Identicon(avatar[1].substring(32, 64), size, 0).toString());
+
+        });
+
+    }, Peerio.Crypto.recommendedConcurrency)
+      .return(contacts);
+  }
 
   function getFullName(user) {
     return ((user.firstName || '') + ' ' + (user.lastName || '')).trim();
@@ -3192,7 +3215,7 @@ Peerio.Files.init = function () {
               file.shortId = Peerio.Util.sha256(fileId);
               decrypted.push(file);
             });
-        }, Peerio.Crypto.recommendedPromiseConcurrency)
+        }, Peerio.Crypto.recommendedConcurrency)
           .return(decrypted);
       })
       .then(addFilesToCache)
@@ -3340,7 +3363,7 @@ Peerio.Messages.init = function () {
           return {id: id, header: header};
         });
 
-    }, Peerio.Crypto.recommendedPromiseConcurrency);
+    }, Peerio.Crypto.recommendedConcurrency);
   }
 
   function generateFileHeader(recipients, id) {
@@ -3400,7 +3423,7 @@ Peerio.Messages.init = function () {
       api.cache.push(item);
       api.cache[item.id] = item;
     });
-
+    // todo: this can be a potential bottleneck, replace with a sorted list
     Peerio.Util.sortDesc(api.cache, 'lastTimestamp');
   }
 
@@ -3411,7 +3434,8 @@ Peerio.Messages.init = function () {
       cachedMessages.push(item);
       cachedMessages[item.id] = item;
     });
-    Peerio.Util.sortDesc(cachedMessages, 'timestamp');
+    // todo: this can be a potential bottleneck, replace with a sorted list
+    Peerio.Util.sortAsc(cachedMessages, 'timestamp');
   }
 
   function addMessageToCache(conversationID, message) {
@@ -3421,7 +3445,8 @@ Peerio.Messages.init = function () {
     cachedMessages.push(message);
     cachedMessages[message.id] = message;
 
-    Peerio.Util.sortDesc(cachedMessages, 'timestamp');
+    // todo: this can be a potential bottleneck, replace with a sorted list
+    Peerio.Util.sortAsc(cachedMessages, 'timestamp');
     return message;
   }
 
@@ -3469,7 +3494,7 @@ Peerio.Messages.init = function () {
           conv.messages[message.id] = message;
           conv.original = message;
         });
-    }, Peerio.Crypto.recommendedPromiseConcurrency)
+    }, Peerio.Crypto.recommendedConcurrency)
       .return(decryptedConversations);
 
   }
@@ -3479,7 +3504,7 @@ Peerio.Messages.init = function () {
 
     return Promise.map(keys, function (msgId) {
       return decryptMessage(messages[msgId]);
-    }, Peerio.Crypto.recommendedPromiseConcurrency);
+    }, Peerio.Crypto.recommendedConcurrency);
   }
 
   /**
