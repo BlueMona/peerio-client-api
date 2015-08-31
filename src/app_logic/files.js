@@ -36,14 +36,14 @@ Peerio.Files.init = function () {
         var keys = Object.keys(files);
 
         return Promise.map(keys, function (fileId) {
-            var file = files[fileId];
-            return Peerio.Crypto.decryptFileName(fileId, file.header)
-              .then(function (name) {
-                file.name = name;
-                file.shortId = Peerio.Util.sha256(fileId);
-                decrypted.push(file);
-              });
-          }, Peerio.Crypto.recommendedPromiseConcurrency)
+          var file = files[fileId];
+          return Peerio.Crypto.decryptFileName(fileId, file.header)
+            .then(function (name) {
+              file.name = name;
+              file.shortId = Peerio.Util.sha256(fileId);
+              decrypted.push(file);
+            });
+        }, Peerio.Crypto.recommendedPromiseConcurrency)
           .return(decrypted);
       })
       .then(addFilesToCache)
@@ -63,9 +63,7 @@ Peerio.Files.init = function () {
       api.cache[item.shortId] = item;
     });
 
-    api.cache.sort(function (a, b) {
-      return a.timestamp > b.timestamp ? -1 : (a.timestamp < b.timestamp ? 1 : 0);
-    });
+    Peerio.Util.sortDesc(api.cache, 'timestamp');
   }
 
 };

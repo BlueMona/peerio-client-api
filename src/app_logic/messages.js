@@ -183,9 +183,7 @@ Peerio.Messages.init = function () {
       api.cache[item.id] = item;
     });
 
-    api.cache.sort(function (a, b) {
-      return a.lastTimestamp > b.lastTimestamp ? -1 : (a.lastTimestamp < b.lastTimestamp ? 1 : 0);
-    });
+    Peerio.Util.sortDesc(api.cache, 'lastTimestamp');
   }
 
   function addMessagesToCache(conversation, messages) {
@@ -195,9 +193,7 @@ Peerio.Messages.init = function () {
       cachedMessages.push(item);
       cachedMessages[item.id] = item;
     });
-    cachedMessages.sort(function (a, b) {
-      return a.timestamp > b.timestamp ? -1 : (a.timestamp < b.timestamp ? 1 : 0);
-    });
+    Peerio.Util.sortDesc(cachedMessages, 'timestamp');
   }
 
   function addMessageToCache(conversationID, message) {
@@ -207,10 +203,7 @@ Peerio.Messages.init = function () {
     cachedMessages.push(message);
     cachedMessages[message.id] = message;
 
-    cachedMessages.sort(function (a, b) {
-      return a.timestamp > b.timestamp ? -1 : (a.timestamp < b.timestamp ? 1 : 0);
-    });
-
+    Peerio.Util.sortDesc(cachedMessages, 'timestamp');
     return message;
   }
 
@@ -243,6 +236,14 @@ Peerio.Messages.init = function () {
       conv.messages = [];
       conv.lastTimestamp = +conv.lastTimestamp;
       conv.lastMoment = moment(conv.lastTimestamp);
+      conv.formerParticipants = [];
+      if (conv.events)
+        conv.events.forEach(function (event) {
+          if (event.type !== 'remove') return;
+          conv.formerParticipants.push(event.participant);
+        });
+
+      conv.allParticipants = conv.formerParticipants ? conv.participants.concat(conv.formerParticipants) : conv.participants;
 
       return decryptMessage(encMessage)
         .then(function (message) {

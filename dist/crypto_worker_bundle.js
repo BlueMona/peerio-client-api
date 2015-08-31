@@ -9757,7 +9757,7 @@ Peerio.Crypto.init = function () {
   api.encryptMessage = function (message, recipients, sender) {
     sender = sender || defaultUser;
     // recipients should send this back
-    message.receipt = encodeB64(nacl.randomBytes(32)) + Date.now();
+    message.receipt = encodeB64(nacl.randomBytes(32));
     return new Promise(function (resolve, reject) {
 
       var validatedRecipients = validateRecipients(recipients, sender);

@@ -76,4 +76,19 @@ Peerio.Util.init = function () {
     return hash.getHash('HEX');
   };
 
+  api.sortAsc = function (arr, prop) {
+    return arr.sort(function (a, b) {
+      if (a[prop] > b[prop]) return 1;
+      if (a[prop] < b[prop]) return -1;
+      return 0;
+    });
+  };
+  api.sortDesc = function (arr, prop) {
+    return arr.sort(function (a, b) {
+      if (a[prop] > b[prop]) return -1;
+      if (a[prop] < b[prop]) return 1;
+      return 0;
+    });
+  };
+
 };

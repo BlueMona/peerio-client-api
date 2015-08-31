@@ -46,27 +46,20 @@ Peerio.Auth.init = function () {
         return net.getSettings();
       })
       .then(function(settings){
-        Peerio.user.settings = settings;
-        Peerio.user.firstName = settings.firstName;
-        Peerio.user.lastName = settings.lastName;
-        return net.getContacts();
-      })
-      .then(function(contacts){
-        var contactMap = [];
-        contacts.contacts.forEach(function(c){
-          c.publicKey = c.miniLockID;// todo: remove after this gets renamed on server
-          c.fullName = (c.firstName||'') +' ' + (c.lastName||'');
-          contactMap[c.username] = c;
-          contactMap.push(c);
-        });
-        contactMap[Peerio.user.username] = Peerio.user;
-        contactMap.push(Peerio.user);
-        Peerio.user.fullName = (Peerio.user.firstName||'') +' ' + (Peerio.user.lastName||'');
-        Peerio.user.contacts = contactMap;
-        Peerio.Crypto.setDefaultContacts(contactMap);
-        return true;
+        var u = Peerio.user;
+        u.settings = settings;
+        u.firstName = settings.firstName;
+        u.lastName = settings.lastName;
+        return Peerio.Contacts.updateContacts();
       });
   };
+
+  function buildFullName(user){
+   return ((user.firstName||'') +' ' + (user.lastName||'')).trim();
+  }
+  function buildFullNameAndUsername(user){
+    return (user.fullName + ' ('+user.username+')').trim();
+  }
 
   /**
    * Retrieves saved login (last successful one)

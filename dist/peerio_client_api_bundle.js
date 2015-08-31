@@ -3029,27 +3029,20 @@ Peerio.Auth.init = function () {
         return net.getSettings();
       })
       .then(function(settings){
-        Peerio.user.settings = settings;
-        Peerio.user.firstName = settings.firstName;
-        Peerio.user.lastName = settings.lastName;
-        return net.getContacts();
-      })
-      .then(function(contacts){
-        var contactMap = [];
-        contacts.contacts.forEach(function(c){
-          c.publicKey = c.miniLockID;// todo: remove after this gets renamed on server
-          c.fullName = (c.firstName||'') +' ' + (c.lastName||'');
-          contactMap[c.username] = c;
-          contactMap.push(c);
-        });
-        contactMap[Peerio.user.username] = Peerio.user;
-        contactMap.push(Peerio.user);
-        Peerio.user.fullName = (Peerio.user.firstName||'') +' ' + (Peerio.user.lastName||'');
-        Peerio.user.contacts = contactMap;
-        Peerio.Crypto.setDefaultContacts(contactMap);
-        return true;
+        var u = Peerio.user;
+        u.settings = settings;
+        u.firstName = settings.firstName;
+        u.lastName = settings.lastName;
+        return Peerio.Contacts.updateContacts();
       });
   };
+
+  function buildFullName(user){
+   return ((user.firstName||'') +' ' + (user.lastName||'')).trim();
+  }
+  function buildFullNameAndUsername(user){
+    return (user.fullName + ' ('+user.username+')').trim();
+  }
 
   /**
    * Retrieves saved login (last successful one)
@@ -3100,6 +3093,61 @@ Peerio.Auth.init = function () {
   };
 };
 /**
+ *  Peerio App Logic: Contacts
+ */
+var Peerio = this.Peerio || {};
+Peerio.Contacts = {};
+
+Peerio.Contacts.init = function () {
+  'use strict';
+
+  var api = Peerio.Contacts;
+  delete Peerio.Contacts.init;
+  var net = Peerio.Net;
+
+  api.updateContacts = function () {
+    return net.getContacts()
+      .then(function (contacts) {
+        var contactMap = [];
+
+        contacts.contacts.forEach(function (c) {
+          c.publicKey = c.miniLockID;// todo: remove after this gets renamed on server
+          c.fullName = getFullName(c);
+          c.fullNameAndUsername = getFullNameAndUsername(c);
+
+          contactMap[c.username] = c;
+          contactMap.push(c);
+        });
+
+        Peerio.Util.sortAsc(contactMap, 'fullNameAndUsername');
+
+        return contactMap;
+      })
+      .then(function(contacts){
+        var u = Peerio.user;
+        u.fullName = getFullName(u);
+        u.fullNameAndUsername = getFullNameAndUsername(u);
+
+        u.contacts = contacts;
+
+        contacts[u.username] = u;
+        contacts.unshift(u);
+
+        Peerio.Crypto.setDefaultContacts(contacts);
+        return contacts;
+      });
+  };
+
+  function getFullName(user) {
+    return ((user.firstName || '') + ' ' + (user.lastName || '')).trim();
+  }
+
+  function getFullNameAndUsername(user) {
+    return (user.fullName + ' (' + user.username + ')').trim();
+  }
+
+};
+/**
  * Peerio App Logic: files
  */
 
@@ -3137,14 +3185,14 @@ Peerio.Files.init = function () {
         var keys = Object.keys(files);
 
         return Promise.map(keys, function (fileId) {
-            var file = files[fileId];
-            return Peerio.Crypto.decryptFileName(fileId, file.header)
-              .then(function (name) {
-                file.name = name;
-                file.shortId = Peerio.Util.sha256(fileId);
-                decrypted.push(file);
-              });
-          }, Peerio.Crypto.recommendedPromiseConcurrency)
+          var file = files[fileId];
+          return Peerio.Crypto.decryptFileName(fileId, file.header)
+            .then(function (name) {
+              file.name = name;
+              file.shortId = Peerio.Util.sha256(fileId);
+              decrypted.push(file);
+            });
+        }, Peerio.Crypto.recommendedPromiseConcurrency)
           .return(decrypted);
       })
       .then(addFilesToCache)
@@ -3164,9 +3212,7 @@ Peerio.Files.init = function () {
       api.cache[item.shortId] = item;
     });
 
-    api.cache.sort(function (a, b) {
-      return a.timestamp > b.timestamp ? -1 : (a.timestamp < b.timestamp ? 1 : 0);
-    });
+    Peerio.Util.sortDesc(api.cache, 'timestamp');
   }
 
 };
@@ -3355,9 +3401,7 @@ Peerio.Messages.init = function () {
       api.cache[item.id] = item;
     });
 
-    api.cache.sort(function (a, b) {
-      return a.lastTimestamp > b.lastTimestamp ? -1 : (a.lastTimestamp < b.lastTimestamp ? 1 : 0);
-    });
+    Peerio.Util.sortDesc(api.cache, 'lastTimestamp');
   }
 
   function addMessagesToCache(conversation, messages) {
@@ -3367,9 +3411,7 @@ Peerio.Messages.init = function () {
       cachedMessages.push(item);
       cachedMessages[item.id] = item;
     });
-    cachedMessages.sort(function (a, b) {
-      return a.timestamp > b.timestamp ? -1 : (a.timestamp < b.timestamp ? 1 : 0);
-    });
+    Peerio.Util.sortDesc(cachedMessages, 'timestamp');
   }
 
   function addMessageToCache(conversationID, message) {
@@ -3379,10 +3421,7 @@ Peerio.Messages.init = function () {
     cachedMessages.push(message);
     cachedMessages[message.id] = message;
 
-    cachedMessages.sort(function (a, b) {
-      return a.timestamp > b.timestamp ? -1 : (a.timestamp < b.timestamp ? 1 : 0);
-    });
-
+    Peerio.Util.sortDesc(cachedMessages, 'timestamp');
     return message;
   }
 
@@ -3415,6 +3454,14 @@ Peerio.Messages.init = function () {
       conv.messages = [];
       conv.lastTimestamp = +conv.lastTimestamp;
       conv.lastMoment = moment(conv.lastTimestamp);
+      conv.formerParticipants = [];
+      if (conv.events)
+        conv.events.forEach(function (event) {
+          if (event.type !== 'remove') return;
+          conv.formerParticipants.push(event.participant);
+        });
+
+      conv.allParticipants = conv.formerParticipants ? conv.participants.concat(conv.formerParticipants) : conv.participants;
 
       return decryptMessage(encMessage)
         .then(function (message) {
@@ -4603,6 +4650,21 @@ Peerio.Util.init = function () {
     return hash.getHash('HEX');
   };
 
+  api.sortAsc = function (arr, prop) {
+    return arr.sort(function (a, b) {
+      if (a[prop] > b[prop]) return 1;
+      if (a[prop] < b[prop]) return -1;
+      return 0;
+    });
+  };
+  api.sortDesc = function (arr, prop) {
+    return arr.sort(function (a, b) {
+      if (a[prop] > b[prop]) return -1;
+      if (a[prop] < b[prop]) return 1;
+      return 0;
+    });
+  };
+
 };
 /**
  * Various extensions to system/lib objects
@@ -4740,6 +4802,7 @@ Peerio.initAPI = function () {
       Peerio.Auth.init();
       Peerio.Messages.init();
       Peerio.Files.init();
+      Peerio.Contacts.init();
 
       Peerio.Socket.start();
 
