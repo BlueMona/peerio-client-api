@@ -3263,6 +3263,7 @@ Peerio.Messages.init = function () {
 
     convPromise.then(function () {return decryptMessage(message);})
       .then(function (decrypted) {
+        decrypted.isModified = true;
         return addMessageToCache(message.conversationID, decrypted);
       })
       .then(Peerio.Action.messageAdded);
@@ -3324,6 +3325,9 @@ Peerio.Messages.init = function () {
       .then(function () {
         getAllConversationsPromise = null;
       })
+      .then(function () {
+        return api.markModifiedConversations();
+      })
       .return(api.cache);
 
   };
@@ -3340,6 +3344,35 @@ Peerio.Messages.init = function () {
       .then(function (messages) {
         addMessagesToCache(conversation, messages);
         return conversation;
+      });
+  };
+
+  api.markAsRead = function (conversation) {
+    var toSend = [];
+    Promise.map(conversation.messages, function (msg) {
+      if (!msg.isModified) return;
+      return Peerio.Crypto.encryptReceipt(msg.receipt.toString() + Date.now(), msg.sender)
+        .then(function (receipt) {
+          toSend.push({id: msg.id, encryptedReturnReceipt: receipt});
+        });
+    }).then(function () {
+      if (!toSend.length) return;
+      return Peerio.Net.readMessages(toSend);
+    }).then(function () {
+      conversation.isModified = false;
+
+    });
+  };
+
+  api.markModifiedConversations = function () {
+    return Peerio.Net.getModifiedMessageIDs()
+      .then(function (resp) { return Peerio.Net.getMessages(resp.messageIDs);})
+      .then(function (resp) {
+        for (var id in resp.messages) {
+          if (!resp.messages.hasOwnProperty(id)) return;
+          var conv = api.cache[resp.messages[id].conversationID];
+          if (conv) conv.isModified = true;
+        }
       });
   };
 
@@ -3422,6 +3455,7 @@ Peerio.Messages.init = function () {
       if (api.cache[item.id]) return;
       api.cache.push(item);
       api.cache[item.id] = item;
+      if (item.original.isModified) item.isModified = true;
     });
     // todo: this can be a potential bottleneck, replace with a sorted list
     Peerio.Util.sortDesc(api.cache, 'lastTimestamp');
@@ -3433,6 +3467,7 @@ Peerio.Messages.init = function () {
       if (cachedMessages[item.id]) return;
       cachedMessages.push(item);
       cachedMessages[item.id] = item;
+      if (item.isModified) conversation.isModified = true;
     });
     // todo: this can be a potential bottleneck, replace with a sorted list
     Peerio.Util.sortAsc(cachedMessages, 'timestamp');
@@ -3444,6 +3479,8 @@ Peerio.Messages.init = function () {
 
     cachedMessages.push(message);
     cachedMessages[message.id] = message;
+
+    if (message.isModified) api.cache[conversationID].isModified = true;
 
     // todo: this can be a potential bottleneck, replace with a sorted list
     Peerio.Util.sortAsc(cachedMessages, 'timestamp');
@@ -3524,8 +3561,7 @@ Peerio.Messages.init = function () {
       });
   }
 
-}
-;
+};
 /**
  * Peerio network protocol implementation
  */
@@ -4028,7 +4064,7 @@ Peerio.Net.init = function () {
 
   /**
    * Mark a message as read.
-   * @param {array} read - array containing {id, encryptedReturnReceipt} objects
+   * @param {Array} read - array containing {id, encryptedReturnReceipt} objects
    * @promise
    */
   api.readMessages = function (read) {

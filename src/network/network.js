@@ -500,7 +500,7 @@ Peerio.Net.init = function () {
 
   /**
    * Mark a message as read.
-   * @param {array} read - array containing {id, encryptedReturnReceipt} objects
+   * @param {Array} read - array containing {id, encryptedReturnReceipt} objects
    * @promise
    */
   api.readMessages = function (read) {

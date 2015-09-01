@@ -427,6 +427,7 @@ Peerio.Crypto.init = function () {
           return api.decryptReceipt(recipient.username, recipient.receipt.encryptedReturnReceipt)
             .then(function (decReceipt) {
               if (decrypted.receipt === decReceipt.substring(0, decReceipt.length - timestampLength)) {
+                //todo parse and store receipt timestamp
                 decrypted.receipts.push(recipient.username);
               }
             })
