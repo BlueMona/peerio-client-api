@@ -42,6 +42,7 @@ Peerio.Files.init = function () {
               file.name = name;
               file.shortId = Peerio.Util.sha256(fileId);
               decrypted.push(file);
+              decrypted[file.shortId] = file;
             });
         }, Peerio.Crypto.recommendedConcurrency)
           .return(decrypted);

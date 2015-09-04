@@ -25,10 +25,31 @@ Peerio.Messages.init = function () {
         decrypted.isModified = true;
         return addMessageToCache(message.conversationID, decrypted);
       })
-      .then(Peerio.Action.messageAdded);
+      .then(Peerio.Action.messageAdded.bind(null, message.conversationID));
   };
 
   net.injectPeerioEventHandler('messageAdded', api.onMessageAdded);
+
+  net.injectPeerioEventHandler('messageRead', function (data) {
+    var message = api.cache[data.conversationID].messages[data.messageID];
+
+    Promise.map(data.recipients, function (recipient) {
+      if (recipient.username === Peerio.user.username || !recipient.receipt || !recipient.receipt.encryptedReturnReceipt) return;
+
+      return Peerio.Crypto.decryptReceipt(recipient.username, recipient.receipt.encryptedReturnReceipt)
+        .then(function (decryptedReceipt) {
+          // decrypted receipt contains timestamp
+          if (decryptedReceipt.indexOf(message.receipt) === 0) {
+            if (message.receipts.indexOf(recipient.username) < 0)
+              message.receipts.push(recipient.username);
+          }
+        });
+
+    })
+      .then(function () {
+        Peerio.Action.receiptAdded(data.conversationID);
+      });
+  });
 
   api.getOneConversation = function (id) {
     if (api.cache[id]) Promise.resolve();
@@ -96,15 +117,32 @@ Peerio.Messages.init = function () {
     var conversation = api.cache[conversationID];
     if (conversation._pendingLoadPromise) return conversation._pendingLoadPromise;
 
-    return conversation._pendingLoadPromise = Peerio.Net.getConversationPages([{id: conversationID, page: '0'}])
+    return conversation._pendingLoadPromise = new Promise(function (resolve, reject) {
+      var page = 0;
+      var load = function () {
+        loadPage(conversation, page).then(function (length) {
+          if (length === 0) resolve(conversation);
+          Peerio.Action.messageAdded(conversationID);
+          page++;
+          load();
+        });
+      };
+      load();
+    });
+  };
+
+  function loadPage(conversation, page) {
+    return Peerio.Net.getConversationPages([{id: conversation.id, page: page}])
       .then(function (response) {
-        return decryptMessages(response.conversations[conversationID].messages);
+        var messages = response.conversations[conversation.id].messages;
+        if (Object.keys(messages).length === 0) return [];
+        return decryptMessages(messages);
       })
       .then(function (messages) {
-        addMessagesToCache(conversation, messages);
-        return conversation;
+        if (messages.length) addMessagesToCache(conversation, messages);
+        return messages.length;
       });
-  };
+  }
 
   api.markAsRead = function (conversation) {
     var toSend = [];

@@ -22,10 +22,16 @@ Peerio.ActionOverrides.init = function () {
     Peerio.Action.loading = function () {
       if (++i.loadingCounter === 1) Peerio.Dispatcher.notify('Loading');
     };
+
     Peerio.Action.loadingDone = function () {
-      if (--i.loadingCounter === 0) Peerio.Dispatcher.notify('LoadingDone');
+      if (--i.loadingCounter === 0) window.setTimeout(doneFn, 1000);
       i.loadingCounter = Math.max(i.loadingCounter, 0);
     };
+
+    function doneFn() {
+      if(i.loadingCounter !== 0) return;
+      Peerio.Dispatcher.notify('LoadingDone');
+    }
   }());
 
 };

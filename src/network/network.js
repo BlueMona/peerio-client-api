@@ -9,7 +9,7 @@ Peerio.Net = {};
 
 Peerio.Net.init = function () {
   'use strict';
-  var API_VERSION = '2.0.0';
+  var API_VERSION = '2';
   var api = Peerio.Net;
   delete Peerio.Net.init;
   var hasProp = Peerio.Util.hasProp;
@@ -78,6 +78,7 @@ Peerio.Net.init = function () {
   function onConnect() {
     sendToSocket('setApiVersion', {version: API_VERSION}, true)
       .then(function () {
+        Peerio.Action.socketConnect();
         connected = true;
         fireEvent(api.EVENTS.onConnect);
         api.login(user, true)
@@ -98,7 +99,7 @@ Peerio.Net.init = function () {
     // in case of errors disconnect events might be fired without 'connect' event between them
     // so we make sure we handle first event only
     if (!connected) return;
-
+    Peerio.Action.socketDisconnect();
     rejectAllPromises();
     connected = false;
     authenticated = false;
@@ -160,6 +161,7 @@ Peerio.Net.init = function () {
 
   // removes previously registered promise rejection fn by id
   function removePendingPromise(id) {
+    Peerio.Action.loadingDone();
     delete pending[id];
   }
 
@@ -168,7 +170,6 @@ Peerio.Net.init = function () {
     _.forOwn(pending, function (reject) {
       reject();
     });
-    pending = {};
     currentId = 0;
   }
 
@@ -186,6 +187,7 @@ Peerio.Net.init = function () {
     var id = null;
 
     return new Promise(function (resolve, reject) {
+      Peerio.Action.loading();
       id = addPendingPromise(reject);
       Peerio.Socket.send(name, data, resolve);
     })
