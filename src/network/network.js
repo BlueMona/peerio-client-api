@@ -574,20 +574,20 @@ Peerio.Net.init = function () {
 
   /**
    * Delete a file.
-   * @param {array} ids - Contains id strings.
+   * @param {string} id
    * @promise
    */
-  api.removeFile = function (ids) {
-    return sendToSocket('removeFile', {ids: ids});
+  api.removeFile = function (id) {
+    return sendToSocket('removeFile', {ids: [id]});
   };
 
   /**
    * Nuke a file.
-   * @param {array} ids - Contains id strings.
+   * @param {string} id
    * @promise
    */
-  api.nukeFile = function (ids) {
-    return sendToSocket('nukeFile', {ids: ids});
+  api.nukeFile = function (id) {
+    return sendToSocket('nukeFile', {ids: [id]});
   };
 
   /**

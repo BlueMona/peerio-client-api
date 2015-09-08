@@ -48,7 +48,22 @@ Peerio.Files.init = function () {
           .return(decrypted);
       })
       .then(addFilesToCache)
-      .return(api.cache);
+      .then(function(){
+        Peerio.Action.filesUpdated();
+        return api.cache;
+      });
+  };
+
+  api.delete =function(shortId){
+    var file = api.cache[shortId];
+    if(!file) return;
+    Peerio.Net.removeFile(file.id);
+  };
+
+  api.nuke =function(shortId){
+    var file = api.cache[shortId];
+    if(!file) return;
+    Peerio.Net.nukeFile(file.id);
   };
 
   /**
@@ -65,6 +80,33 @@ Peerio.Files.init = function () {
     });
 
     Peerio.Util.sortDesc(api.cache, 'timestamp');
+  }
+
+  net.injectPeerioEventHandler('fileAdded', addFile);
+  net.injectPeerioEventHandler('fileRemoved', removeFile);
+
+  function removeFile(data){
+    var i = _.findIndex(api.cache, function(c){ return c.id === data.fileID;});
+    if(i<0) return;
+    var file = api.cache.splice(i,1)[0];
+    delete api.cache[file.shortId];
+    delete api.cache[file.id];
+    Peerio.Action.filesUpdated();
+  }
+
+  function addFile(file){
+    if(api.cache[file.id]) return;
+
+    return Peerio.Crypto.decryptFileName(file.id, file.header)
+      .then(function (name) {
+        if(api.cache[file.id]) return;
+        file.name = name;
+        file.shortId = Peerio.Util.sha256(file.id);
+        api.cache[file.shortId] = file;
+        api.cache[file.id] = file;
+        api.cache.push(file);
+        Peerio.Action.filesUpdated();
+      });
   }
 
 };

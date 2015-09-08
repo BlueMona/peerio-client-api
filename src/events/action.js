@@ -59,7 +59,8 @@ Peerio.Action.init = function () {
     'MessageAdded',
     'ReceiptAdded',
     'ConversationsUpdated',
-    'ContactsUpdated'
+    'ContactsUpdated',
+    'FilesUpdated'
   ].forEach(function (action) {
       Peerio.Action.add(action);
     });

@@ -116,7 +116,8 @@ function initialize(cfg) {
   // });
 
   // peerio events
-  ['contactAdded',
+  [
+    'contactAdded',
     'contactRemoved',
     'contactRequestSent',
     'contactRequestReceived',
@@ -127,6 +128,9 @@ function initialize(cfg) {
     'messageRead',
     'conversationModified',
     'conversationRemoved',
+
+    'fileAdded',
+    'fileRemoved',
 
     'settingsUpdated'
   ].forEach(function (eventName) {
