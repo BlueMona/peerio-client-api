@@ -3099,7 +3099,7 @@ Peerio.Auth.init = function () {
       });
   }
 
-  api.signup = function (username, passphrase) {
+  api.signup = function (username, passphrase, firstName, lastName) {
     var keys;
     return Peerio.Crypto.getKeyPair(username, passphrase)
       .then(function (keyPair) {
@@ -3107,7 +3107,7 @@ Peerio.Auth.init = function () {
         return Peerio.Crypto.getPublicKeyString(keyPair.publicKey);
       })
       .then(function (publicKeyString) {
-        var info = new Peerio.Model.AccountInfo(username, username, username, publicKeyString, 'en');
+        var info = new Peerio.Model.AccountInfo(username, firstName, lastName, publicKeyString, 'en');
         return net.registerAccount(info);
       })
       .then(function (creationToken) {
@@ -3937,7 +3937,9 @@ Peerio.Net.init = function () {
   api.validateUsername = function (username) {
     if (!username) { return Promise.resolve(false); }
     return sendToSocket('validateUsername', {username: username})
-      .return(true)
+      .then(function(response){
+        return response.available;
+      })
       .catch(PeerioServerError, function (error) {
         if (error.code === 400) return Promise.resolve(false);
         else return Promise.reject();

@@ -116,7 +116,7 @@ Peerio.Auth.init = function () {
       });
   }
 
-  api.signup = function (username, passphrase) {
+  api.signup = function (username, passphrase, firstName, lastName) {
     var keys;
     return Peerio.Crypto.getKeyPair(username, passphrase)
       .then(function (keyPair) {
@@ -124,7 +124,7 @@ Peerio.Auth.init = function () {
         return Peerio.Crypto.getPublicKeyString(keyPair.publicKey);
       })
       .then(function (publicKeyString) {
-        var info = new Peerio.Model.AccountInfo(username, username, username, publicKeyString, 'en');
+        var info = new Peerio.Model.AccountInfo(username, firstName, lastName, publicKeyString, 'en');
         return net.registerAccount(info);
       })
       .then(function (creationToken) {
