@@ -29,13 +29,18 @@ Peerio.Auth.init = function () {
    * @promise
    */
   api.login = function (username, passphraseOrPIN) {
-    return new Promise(function (resolve) {
-      // todo PIN
-      var passphrase = passphraseOrPIN;
-      Peerio.user = new Peerio.Model.User(username, passphrase);
-      resolve();
-    })
-      .then(function(){
+    var isPinSet = false;
+    return Peerio.TinyDB.getObject(username+'PIN')
+      .then(function (encrypted) {
+        if (encrypted) {
+          isPinSet = true;
+          return getPassphraseFromPIN(username, passphraseOrPIN, encrypted);
+        }
+        return passphraseOrPIN;
+      })
+      .then(function (passphrase) {
+        Peerio.user = new Peerio.Model.User(username, passphrase || passphraseOrPIN);
+        Peerio.user.isPINSet = isPinSet;
         return Peerio.user.generateKeys();
       })
       .then(function () {
@@ -45,7 +50,7 @@ Peerio.Auth.init = function () {
         Peerio.Crypto.setDefaultUserData(user.username, user.keyPair, user.publicKey);
         return net.getSettings();
       })
-      .then(function(settings){
+      .then(function (settings) {
         var u = Peerio.user;
         u.settings = settings;
         u.firstName = settings.firstName;
@@ -82,6 +87,34 @@ Peerio.Auth.init = function () {
   api.clearSavedLogin = function () {
     Peerio.TinyDB.removeItem(lastLoginKey);
   };
+
+  api.setPIN = function (PIN, username, passphrase) {
+    return Peerio.Crypto.getKeyFromPIN(PIN, username)
+      .then(function (PINkey) {
+        return Peerio.Crypto.secretBoxEncrypt(passphrase, PINkey);
+      }).then(function (encrypted) {
+        encrypted.ciphertext = nacl.util.encodeBase64(encrypted.ciphertext);
+        encrypted.nonce = nacl.util.encodeBase64(encrypted.nonce);
+        return Peerio.TinyDB.setObject(username + 'PIN', encrypted);
+      }).then(function(){
+        Peerio.user.isPINSet = true;
+      });
+  };
+
+  api.removePIN = function () {
+    Peerio.TinyDB.removeItem(Peerio.user.username + 'PIN');
+    Peerio.user.isPINSet = false;
+  };
+
+  function getPassphraseFromPIN(username, PIN, encryptedPassphrase) {
+    return Peerio.Crypto.getKeyFromPIN(PIN, username)
+      .then(function (PINkey) {
+        return Peerio.Crypto.secretBoxDecrypt(nacl.util.decodeBase64(encryptedPassphrase.ciphertext),
+          nacl.util.decodeBase64(encryptedPassphrase.nonce), PINkey);
+      }).catch(function () {
+        return Promise.resolve(null);
+      });
+  }
 
   api.signup = function (username, passphrase) {
     var keys;

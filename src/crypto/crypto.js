@@ -168,6 +168,9 @@ Peerio.Crypto.init = function () {
    * @promise {string} plaintext
    */
   api.secretBoxDecrypt = function (ciphertext, nonce, key) {
+    if(typeof ciphertext === 'string')
+     ciphertext = decodeUTF8(ciphertext);
+
     return Promise.resolve(
       encodeUTF8(nacl.secretbox.open(ciphertext, nonce, key))
     );

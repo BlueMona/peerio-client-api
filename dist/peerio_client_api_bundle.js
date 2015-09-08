@@ -3012,13 +3012,18 @@ Peerio.Auth.init = function () {
    * @promise
    */
   api.login = function (username, passphraseOrPIN) {
-    return new Promise(function (resolve) {
-      // todo PIN
-      var passphrase = passphraseOrPIN;
-      Peerio.user = new Peerio.Model.User(username, passphrase);
-      resolve();
-    })
-      .then(function(){
+    var isPinSet = false;
+    return Peerio.TinyDB.getObject(username+'PIN')
+      .then(function (encrypted) {
+        if (encrypted) {
+          isPinSet = true;
+          return getPassphraseFromPIN(username, passphraseOrPIN, encrypted);
+        }
+        return passphraseOrPIN;
+      })
+      .then(function (passphrase) {
+        Peerio.user = new Peerio.Model.User(username, passphrase || passphraseOrPIN);
+        Peerio.user.isPINSet = isPinSet;
         return Peerio.user.generateKeys();
       })
       .then(function () {
@@ -3028,7 +3033,7 @@ Peerio.Auth.init = function () {
         Peerio.Crypto.setDefaultUserData(user.username, user.keyPair, user.publicKey);
         return net.getSettings();
       })
-      .then(function(settings){
+      .then(function (settings) {
         var u = Peerio.user;
         u.settings = settings;
         u.firstName = settings.firstName;
@@ -3066,6 +3071,34 @@ Peerio.Auth.init = function () {
     Peerio.TinyDB.removeItem(lastLoginKey);
   };
 
+  api.setPIN = function (PIN, username, passphrase) {
+    return Peerio.Crypto.getKeyFromPIN(PIN, username)
+      .then(function (PINkey) {
+        return Peerio.Crypto.secretBoxEncrypt(passphrase, PINkey);
+      }).then(function (encrypted) {
+        encrypted.ciphertext = nacl.util.encodeBase64(encrypted.ciphertext);
+        encrypted.nonce = nacl.util.encodeBase64(encrypted.nonce);
+        return Peerio.TinyDB.setObject(username + 'PIN', encrypted);
+      }).then(function(){
+        Peerio.user.isPINSet = true;
+      });
+  };
+
+  api.removePIN = function () {
+    Peerio.TinyDB.removeItem(Peerio.user.username + 'PIN');
+    Peerio.user.isPINSet = false;
+  };
+
+  function getPassphraseFromPIN(username, PIN, encryptedPassphrase) {
+    return Peerio.Crypto.getKeyFromPIN(PIN, username)
+      .then(function (PINkey) {
+        return Peerio.Crypto.secretBoxDecrypt(nacl.util.decodeBase64(encryptedPassphrase.ciphertext),
+          nacl.util.decodeBase64(encryptedPassphrase.nonce), PINkey);
+      }).catch(function () {
+        return Promise.resolve(null);
+      });
+  }
+
   api.signup = function (username, passphrase) {
     var keys;
     return Peerio.Crypto.getKeyPair(username, passphrase)
@@ -3098,6 +3131,30 @@ Peerio.Contacts.init = function () {
   delete Peerio.Contacts.init;
   var net = Peerio.Net;
 
+  api.getFullName = function (username) {
+    var c = Peerio.user.contacts[username];
+    if (!c) return username;
+    return c.fullName;
+  };
+
+  api.getFullNameAndUsername = function (username) {
+    var c = Peerio.user.contacts[username];
+    if (!c) return username;
+    return c.fullNameAndUsername;
+  };
+
+  api.addContact = function (username) {
+    Peerio.Net.addContact(username);
+  };
+
+
+  function removeContact(data) {
+    delete Peerio.user.contacts[data.contact];
+    var i = _.findIndex(Peerio.user.contacts, function(c){ return c.username === data.contact;});
+    Peerio.user.contacts.splice(i, 1);
+    Peerio.Action.contactsUpdated();
+  }
+
   api.updateContacts = function () {
     return net.getContacts()
       .then(function (contacts) {
@@ -3122,7 +3179,7 @@ Peerio.Contacts.init = function () {
         u.fullNameAndUsername = getFullNameAndUsername(u);
 
         u.contacts = contacts;
-
+        u.isMe = true;
         contacts[u.username] = u;
         contacts.unshift(u);
 
@@ -3130,7 +3187,50 @@ Peerio.Contacts.init = function () {
         return contacts;
       }).then(function (contacts) {
         return buildIdenticons(contacts);
+      }).then(function () {
+        return net.getSentContactRequests();
+      }).then(function (data) {
+        data.contactRequests.forEach(function (username) {
+          var c = {username: username, isRequest: true};
+          Peerio.user.contacts.push(c);
+          Peerio.user.contacts[username] = c;
+        });
+        return net.getReceivedContactRequests();
+      }).then(function (data) {
+        data.contactRequests.forEach(function (c) {
+          c.isRequest= true;
+          c.isReceivedRequest= true;
+          c.publicKey = c.miniLockID;// todo: remove after this gets renamed on server
+          c.fullName = getFullName(c);
+          c.fullNameAndUsername = getFullNameAndUsername(c);
+
+          Peerio.user.contacts.push(c);
+          Peerio.user.contacts[c.username] = c;
+        });
+      }).then(function () {
+        Peerio.Action.contactsUpdated();
       });
+  };
+
+  api.removeContact = function(username){
+    var c = Peerio.user.contacts[username];
+    if(c.isRequest && !c.isReceivedRequest)
+      net.cancelContactRequest(username);
+    else
+      net.removeContact(username);
+  };
+
+  api.acceptContact =function(username){
+    var c = Peerio.user.contacts[username];
+    if(c.isRequest && c.isReceivedRequest){
+      net.acceptContactRequest(username);
+    }
+  };
+  api.rejectContact =function(username){
+    var c = Peerio.user.contacts[username];
+    if(c.isRequest && c.isReceivedRequest){
+      net.declineContactRequest(username);
+    }
   };
 
   function buildIdenticons(contacts) {
@@ -3168,6 +3268,13 @@ Peerio.Contacts.init = function () {
   function getFullNameAndUsername(user) {
     return (user.fullName + ' (' + user.username + ')').trim();
   }
+
+  net.injectPeerioEventHandler('contactAdded', api.updateContacts);
+  net.injectPeerioEventHandler('contactRequestSent', api.updateContacts);
+  net.injectPeerioEventHandler('contactRequestReceived', api.updateContacts);
+  net.injectPeerioEventHandler('receivedContactRequestRemoved', removeContact);
+  net.injectPeerioEventHandler('sentContactRequestRemoved', removeContact);
+  net.injectPeerioEventHandler('contactRemoved', removeContact);
 
 };
 /**
@@ -3363,7 +3470,10 @@ Peerio.Messages.init = function () {
       var page = 0;
       var load = function () {
         loadPage(conversation, page).then(function (length) {
-          if (length === 0) resolve(conversation);
+          if (length === 0){
+            resolve(conversation);
+            return;
+          }
           Peerio.Action.messageAdded(conversationID);
           page++;
           load();
@@ -3984,11 +4094,11 @@ Peerio.Net.init = function () {
 
   /**
    * Sends a contact request to a username.
-   * @param {array} contacts - Contains objects which either have a `username` or `address` property
+   * @param {string} username
    * @promise
    */
-  api.addContact = function (contacts) {
-    return sendToSocket('addContact', {contacts: contacts});
+  api.addContact = function (username) {
+    return sendToSocket('addContact', {contacts: [{username: username}]});
   };
 
   /**
@@ -4525,7 +4635,8 @@ Peerio.Action.init = function () {
     'LoginFail',            // login attempt failed
     'MessageAdded',
     'ReceiptAdded',
-    'ConversationsUpdated'
+    'ConversationsUpdated',
+    'ContactsUpdated'
   ].forEach(function (action) {
       Peerio.Action.add(action);
     });

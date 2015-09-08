@@ -381,11 +381,11 @@ Peerio.Net.init = function () {
 
   /**
    * Sends a contact request to a username.
-   * @param {array} contacts - Contains objects which either have a `username` or `address` property
+   * @param {string} username
    * @promise
    */
-  api.addContact = function (contacts) {
-    return sendToSocket('addContact', {contacts: contacts});
+  api.addContact = function (username) {
+    return sendToSocket('addContact', {contacts: [{username: username}]});
   };
 
   /**

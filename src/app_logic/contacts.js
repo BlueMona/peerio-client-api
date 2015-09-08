@@ -11,6 +11,30 @@ Peerio.Contacts.init = function () {
   delete Peerio.Contacts.init;
   var net = Peerio.Net;
 
+  api.getFullName = function (username) {
+    var c = Peerio.user.contacts[username];
+    if (!c) return username;
+    return c.fullName;
+  };
+
+  api.getFullNameAndUsername = function (username) {
+    var c = Peerio.user.contacts[username];
+    if (!c) return username;
+    return c.fullNameAndUsername;
+  };
+
+  api.addContact = function (username) {
+    Peerio.Net.addContact(username);
+  };
+
+
+  function removeContact(data) {
+    delete Peerio.user.contacts[data.contact];
+    var i = _.findIndex(Peerio.user.contacts, function(c){ return c.username === data.contact;});
+    Peerio.user.contacts.splice(i, 1);
+    Peerio.Action.contactsUpdated();
+  }
+
   api.updateContacts = function () {
     return net.getContacts()
       .then(function (contacts) {
@@ -35,7 +59,7 @@ Peerio.Contacts.init = function () {
         u.fullNameAndUsername = getFullNameAndUsername(u);
 
         u.contacts = contacts;
-
+        u.isMe = true;
         contacts[u.username] = u;
         contacts.unshift(u);
 
@@ -43,7 +67,50 @@ Peerio.Contacts.init = function () {
         return contacts;
       }).then(function (contacts) {
         return buildIdenticons(contacts);
+      }).then(function () {
+        return net.getSentContactRequests();
+      }).then(function (data) {
+        data.contactRequests.forEach(function (username) {
+          var c = {username: username, isRequest: true};
+          Peerio.user.contacts.push(c);
+          Peerio.user.contacts[username] = c;
+        });
+        return net.getReceivedContactRequests();
+      }).then(function (data) {
+        data.contactRequests.forEach(function (c) {
+          c.isRequest= true;
+          c.isReceivedRequest= true;
+          c.publicKey = c.miniLockID;// todo: remove after this gets renamed on server
+          c.fullName = getFullName(c);
+          c.fullNameAndUsername = getFullNameAndUsername(c);
+
+          Peerio.user.contacts.push(c);
+          Peerio.user.contacts[c.username] = c;
+        });
+      }).then(function () {
+        Peerio.Action.contactsUpdated();
       });
+  };
+
+  api.removeContact = function(username){
+    var c = Peerio.user.contacts[username];
+    if(c.isRequest && !c.isReceivedRequest)
+      net.cancelContactRequest(username);
+    else
+      net.removeContact(username);
+  };
+
+  api.acceptContact =function(username){
+    var c = Peerio.user.contacts[username];
+    if(c.isRequest && c.isReceivedRequest){
+      net.acceptContactRequest(username);
+    }
+  };
+  api.rejectContact =function(username){
+    var c = Peerio.user.contacts[username];
+    if(c.isRequest && c.isReceivedRequest){
+      net.declineContactRequest(username);
+    }
   };
 
   function buildIdenticons(contacts) {
@@ -81,5 +148,12 @@ Peerio.Contacts.init = function () {
   function getFullNameAndUsername(user) {
     return (user.fullName + ' (' + user.username + ')').trim();
   }
+
+  net.injectPeerioEventHandler('contactAdded', api.updateContacts);
+  net.injectPeerioEventHandler('contactRequestSent', api.updateContacts);
+  net.injectPeerioEventHandler('contactRequestReceived', api.updateContacts);
+  net.injectPeerioEventHandler('receivedContactRequestRemoved', removeContact);
+  net.injectPeerioEventHandler('sentContactRequestRemoved', removeContact);
+  net.injectPeerioEventHandler('contactRemoved', removeContact);
 
 };

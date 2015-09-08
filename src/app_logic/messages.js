@@ -121,7 +121,10 @@ Peerio.Messages.init = function () {
       var page = 0;
       var load = function () {
         loadPage(conversation, page).then(function (length) {
-          if (length === 0) resolve(conversation);
+          if (length === 0){
+            resolve(conversation);
+            return;
+          }
           Peerio.Action.messageAdded(conversationID);
           page++;
           load();

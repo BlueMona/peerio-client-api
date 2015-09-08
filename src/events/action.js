@@ -58,7 +58,8 @@ Peerio.Action.init = function () {
     'LoginFail',            // login attempt failed
     'MessageAdded',
     'ReceiptAdded',
-    'ConversationsUpdated'
+    'ConversationsUpdated',
+    'ContactsUpdated'
   ].forEach(function (action) {
       Peerio.Action.add(action);
     });
