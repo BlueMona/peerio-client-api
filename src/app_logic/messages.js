@@ -5,6 +5,7 @@
 var Peerio = this.Peerio || {};
 Peerio.Messages = {};
 
+// todo conversation modified
 Peerio.Messages.init = function () {
   'use strict';
 
@@ -22,6 +23,7 @@ Peerio.Messages.init = function () {
 
     convPromise.then(function () {return decryptMessage(message);})
       .then(function (decrypted) {
+        if(!decrypted) return Promise.reject();
         decrypted.isModified = true;
         return addMessageToCache(message.conversationID, decrypted);
       })
@@ -51,6 +53,19 @@ Peerio.Messages.init = function () {
       });
   });
 
+
+  api.removeConversation = function(id){
+    net.removeConversation([id]);
+  };
+
+  net.injectPeerioEventHandler('conversationRemoved', function(data){
+    var i = _.findIndex(api.cache, function(c){ return c.id === data.id;});
+    if(i<0) return;
+    api.cache.splice(i, 1);
+    delete api.cache[data.id];
+    Peerio.Action.conversationsUpdated();
+  });
+
   api.getOneConversation = function (id) {
     if (api.cache[id]) Promise.resolve();
     return net.getConversationPages([{id: id, page: -1}])
@@ -68,7 +83,7 @@ Peerio.Messages.init = function () {
    * @promise
    * todo: resume support in case of disconnection/error in progress
    */
-  api.getAllConversations = function (progress) {
+  api.getAllConversations = function () {
     if (getAllConversationsPromise) return getAllConversationsPromise;
 
     if (api.cache) return Promise.resolve(api.cache);
@@ -96,10 +111,8 @@ Peerio.Messages.init = function () {
             .then(function (response) {
               return decryptConversations(response.conversations);
             })
-            .then(addConversationsToCache)
-            .then(function () {
-              progress(api.cache);
-            });
+            .then(addConversationsToCache);
+
         });
       })
       .then(function () {
@@ -259,6 +272,7 @@ Peerio.Messages.init = function () {
     });
     // todo: this can be a potential bottleneck, replace with a sorted list
     Peerio.Util.sortDesc(api.cache, 'lastTimestamp');
+    Peerio.Action.conversationsUpdated();
   }
 
   function addMessagesToCache(conversation, messages) {
@@ -303,34 +317,39 @@ Peerio.Messages.init = function () {
     return Promise.map(keys, function (convId) {
       var conv = conversations[convId];
       var encMessage = conv.messages[conv.original];
-      // no original message in conversation?
+      // no original message id in conversation?
       // not a normal case, but I think still exists somewhere in old conversations
       if (!encMessage) {
         console.log('Conversation misses original message', conv);
         return;
       }
-      // both indexed and associative ways to store conversation
-      decryptedConversations[convId] = conv;
-      decryptedConversations.push(conv);
-      // we will replace messages with decrypted ones
-      conv.messages = [];
-      conv.lastTimestamp = +conv.lastTimestamp;
-      conv.lastMoment = moment(conv.lastTimestamp);
-      conv.formerParticipants = [];
-      if (conv.events)
-        conv.events.forEach(function (event) {
-          if (event.type !== 'remove') return;
-          conv.formerParticipants.push(event.participant);
-        });
-
-      conv.allParticipants = conv.formerParticipants ? conv.participants.concat(conv.formerParticipants) : conv.participants;
 
       return decryptMessage(encMessage)
         .then(function (message) {
+          // can't proceed unless we decrypted original message
+          if(!message) return;
+          conv.original = message;
+          // both indexed and associative ways to store conversation
+          decryptedConversations[convId] = conv;
+          decryptedConversations.push(conv);
+          // replace messages with decrypted ones
+          conv.messages = [];
           conv.messages.push(message);
           conv.messages[message.id] = message;
-          conv.original = message;
+
+          conv.lastTimestamp = +conv.lastTimestamp;
+          conv.lastMoment = moment(conv.lastTimestamp);
+          conv.formerParticipants = [];
+          if (conv.events)
+            conv.events.forEach(function (event) {
+              if (event.type !== 'remove') return;
+              conv.formerParticipants.push(event.participant);
+            });
+
+          conv.allParticipants = conv.formerParticipants ? conv.participants.concat(conv.formerParticipants) : conv.participants;
+
         });
+
     }, Peerio.Crypto.recommendedConcurrency)
       .return(decryptedConversations);
 
@@ -341,7 +360,10 @@ Peerio.Messages.init = function () {
 
     return Promise.map(keys, function (msgId) {
       return decryptMessage(messages[msgId]);
-    }, Peerio.Crypto.recommendedConcurrency);
+    }, Peerio.Crypto.recommendedConcurrency)
+      .filter(function(msg){
+        return !!msg;
+      });
   }
 
   /**
@@ -358,6 +380,9 @@ Peerio.Messages.init = function () {
         message.moment = moment(message.timestamp);
         message.isModified = encMessage.isModified;
         return message;
+      }).catch(function(){
+        console.log('failed to decrypt message: ', encMessage);
+        return null;
       });
   }
 

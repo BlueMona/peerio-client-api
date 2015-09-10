@@ -86,7 +86,7 @@ Peerio.Files.init = function () {
   net.injectPeerioEventHandler('fileRemoved', removeFile);
 
   function removeFile(data){
-    var i = _.findIndex(api.cache, function(c){ return c.id === data.fileID;});
+    var i = _.findIndex(api.cache, function(c){ return c.id === data.id;});
     if(i<0) return;
     var file = api.cache.splice(i,1)[0];
     delete api.cache[file.shortId];
