@@ -56,7 +56,12 @@ gulp.task('build-crypto', function () {
   // crypto worker bundle
   return gulp.src([
     'src/worker_shim.js',
-    'src/crypto/lib/*.js',
+    'src/crypto/base58.js',
+    'src/crypto/base64shim.js',
+    'bower_components/blake2s-js/blake2s.js',
+    'bower_components/scrypt-async/scrypt-async.js',
+    'bower_components/tweetnacl/nacl-fast.js',
+    'bower_components/nacl-stream/nacl-stream.js',
     'bower_components/bluebird/js/browser/bluebird.js',
     'src/crypto/crypto.js',
     'src/crypto/crypto_worker.js'
@@ -68,8 +73,8 @@ gulp.task('build-api', function () {
   // all other scripts are concatenated, excluding external libraries
   return gulp.src([
     '!src/network/socket_worker.js',
-    'src/crypto/lib/base64shim.js',
-    'src/crypto/lib/nacl.js',
+    'src/crypto/base64shim.js',
+    'bower_components/tweetnacl/nacl-fast.js',
     'src/crypto/phrase_generator.js',
     'src/crypto/crypto_hub.js',
     'src/model/**/*',

@@ -3,13 +3,15 @@
  * Partially based on https://github.com/kaepora/miniLock.
  * ======================
  * Functions accessible via window.Peerio.Crypto object.
+ *
  * Depends on libraries:
- * - nacl.js
- * - nacl_stream.js
- * - base58.js
- * - blake2s.js
- * - scrypt.js
- * - bluebird.js
+ * - tweetnacl-js
+ * - nacl_stream
+ * - blake2s-js
+ * - scrypt-async
+ * - base58
+ * - bluebird
+ *
  *
  * All public functions return promises for consistency
  */
