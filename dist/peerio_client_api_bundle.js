@@ -2685,11 +2685,11 @@ Peerio.Crypto.init = function () {
   // pending promises callbacks
   // id: {resolve: resolve callback, reject: reject callback}
   var callbacks = {};
-  var workerCount = Peerio.Crypto.wokerInstanceCount = Math.min(Peerio.Config.cpuCount, 4);
+  var workerCount = Peerio.Crypto.workerInstanceCount = Math.min(Peerio.Config.cpuCount, 4);
 
   // we use x2 concurrency so that workers always have one request in queue,
   // making execution as fast as possible
-  Peerio.Crypto.recommendedConcurrency = {concurrency: Peerio.Crypto.wokerInstanceCount * 2};
+  Peerio.Crypto.recommendedConcurrency = {concurrency: Peerio.Crypto.workerInstanceCount * 2};
 
   // when started, workers will report if they need random values provided to them
   var provideRandomBytes = false;
