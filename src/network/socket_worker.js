@@ -7,7 +7,7 @@
  *            see documentation for onmessage handler below.
  *
  * todo: Ideally this should be decoupled further,
- *       moving out socket handling code to separate file,
+ *       moving out socket handling code to a separate file,
  *       that can be imported in a web worker wrapper or be used in UI thread as usual.
  *       We can do that when there are enough reasons for that,
  *       for now the only reason is the testability of smaller components,
@@ -95,25 +95,6 @@ function initialize(cfg) {
       self.peerioSocket.connect();
     }, 1000);
   }
-
-  // we don't need this events atm:
-
-  // 'reconnect' is fired on every reconnection
-  // self.peerioSocket.on('reconnect', function (attempt) {
-  //  console.log('socket.io reconnect event. attempt: ', attempt);
-  //  self.postMessage({socketEvent: 'reconnect'});
-  // });
-  // 'reconnecting' is fired every time after connection is broken and reconnect is attempted
-  // self.peerioSocket.on('reconnecting', function (attempt) {
-  //   console.log('socket.io reconnecting event. attempt: ', attempt);
-  //  self.postMessage({socketEvent: 'reconnecting'});
-  // });
-  // 'connect_error' is fired in case of an error during connection attempt
-  // self.peerioSocket.on('connect_error', function (error) {
-  //  console.log('socket.io reconnect event. err: ', error);
-  //  // todo: automatic clone of error object fails, need to clone it manually
-  //  self.postMessage({socketEvent: 'connect_error'});
-  // });
 
   // peerio events
   [

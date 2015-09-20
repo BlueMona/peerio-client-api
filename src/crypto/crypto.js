@@ -16,11 +16,6 @@
  * All public functions return promises for consistency
  */
 
-// todo: 1. probably replace "throw" with return values
-// todo: 2. "contacts" dependency is not nice, is there a better way?
-// todo: 3. using blobs forces us to use html5 file api, don't think it's optimal, see if can be changed
-// todo: 4. encrypt/decrypt functions reduce nesting and promisify further
-
 var Peerio = this.Peerio || {};
 Peerio.Crypto = {};
 
@@ -53,7 +48,6 @@ Peerio.Crypto.init = function () {
   var scryptStepDuration = 1000;
   var signature = '.peerio.'; // has to be 8 bytes, don't change
 
-  // todo: move to global helper
   // malicious server safe hasOwnProperty function
   var hasProp = Function.call.bind(Object.prototype.hasOwnProperty);
   // optional cache of user data,

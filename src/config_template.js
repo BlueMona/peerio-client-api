@@ -1,7 +1,6 @@
 /**
  *       Use config_template.js to make your own config.js
  *
- * todo: environment-specific configuration?
  */
 
 var Peerio = this.Peerio || {};

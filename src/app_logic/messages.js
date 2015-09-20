@@ -5,7 +5,6 @@
 var Peerio = this.Peerio || {};
 Peerio.Messages = {};
 
-// todo conversation modified
 Peerio.Messages.init = function () {
   'use strict';
 
@@ -81,7 +80,6 @@ Peerio.Messages.init = function () {
    * Calls progress callback for every page, passing entire cache array to it.
    * Resolves once everything is loaded and decrypted.
    * @promise
-   * todo: resume support in case of disconnection/error in progress
    */
   api.getAllConversations = function () {
     if (getAllConversationsPromise) return getAllConversationsPromise;
@@ -125,7 +123,6 @@ Peerio.Messages.init = function () {
 
   };
 
-  // todo
   api.loadAllConversationMessages = function (conversationID) {
     var conversation = api.cache[conversationID];
     if (conversation._pendingLoadPromise) return conversation._pendingLoadPromise;
@@ -270,7 +267,6 @@ Peerio.Messages.init = function () {
       api.cache[item.id] = item;
       if (item.original.isModified) item.isModified = true;
     });
-    // todo: this can be a potential bottleneck, replace with a sorted list
     Peerio.Util.sortDesc(api.cache, 'lastTimestamp');
     Peerio.Action.conversationsUpdated();
   }
@@ -283,7 +279,6 @@ Peerio.Messages.init = function () {
       cachedMessages[item.id] = item;
       if (item.isModified) conversation.isModified = true;
     });
-    // todo: this can be a potential bottleneck, replace with a sorted list
     Peerio.Util.sortAsc(cachedMessages, 'timestamp');
   }
 
@@ -296,7 +291,6 @@ Peerio.Messages.init = function () {
 
     if (message.isModified) api.cache[conversationID].isModified = true;
 
-    // todo: this can be a potential bottleneck, replace with a sorted list
     Peerio.Util.sortAsc(cachedMessages, 'timestamp');
     return message;
   }

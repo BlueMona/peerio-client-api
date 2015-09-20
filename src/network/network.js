@@ -2,7 +2,6 @@
  * Peerio network protocol implementation
  */
 
-// todo: socket should not attempt reconnection when device is offline
 
 var Peerio = this.Peerio || {};
 Peerio.Net = {};
@@ -88,8 +87,7 @@ Peerio.Net.init = function () {
       })
       .timeout(15000)// no crazy science behind this magic number, just common sense
       .catch(function (err) {
-        // todo: this should not really happen
-        // todo: if it does and it's a server problem, we should limit the number of attempts, or make them sparse
+        // This should not normally happen ever. But we must be prepared to not leave client in indeterminate state.
         console.error('setApiVersion ' + API_VERSION + ' failed', err);
         Peerio.Socket.reconnect();
       });

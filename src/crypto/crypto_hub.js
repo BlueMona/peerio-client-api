@@ -8,10 +8,6 @@
  *
  */
 
-// todo: throttle/queue high request rate might lead to:
-// 1. randomBytesStock depletion (if shim is active)
-// 2. overall performance degradation
-
 var Peerio = this.Peerio || {};
 Peerio.Crypto = {};
 
@@ -25,7 +21,7 @@ Peerio.Crypto.init = function () {
   var hasProp = Function.call.bind(Object.prototype.hasOwnProperty);
   var workerScriptPath = Peerio.Config.apiFolder + 'crypto_worker_bundle.js';
   // web worker instance
-  var workers = []; // todo: maybe add a limit
+  var workers = [];
   // pending promises callbacks
   // id: {resolve: resolve callback, reject: reject callback}
   var callbacks = {};

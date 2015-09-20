@@ -5,7 +5,6 @@
  * Peerio client API configuration.
  * Has to be loaded before other API code.
  *
- * todo: environment-specific configuration?
  */
 
 var Peerio = this.Peerio || {};
