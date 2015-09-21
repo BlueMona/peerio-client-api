@@ -3,10 +3,23 @@ var concat = require('gulp-concat');
 var clean = require('gulp-clean');
 var karma = require('karma').server;
 var runSequence = require('run-sequence');
+var babel = require('gulp-babel');
 
 var outputDir = './dist/';
 var dictDir = outputDir + 'dict/';
 
+var babelOptions = {compact: false,
+  blacklist: ['strict', // because it assumes no global 'this'
+              'flow', //not using atm
+              'react', // we don't have jsx in api repo yet
+              'reactCompat', // pre react 0.12 support, not needed
+              'regenerator', // too raw to use anyway
+              'jscript' // we don't run in IE
+
+  ],
+  ast: false,
+  modules: 'ignore',
+  ignore: 'bower_components/**/*' };
 //----------------------------------------------------------------------------------------------------------------------
 gulp.task('default', ['help']);
 //----------------------------------------------------------------------------------------------------------------------
@@ -32,6 +45,7 @@ gulp.task('build', function (callback) {
 gulp.task('build-config', function () {
   // config template for lib user's reference
   return gulp.src('src/config_template.js')
+    .pipe(babel(babelOptions))
     .pipe(gulp.dest(outputDir));
 });
 //----------------------------------------------------------------------------------------------------------------------
@@ -42,7 +56,8 @@ gulp.task('build-socket', function () {
     'src/worker_shim.js',
     'bower_components/socket.io-client/socket.io.js',
     'src/network/socket_worker.js'
-  ]).pipe(concat('socket_worker_bundle.js'))
+  ]).pipe(babel(babelOptions))
+    .pipe(concat('socket_worker_bundle.js'))
     .pipe(gulp.dest(outputDir));
 });
 //----------------------------------------------------------------------------------------------------------------------
@@ -65,7 +80,8 @@ gulp.task('build-crypto', function () {
     'bower_components/bluebird/js/browser/bluebird.js',
     'src/crypto/crypto.js',
     'src/crypto/crypto_worker.js'
-  ]).pipe(concat('crypto_worker_bundle.js'))
+  ]).pipe(babel(babelOptions))
+    .pipe(concat('crypto_worker_bundle.js'))
     .pipe(gulp.dest(outputDir));
 });
 //----------------------------------------------------------------------------------------------------------------------
@@ -86,7 +102,8 @@ gulp.task('build-api', function () {
     'src/extensions.js',
     'src/error_reporter.js',
     'src/peerio.js'
-  ]).pipe(concat('peerio_client_api_bundle.js'))
+  ]).pipe(babel(babelOptions))
+    .pipe(concat('peerio_client_api_bundle.js'))
     .pipe(gulp.dest(outputDir));
 });
 //----------------------------------------------------------------------------------------------------------------------

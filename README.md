@@ -56,6 +56,8 @@ If you are updating peerio-client-api and already have `config.js`, look at the 
 
 ## contributing 
 
+`npm install -g eslint babel-eslint eslint-react`
+
 ### style guide
 Please follow this simple style guide:
 

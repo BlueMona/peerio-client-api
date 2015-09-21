@@ -1,7 +1,6 @@
 /**
  *       Use config_template.js to make your own config.js
  *
- * todo: environment-specific configuration?
  */
 
 var Peerio = this.Peerio || {};
@@ -29,8 +28,7 @@ Peerio.Config.init = function () {
     cfg.lowImportanceDeviceKey = '12345';
 
     // using cordova AppVersion plugin if available
-    if (window.AppVersion && AppVersion.version)
-      cfg.appVersion = AppVersion.version;
+    if (window.AppVersion && AppVersion.version) cfg.appVersion = AppVersion.version;
 
     // using cordova device plugin if available
     if (window.device && device.uuid) cfg.lowImportanceDeviceKey = device.uuid;
@@ -43,7 +41,5 @@ Peerio.Config.init = function () {
         resolve();
       });
     } else resolve();
-
   });
-
 };

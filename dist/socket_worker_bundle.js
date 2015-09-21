@@ -3,21 +3,18 @@
  * Everything you put here will be included into worker bundles.
  */
 
-if(!this.window)
-  this.window = self;
+if (!this.window) this.window = self;
 
 this.window.cryptoShim = {};
 
-
-if(!self.console) self.console = {
-  log:function(){
+if (!self.console) self.console = {
+  log: function log() {
     var args = [];
-    for(var i=0;i<arguments.length;i++)
-    args[i]= typeof(arguments[i]) === 'undefined' ? 'undefined': arguments[i].toString();
-    self.postMessage({'console.log':args});
+    for (var i = 0; i < arguments.length; i++) args[i] = typeof arguments[i] === 'undefined' ? 'undefined' : arguments[i].toString();
+    self.postMessage({ 'console.log': args });
   }
- // error:function(){},
- // debug:function(){}
+  // error:function(){},
+  // debug:function(){}
 };
 !function(e){if("object"==typeof exports&&"undefined"!=typeof module)module.exports=e();else if("function"==typeof define&&define.amd)define([],e);else{var f;"undefined"!=typeof window?f=window:"undefined"!=typeof global?f=global:"undefined"!=typeof self&&(f=self),f.io=e()}}(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);throw new Error("Cannot find module '"+o+"'")}var f=n[o]={exports:{}};t[o][0].call(f.exports,function(e){var n=t[o][1][e];return s(n?n:e)},f,f.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(_dereq_,module,exports){
 
@@ -7029,7 +7026,7 @@ function toArray(list, index) {
  *            see documentation for onmessage handler below.
  *
  * todo: Ideally this should be decoupled further,
- *       moving out socket handling code to separate file,
+ *       moving out socket handling code to a separate file,
  *       that can be imported in a web worker wrapper or be used in UI thread as usual.
  *       We can do that when there are enough reasons for that,
  *       for now the only reason is the testability of smaller components,
@@ -7037,9 +7034,8 @@ function toArray(list, index) {
  *       and it will be covered by networking tests anyway.
  */
 
-
-  // First message from UI thread should contain configuration data to initialise worker.
-  // All the following messages will be considered data to send through socket.
+// First message from UI thread should contain configuration data to initialise worker.
+// All the following messages will be considered data to send through socket.
 self.onmessage = function (payload) {
   initialize(payload.data);
   // replacing init handler with the one that will send data through socket
@@ -7051,21 +7047,21 @@ function initialize(cfg) {
   var lastPing = null;
   var intervalId = null;
   // creating socket.io client instance
-  self.peerioSocket = io.connect(cfg.webSocketServer, {transports: ['websocket']});
+  self.peerioSocket = io.connect(cfg.webSocketServer, { transports: ['websocket'] });
   // socket events should be passed to UI thread
 
   // socket.io events
   // 'connect' is fired on every connection (including reconnection)
   self.peerioSocket.on('connect', function () {
     console.log('socket.io connect event');
-    self.postMessage({socketEvent: 'connect'});
+    self.postMessage({ socketEvent: 'connect' });
     startPingChecks();
   });
 
   // 'disconnect' is fired on every disconnection
   self.peerioSocket.on('disconnect', function (reason) {
     console.log('socket.io disconnect event. reason: ', reason);
-    self.postMessage({socketEvent: 'disconnect'});
+    self.postMessage({ socketEvent: 'disconnect' });
     stopPingChecks();
   });
 
@@ -7092,8 +7088,7 @@ function initialize(cfg) {
 
   // stops timeout checking interval interval
   function stopPingChecks() {
-    if (intervalId != null)
-      clearInterval(intervalId);
+    if (intervalId != null) clearInterval(intervalId);
 
     intervalId = null;
     lastPing = null;
@@ -7118,50 +7113,13 @@ function initialize(cfg) {
     }, 1000);
   }
 
-  // we don't need this events atm:
-
-  // 'reconnect' is fired on every reconnection
-  // self.peerioSocket.on('reconnect', function (attempt) {
-  //  console.log('socket.io reconnect event. attempt: ', attempt);
-  //  self.postMessage({socketEvent: 'reconnect'});
-  // });
-  // 'reconnecting' is fired every time after connection is broken and reconnect is attempted
-  // self.peerioSocket.on('reconnecting', function (attempt) {
-  //   console.log('socket.io reconnecting event. attempt: ', attempt);
-  //  self.postMessage({socketEvent: 'reconnecting'});
-  // });
-  // 'connect_error' is fired in case of an error during connection attempt
-  // self.peerioSocket.on('connect_error', function (error) {
-  //  console.log('socket.io reconnect event. err: ', error);
-  //  // todo: automatic clone of error object fails, need to clone it manually
-  //  self.postMessage({socketEvent: 'connect_error'});
-  // });
-
   // peerio events
-  [
-    'contactAdded',
-    'contactRemoved',
-    'contactRequestSent',
-    'contactRequestReceived',
-    'sentContactRequestRemoved',
-    'receivedContactRequestRemoved',
-
-    'messageAdded',
-    'messageRead',
-    'conversationModified',
-    'conversationRemoved',
-
-    'fileAdded',
-    'fileRemoved',
-
-    'settingsUpdated'
-  ].forEach(function (eventName) {
-      self.peerioSocket.on(eventName,
-        function (data) {
-          self.setLastPing();
-          self.postMessage({socketEvent: eventName, data: data});
-        });
+  ['contactAdded', 'contactRemoved', 'contactRequestSent', 'contactRequestReceived', 'sentContactRequestRemoved', 'receivedContactRequestRemoved', 'messageAdded', 'messageRead', 'conversationModified', 'conversationRemoved', 'fileAdded', 'fileRemoved', 'settingsUpdated'].forEach(function (eventName) {
+    self.peerioSocket.on(eventName, function (data) {
+      self.setLastPing();
+      self.postMessage({ socketEvent: eventName, data: data });
     });
+  });
 }
 
 // this function receives data from UI thread and sends it through socket

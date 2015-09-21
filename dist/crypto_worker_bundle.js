@@ -3,21 +3,18 @@
  * Everything you put here will be included into worker bundles.
  */
 
-if(!this.window)
-  this.window = self;
+if (!this.window) this.window = self;
 
 this.window.cryptoShim = {};
 
-
-if(!self.console) self.console = {
-  log:function(){
+if (!self.console) self.console = {
+  log: function log() {
     var args = [];
-    for(var i=0;i<arguments.length;i++)
-    args[i]= typeof(arguments[i]) === 'undefined' ? 'undefined': arguments[i].toString();
-    self.postMessage({'console.log':args});
+    for (var i = 0; i < arguments.length; i++) args[i] = typeof arguments[i] === 'undefined' ? 'undefined' : arguments[i].toString();
+    self.postMessage({ 'console.log': args });
   }
- // error:function(){},
- // debug:function(){}
+  // error:function(){},
+  // debug:function(){}
 };
 var Base58 = {};
 
@@ -43,7 +40,9 @@ var Base58 = {};
   Base58.encode = function (buffer) {
     if (buffer.length === 0) return '';
 
-    var i, j, digits = [0];
+    var i,
+        j,
+        digits = [0];
     for (i = 0; i < buffer.length; i++) {
       for (j = 0; j < digits.length; j++) digits[j] <<= 8;
 
@@ -52,27 +51,31 @@ var Base58 = {};
       var carry = 0;
       for (j = 0; j < digits.length; ++j) {
         digits[j] += carry;
-        carry = (digits[j] / BASE) | 0;
+        carry = digits[j] / BASE | 0;
         digits[j] %= BASE;
       }
 
       while (carry) {
         digits.push(carry % BASE);
-        carry = (carry / BASE) | 0;
+        carry = carry / BASE | 0;
       }
     }
 
-    var zeros = maxEncodedLen(buffer.length * 8) - digits.length-1;
+    var zeros = maxEncodedLen(buffer.length * 8) - digits.length - 1;
     // deal with leading zeros
     for (i = 0; i < zeros; i++) digits.push(0);
 
-    return digits.reverse().map(function (digit) { return ALPHABET[digit]; }).join('');
+    return digits.reverse().map(function (digit) {
+      return ALPHABET[digit];
+    }).join('');
   };
 
   Base58.decode = function (string) {
     if (string.length === 0) return [];
 
-    var i, j, bytes = [0];
+    var i,
+        j,
+        bytes = [0];
     for (i = 0; i < string.length; i++) {
       var c = string[i];
       if (!(c in ALPHABET_MAP)) throw new Error('Non-base58 character');
@@ -117,18 +120,10 @@ var Base58 = {};
  * data = base64decode(b64);
  */
 
-(function() {
+(function () {
 
   var base64EncodeChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-  var base64DecodeChars = new Array(
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 62, -1, -1, -1, 63,
-    52, 53, 54, 55, 56, 57, 58, 59, 60, 61, -1, -1, -1, -1, -1, -1,
-    -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14,
-    15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, -1, -1, -1, -1, -1,
-    -1, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
-    41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, -1, -1, -1, -1, -1);
+  var base64DecodeChars = new Array(-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 62, -1, -1, -1, 63, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, -1, -1, -1, -1, -1, -1, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, -1, -1, -1, -1, -1, -1, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, -1, -1, -1, -1, -1);
 
   function base64encode(str) {
     var out, i, len;
@@ -137,28 +132,26 @@ var Base58 = {};
     len = str.length;
     i = 0;
     out = "";
-    while(i < len) {
+    while (i < len) {
       c1 = str.charCodeAt(i++) & 0xff;
-      if(i == len)
-      {
+      if (i == len) {
         out += base64EncodeChars.charAt(c1 >> 2);
         out += base64EncodeChars.charAt((c1 & 0x3) << 4);
         out += "==";
         break;
       }
       c2 = str.charCodeAt(i++);
-      if(i == len)
-      {
+      if (i == len) {
         out += base64EncodeChars.charAt(c1 >> 2);
-        out += base64EncodeChars.charAt(((c1 & 0x3)<< 4) | ((c2 & 0xF0) >> 4));
+        out += base64EncodeChars.charAt((c1 & 0x3) << 4 | (c2 & 0xF0) >> 4);
         out += base64EncodeChars.charAt((c2 & 0xF) << 2);
         out += "=";
         break;
       }
       c3 = str.charCodeAt(i++);
       out += base64EncodeChars.charAt(c1 >> 2);
-      out += base64EncodeChars.charAt(((c1 & 0x3)<< 4) | ((c2 & 0xF0) >> 4));
-      out += base64EncodeChars.charAt(((c2 & 0xF) << 2) | ((c3 & 0xC0) >>6));
+      out += base64EncodeChars.charAt((c1 & 0x3) << 4 | (c2 & 0xF0) >> 4);
+      out += base64EncodeChars.charAt((c2 & 0xF) << 2 | (c3 & 0xC0) >> 6);
       out += base64EncodeChars.charAt(c3 & 0x3F);
     }
     return out;
@@ -171,53 +164,46 @@ var Base58 = {};
     len = str.length;
     i = 0;
     out = "";
-    while(i < len) {
+    while (i < len) {
       /* c1 */
       do {
         c1 = base64DecodeChars[str.charCodeAt(i++) & 0xff];
-      } while(i < len && c1 == -1);
-      if(c1 == -1)
-        break;
+      } while (i < len && c1 == -1);
+      if (c1 == -1) break;
 
       /* c2 */
       do {
         c2 = base64DecodeChars[str.charCodeAt(i++) & 0xff];
-      } while(i < len && c2 == -1);
-      if(c2 == -1)
-        break;
+      } while (i < len && c2 == -1);
+      if (c2 == -1) break;
 
-      out += String.fromCharCode((c1 << 2) | ((c2 & 0x30) >> 4));
+      out += String.fromCharCode(c1 << 2 | (c2 & 0x30) >> 4);
 
       /* c3 */
       do {
         c3 = str.charCodeAt(i++) & 0xff;
-        if(c3 == 61)
-          return out;
+        if (c3 == 61) return out;
         c3 = base64DecodeChars[c3];
-      } while(i < len && c3 == -1);
-      if(c3 == -1)
-        break;
+      } while (i < len && c3 == -1);
+      if (c3 == -1) break;
 
-      out += String.fromCharCode(((c2 & 0XF) << 4) | ((c3 & 0x3C) >> 2));
+      out += String.fromCharCode((c2 & 0XF) << 4 | (c3 & 0x3C) >> 2);
 
       /* c4 */
       do {
         c4 = str.charCodeAt(i++) & 0xff;
-        if(c4 == 61)
-          return out;
+        if (c4 == 61) return out;
         c4 = base64DecodeChars[c4];
-      } while(i < len && c4 == -1);
-      if(c4 == -1)
-        break;
-      out += String.fromCharCode(((c3 & 0x03) << 6) | c4);
+      } while (i < len && c4 == -1);
+      if (c4 == -1) break;
+      out += String.fromCharCode((c3 & 0x03) << 6 | c4);
     }
     return out;
   }
 
-  var scope = (typeof window !== "undefined") ? window : self;
+  var scope = typeof window !== "undefined" ? window : self;
   if (!scope.btoa) scope.btoa = base64encode;
   if (!scope.atob) scope.atob = base64decode;
-
 })();
 var BLAKE2s = (function() {
 
@@ -9491,11 +9477,6 @@ module.exports = ret;
  * All public functions return promises for consistency
  */
 
-// todo: 1. probably replace "throw" with return values
-// todo: 2. "contacts" dependency is not nice, is there a better way?
-// todo: 3. using blobs forces us to use html5 file api, don't think it's optimal, see if can be changed
-// todo: 4. encrypt/decrypt functions reduce nesting and promisify further
-
 var Peerio = this.Peerio || {};
 Peerio.Crypto = {};
 
@@ -9528,7 +9509,6 @@ Peerio.Crypto.init = function () {
   var scryptStepDuration = 1000;
   var signature = '.peerio.'; // has to be 8 bytes, don't change
 
-  // todo: move to global helper
   // malicious server safe hasOwnProperty function
   var hasProp = Function.call.bind(Object.prototype.hasOwnProperty);
   // optional cache of user data,
@@ -9536,8 +9516,7 @@ Peerio.Crypto.init = function () {
   var defaultUser;
 
   function hasAllProps(obj, props) {
-    for (var i = 0; i > props.length; i++)
-      if (!hasProp(obj, props[i])) return false;
+    for (var i = 0; i > props.length; i++) if (!hasProp(obj, props[i])) return false;
 
     return true;
   }
@@ -9584,10 +9563,9 @@ Peerio.Crypto.init = function () {
 
       // Generates 32 bytes of key material in a Uint8Array with scrypt
       scrypt(keyHash.digest(), username, scryptResourceCost, scryptBlockSize, keySize, scryptStepDuration, resolve);
-
     }).then(function (keyBytes) {
-        return nacl.box.keyPair.fromSecretKey(new Uint8Array(keyBytes));
-      });
+      return nacl.box.keyPair.fromSecretKey(new Uint8Array(keyBytes));
+    });
   };
 
   /**
@@ -9597,8 +9575,7 @@ Peerio.Crypto.init = function () {
    */
   api.getPublicKeyString = function (publicKeyBytes) {
     var key = new Uint8Array(keySize + 1);
-    for (var i = 0; i < publicKeyBytes.length; i++)
-      key[i] = publicKeyBytes[i];
+    for (var i = 0; i < publicKeyBytes.length; i++) key[i] = publicKeyBytes[i];
 
     var hash = new BLAKE2s(1);
     hash.update(publicKeyBytes);
@@ -9613,9 +9590,7 @@ Peerio.Crypto.init = function () {
    * @promise {Uint8Array} publicKeyBytes
    */
   api.getPublicKeyBytes = function (publicKey) {
-    return Promise.resolve(
-      getPublicKeyBytesSync(publicKey)
-    );
+    return Promise.resolve(getPublicKeyBytesSync(publicKey));
   };
 
   function getPublicKeyBytesSync(publicKey) {
@@ -9645,12 +9620,9 @@ Peerio.Crypto.init = function () {
    * @promise {string} plaintext
    */
   api.secretBoxDecrypt = function (ciphertext, nonce, key) {
-    if(typeof ciphertext === 'string')
-     ciphertext = decodeUTF8(ciphertext);
+    if (typeof ciphertext === 'string') ciphertext = decodeUTF8(ciphertext);
 
-    return Promise.resolve(
-      encodeUTF8(nacl.secretbox.open(ciphertext, nonce, key))
-    );
+    return Promise.resolve(encodeUTF8(nacl.secretbox.open(ciphertext, nonce, key)));
   };
 
   /**
@@ -9664,11 +9636,10 @@ Peerio.Crypto.init = function () {
     return new Promise(function (resolve) {
       var hash = new BLAKE2s(keySize);
       hash.update(decodeUTF8(PIN));
-      scrypt(hash.hexDigest(), decodeUTF8(username), scryptResourceCost, scryptBlockSize,
-        keySize, scryptStepDuration, resolve);
+      scrypt(hash.hexDigest(), decodeUTF8(username), scryptResourceCost, scryptBlockSize, keySize, scryptStepDuration, resolve);
     }).then(function (keyBytes) {
-        return new Uint8Array(keyBytes);
-      });
+      return new Uint8Array(keyBytes);
+    });
   };
 
   /**
@@ -9683,8 +9654,7 @@ Peerio.Crypto.init = function () {
    * @promise {string} decryptedToken
    */
   api.decryptAccountCreationToken = function (data, username, keyPair) {
-    if (!hasAllProps(data, ['username', 'accountCreationToken', 'ephemeralServerPublicKey'])
-      || !hasAllProps(data.accountCreationToken, ['token', 'nonce'])) {
+    if (!hasAllProps(data, ['username', 'accountCreationToken', 'ephemeralServerPublicKey']) || !hasAllProps(data.accountCreationToken, ['token', 'nonce'])) {
       console.log('Invalid account creation token.');
       return false;
     }
@@ -9694,22 +9664,15 @@ Peerio.Crypto.init = function () {
       return false;
     }
 
-    return api.getPublicKeyBytes(data.ephemeralServerPublicKey)
-      .then(function (serverKey) {
-        var token = nacl.box.open(
-          decodeB64(data.accountCreationToken.token),
-          decodeB64(data.accountCreationToken.nonce),
-          serverKey,
-          keyPair.secretKey
-        );
+    return api.getPublicKeyBytes(data.ephemeralServerPublicKey).then(function (serverKey) {
+      var token = nacl.box.open(decodeB64(data.accountCreationToken.token), decodeB64(data.accountCreationToken.nonce), serverKey, keyPair.secretKey);
 
-        //todo: explain magic numbers
-        if (token && token.length === 0x20 && token[0] === 0x41 && token[1] === 0x43)
-          return Promise.resolve(encodeB64(token));
+      //todo: explain magic numbers
+      if (token && token.length === 0x20 && token[0] === 0x41 && token[1] === 0x43) return Promise.resolve(encodeB64(token));
 
-        console.log('Decryption of account creation token failed.');
-        return Promise.reject();
-      });
+      console.log('Decryption of account creation token failed.');
+      return Promise.reject();
+    });
   };
 
   /**
@@ -9726,20 +9689,13 @@ Peerio.Crypto.init = function () {
       return Promise.reject(data.error);
     }
 
-    return api.getPublicKeyBytes(data.ephemeralServerPublicKey)
-      .then(function (serverKey) {
-        var dToken = nacl.box.open(
-          decodeB64(data.token),
-          decodeB64(data.nonce),
-          serverKey,
-          keyPair.secretKey
-        );
-        //todo: explain magic numbers
-        if (dToken && dToken.length === 0x20 && dToken[0] === 0x41 && dToken[1] === 0x54)
-          return Promise.resolve(encodeB64(dToken));
+    return api.getPublicKeyBytes(data.ephemeralServerPublicKey).then(function (serverKey) {
+      var dToken = nacl.box.open(decodeB64(data.token), decodeB64(data.nonce), serverKey, keyPair.secretKey);
+      //todo: explain magic numbers
+      if (dToken && dToken.length === 0x20 && dToken[0] === 0x41 && dToken[1] === 0x54) return Promise.resolve(encodeB64(dToken));
 
-        return Promise.reject();
-      });
+      return Promise.reject();
+    });
   };
 
   /**
@@ -9787,30 +9743,23 @@ Peerio.Crypto.init = function () {
 
       var validatedRecipients = validateRecipients(recipients, sender);
 
-      encryptBlob(
-        new Blob([decodeUTF8(JSON.stringify(message))]),
-        validatedRecipients.publicKeys,
-        sender,
-        function (encryptedChunks, header) {
-          if (!encryptedChunks) {
-            reject();
-            return;
-          }
-          var encryptedBlob = new Blob(encryptedChunks);
-          encryptedChunks = null;
-          var reader = new FileReader();
-          reader.onload = function (readerEvent) {
-            var encryptedBuffer = new Uint8Array(readerEvent.target.result);
-            var headerLength = byteArrayToNumber(encryptedBuffer.subarray(signatureSize, headerStart));
-            header = JSON.parse(header);
-            var body = encodeB64(
-              encryptedBuffer.subarray(headerStart + headerLength)
-            );
-            resolve({header: header, body: body, failed: validatedRecipients.failed});
-          };
-          reader.readAsArrayBuffer(encryptedBlob);
+      encryptBlob(new Blob([decodeUTF8(JSON.stringify(message))]), validatedRecipients.publicKeys, sender, function (encryptedChunks, header) {
+        if (!encryptedChunks) {
+          reject();
+          return;
         }
-      );
+        var encryptedBlob = new Blob(encryptedChunks);
+        encryptedChunks = null;
+        var reader = new FileReader();
+        reader.onload = function (readerEvent) {
+          var encryptedBuffer = new Uint8Array(readerEvent.target.result);
+          var headerLength = byteArrayToNumber(encryptedBuffer.subarray(signatureSize, headerStart));
+          header = JSON.parse(header);
+          var body = encodeB64(encryptedBuffer.subarray(headerStart + headerLength));
+          resolve({ header: header, body: body, failed: validatedRecipients.failed });
+        };
+        reader.readAsArrayBuffer(encryptedBlob);
+      });
     });
   };
 
@@ -9827,24 +9776,19 @@ Peerio.Crypto.init = function () {
       var validatedRecipients = validateRecipients(recipients, sender);
 
       file.name = name;
-      encryptBlob(
-        file,
-        validatedRecipients.publicKeys,
-        sender,
-        function (encryptedChunks, header, fileName) {
-          if (!encryptedChunks) {
-            reject();
-            return;
-          }
-          encryptedChunks.splice(0, numberSize);
-          resolve({
-            fileName: encodeB64(fileName.subarray(4)),
-            header: JSON.parse(header),
-            chunks: encryptedChunks,
-            failed: validatedRecipients.failed
-          });
+      encryptBlob(file, validatedRecipients.publicKeys, sender, function (encryptedChunks, header, fileName) {
+        if (!encryptedChunks) {
+          reject();
+          return;
         }
-      );
+        encryptedChunks.splice(0, numberSize);
+        resolve({
+          fileName: encodeB64(fileName.subarray(4)),
+          header: JSON.parse(header),
+          chunks: encryptedChunks,
+          failed: validatedRecipients.failed
+        });
+      });
     });
   };
 
@@ -9861,65 +9805,50 @@ Peerio.Crypto.init = function () {
 
       var header = JSON.stringify(encMessage.header);
 
-      var messageBlob = new Blob([
-        signature,
-        numberToByteArray(header.length),
-        header,
-        decodeB64(encMessage.body)
-      ]);
+      var messageBlob = new Blob([signature, numberToByteArray(header.length), header, decodeB64(encMessage.body)]);
 
-      decryptBlob(messageBlob, user,
-        function (decryptedBlob, senderID) {
-          if (!decryptedBlob) {
-            reject();
-            return;
-          }
-          // validating sender public key
-          if (hasProp(user.contacts, encMessage.sender)
-            && user.contacts[encMessage.sender].publicKey !== senderID) {
-            reject();
-            return;
-          }
-
-          var decryptedBuffer;
-          var reader = new FileReader();
-          reader.onload = function (readerEvent) {
-            decryptedBuffer = encodeUTF8(
-              new Uint8Array(readerEvent.target.result)
-            );
-
-            var message = JSON.parse(decryptedBuffer);
-
-            resolve(message);
-          };
-
-          reader.readAsArrayBuffer(decryptedBlob);
+      decryptBlob(messageBlob, user, function (decryptedBlob, senderID) {
+        if (!decryptedBlob) {
+          reject();
+          return;
         }
-      );
-    })
-      .then(function (message) {
-        decrypted = message;
-        decrypted.receipts = [];
+        // validating sender public key
+        if (hasProp(user.contacts, encMessage.sender) && user.contacts[encMessage.sender].publicKey !== senderID) {
+          reject();
+          return;
+        }
 
-        return Promise.each(encMessage.recipients, function (recipient) {
-          if (recipient.username === user.username || !recipient.receipt || !recipient.receipt.encryptedReturnReceipt) return;
+        var decryptedBuffer;
+        var reader = new FileReader();
+        reader.onload = function (readerEvent) {
+          decryptedBuffer = encodeUTF8(new Uint8Array(readerEvent.target.result));
 
-          return api.decryptReceipt(recipient.username, recipient.receipt.encryptedReturnReceipt)
-            .then(function (decReceipt) {
-              if (decrypted.receipt === decReceipt.substring(0, decReceipt.length - timestampLength)) {
-                //todo parse and store receipt timestamp
-                decrypted.receipts.push(recipient.username);
-              }
-            })
-            .catch(function (err) {
-              console.log(err);
-            });
-        });
+          var message = JSON.parse(decryptedBuffer);
 
-      })
-      .then(function () {
-        return decrypted;
+          resolve(message);
+        };
+
+        reader.readAsArrayBuffer(decryptedBlob);
       });
+    }).then(function (message) {
+      decrypted = message;
+      decrypted.receipts = [];
+
+      return Promise.each(encMessage.recipients, function (recipient) {
+        if (recipient.username === user.username || !recipient.receipt || !recipient.receipt.encryptedReturnReceipt) return;
+
+        return api.decryptReceipt(recipient.username, recipient.receipt.encryptedReturnReceipt).then(function (decReceipt) {
+          if (decrypted.receipt === decReceipt.substring(0, decReceipt.length - timestampLength)) {
+            //todo parse and store receipt timestamp
+            decrypted.receipts.push(recipient.username);
+          }
+        })['catch'](function (err) {
+          console.log(err);
+        });
+      });
+    }).then(function () {
+      return decrypted;
+    });
   };
 
   /**
@@ -9937,32 +9866,20 @@ Peerio.Crypto.init = function () {
 
       var headerString = JSON.stringify(header);
       var headerStringLength = decodeUTF8(headerString).length;
-      var peerioBlob = new Blob([
-        signature,
-        numberToByteArray(headerStringLength),
-        headerString,
-        numberToByteArray(fileNameSize),
-        decodeB64(id),
-        blob
-      ]);
+      var peerioBlob = new Blob([signature, numberToByteArray(headerStringLength), headerString, numberToByteArray(fileNameSize), decodeB64(id), blob]);
 
-      decryptBlob(peerioBlob, user,
-        function (decryptedBlob, senderID) {
-          if (!decryptedBlob) {
-            reject();
-            return;
-          }
-
-          var claimedSender = hasProp(file, 'sender') ? file.sender : file.creator;
-          // this looks strange that we call success callback when sender is not in contacts
-          // but it can be the case and we skip public key verification,
-          // because we don't have sender's public key
-          if (hasProp(user.contacts, claimedSender) && user.contacts[claimedSender].publicKey !== senderID)
-            reject();
-          else
-            resolve(decryptedBlob);
+      decryptBlob(peerioBlob, user, function (decryptedBlob, senderID) {
+        if (!decryptedBlob) {
+          reject();
+          return;
         }
-      );
+
+        var claimedSender = hasProp(file, 'sender') ? file.sender : file.creator;
+        // this looks strange that we call success callback when sender is not in contacts
+        // but it can be the case and we skip public key verification,
+        // because we don't have sender's public key
+        if (hasProp(user.contacts, claimedSender) && user.contacts[claimedSender].publicKey !== senderID) reject();else resolve(decryptedBlob);
+      });
     });
   };
 
@@ -9986,8 +9903,7 @@ Peerio.Crypto.init = function () {
     var decrypted = nacl.secretbox.open(decodeB64(id), nonce, fileInfo.fileKey);
     decrypted = encodeUTF8(decrypted);
 
-    while (decrypted[decrypted.length - 1] === '\0')
-      decrypted = decrypted.slice(0, -1);
+    while (decrypted[decrypted.length - 1] === '\0') decrypted = decrypted.slice(0, -1);
 
     return Promise.resolve(decrypted);
   };
@@ -10006,12 +9922,7 @@ Peerio.Crypto.init = function () {
     if (!recipient) return Promise.reject();
 
     var nonce = nacl.randomBytes(decryptInfoNonceSize);
-    var encReceipt = nacl.box(
-      decodeUTF8(receipt),
-      nonce,
-      recipient.publicKeyBytes,
-      user.keyPair.secretKey
-    );
+    var encReceipt = nacl.box(decodeUTF8(receipt), nonce, recipient.publicKeyBytes, user.keyPair.secretKey);
 
     encReceipt = encodeB64(encReceipt) + ':' + encodeB64(nonce);
     return Promise.resolve(encReceipt);
@@ -10028,22 +9939,16 @@ Peerio.Crypto.init = function () {
     user = user || defaultUser;
     var receiptParts;
 
-    if (typeof(receipt) !== 'string' || (receiptParts = receipt.split(':')).length !== 2)
-      return Promise.reject('Invalid receipt value.');
+    if (typeof receipt !== 'string' || (receiptParts = receipt.split(':')).length !== 2) return Promise.reject('Invalid receipt value.');
 
     var sender = getContact(username, user);
     if (!sender) return Promise.reject();
 
-    var decrypted = nacl.box.open(
-      decodeB64(receiptParts[0]),
-      decodeB64(receiptParts[1]),
-      sender.publicKeyBytes,
-      user.keyPair.secretKey
-    );
+    var decrypted = nacl.box.open(decodeB64(receiptParts[0]), decodeB64(receiptParts[1]), sender.publicKeyBytes, user.keyPair.secretKey);
 
     if (!decrypted) return Promise.reject('Failed to decrypt receipt.');
 
-    decrypted = encodeUTF8(decrypted);//.substring(0, decrypted.length - timestampLength);
+    decrypted = encodeUTF8(decrypted); //.substring(0, decrypted.length - timestampLength);
     return Promise.resolve(decrypted);
   };
 
@@ -10051,10 +9956,7 @@ Peerio.Crypto.init = function () {
     return new Promise(function (resolve) {
       var decryptInfo = decryptHeader(header, defaultUser);
 
-      var newHeader = createHeader(publicKeys, defaultUser,
-        decryptInfo.fileInfo.fileKey,
-        decryptInfo.fileInfo.fileNonce,
-        decryptInfo.fileInfo.fileHash);
+      var newHeader = createHeader(publicKeys, defaultUser, decryptInfo.fileInfo.fileKey, decryptInfo.fileInfo.fileNonce, decryptInfo.fileInfo.fileHash);
 
       resolve(newHeader);
     });
@@ -10065,11 +9967,9 @@ Peerio.Crypto.init = function () {
     user = user || defaultUser;
 
     var contact = user.contacts[username];
-    if (!contact || !contact.publicKey)
-      return false;
+    if (!contact || !contact.publicKey) return false;
 
-    if (!contact.publicKeyBytes)
-      contact.publicKeyBytes = getPublicKeyBytesSync(contact.publicKey);
+    if (!contact.publicKeyBytes) contact.publicKeyBytes = getPublicKeyBytesSync(contact.publicKey);
 
     return contact;
   }
@@ -10088,13 +9988,10 @@ Peerio.Crypto.init = function () {
     recipients.forEach(function (recipient) {
 
       var contact = sender.contacts[recipient];
-      if (hasProp(contact, 'publicKey') && publicKeys.indexOf(contact.publicKey) < 0)
-        publicKeys.push(contact.publicKey);
-      else if (recipient != sender.username)
-        failed.push(recipient);
+      if (hasProp(contact, 'publicKey') && publicKeys.indexOf(contact.publicKey) < 0) publicKeys.push(contact.publicKey);else if (recipient != sender.username) failed.push(recipient);
     });
 
-    return {publicKeys: publicKeys, failed: failed};
+    return { publicKeys: publicKeys, failed: failed };
   }
 
   /**
@@ -10103,20 +10000,16 @@ Peerio.Crypto.init = function () {
    * @returns {boolean} - true for valid public key string
    */
   function validatePublicKey(publicKey) {
-    if (publicKey.length > 55 || publicKey.length < 40)
-      return false;
+    if (publicKey.length > 55 || publicKey.length < 40) return false;
 
-    if (!base58Match.test(publicKey))
-      return false;
+    if (!base58Match.test(publicKey)) return false;
 
     var bytes = Base58.decode(publicKey);
-    if (bytes.length !== (keySize + 1))
-      return false;
+    if (bytes.length !== keySize + 1) return false;
 
     var hash = new BLAKE2s(1);
     hash.update(bytes.subarray(0, keySize));
-    if (hash.digest()[0] !== bytes[keySize])
-      return false;
+    if (hash.digest()[0] !== bytes[keySize]) return false;
 
     return true;
   }
@@ -10128,11 +10021,9 @@ Peerio.Crypto.init = function () {
    * @returns {boolean}
    */
   function validateNonce(nonce, expectedLength) {
-    if (nonce.length > 40 || nonce.length < 10)
-      return false;
+    if (nonce.length > 40 || nonce.length < 10) return false;
 
-    if (base64Match.test(nonce))
-      return decodeB64(nonce).length === expectedLength;
+    if (base64Match.test(nonce)) return decodeB64(nonce).length === expectedLength;
 
     return false;
   }
@@ -10143,11 +10034,9 @@ Peerio.Crypto.init = function () {
    * @returns {boolean} - true for valid key
    */
   function validateKey(key) {
-    if (key.length > 50 || key.length < 40)
-      return false;
+    if (key.length > 50 || key.length < 40) return false;
 
-    if (base64Match.test(key))
-      return decodeB64(key).length === keySize;
+    if (base64Match.test(key)) return decodeB64(key).length === keySize;
 
     return false;
   }
@@ -10209,25 +10098,15 @@ Peerio.Crypto.init = function () {
         senderID: sender.publicKey,
         recipientID: publicKeys[i],
         fileInfo: {
-          fileKey: typeof(fileKey) === 'string'? fileKey : encodeB64(fileKey),
-          fileNonce: typeof(fileNonce) === 'string'? fileNonce : encodeB64(fileNonce),
-          fileHash: typeof(fileHash) === 'string'? fileHash : encodeB64(fileHash)
+          fileKey: typeof fileKey === 'string' ? fileKey : encodeB64(fileKey),
+          fileNonce: typeof fileNonce === 'string' ? fileNonce : encodeB64(fileNonce),
+          fileHash: typeof fileHash === 'string' ? fileHash : encodeB64(fileHash)
         }
       };
 
-      decryptInfo.fileInfo = encodeB64(nacl.box(
-        decodeUTF8(JSON.stringify(decryptInfo.fileInfo)),
-        decryptInfoNonces[i],
-        Base58.decode(publicKeys[i]).subarray(0, keySize),
-        sender.keyPair.secretKey
-      ));
+      decryptInfo.fileInfo = encodeB64(nacl.box(decodeUTF8(JSON.stringify(decryptInfo.fileInfo)), decryptInfoNonces[i], Base58.decode(publicKeys[i]).subarray(0, keySize), sender.keyPair.secretKey));
 
-      decryptInfo = encodeB64(nacl.box(
-        decodeUTF8(JSON.stringify(decryptInfo)),
-        decryptInfoNonces[i],
-        Base58.decode(publicKeys[i]).subarray(0, keySize),
-        ephemeral.secretKey
-      ));
+      decryptInfo = encodeB64(nacl.box(decodeUTF8(JSON.stringify(decryptInfo)), decryptInfoNonces[i], Base58.decode(publicKeys[i]).subarray(0, keySize), ephemeral.secretKey));
 
       header.decryptInfo[encodeB64(decryptInfoNonces[i])] = decryptInfo;
     }
@@ -10242,11 +10121,9 @@ Peerio.Crypto.init = function () {
    * @returns {object} header - decrypted decryptInfo object containing decrypted fileInfo object.
    */
   function decryptHeader(header, user) {
-    if (!hasProp(header, 'version') || header.version !== 1)
-      return false;
+    if (!hasProp(header, 'version') || header.version !== 1) return false;
 
-    if (!hasProp(header, 'ephemeral') || !validateKey(header.ephemeral))
-      return false;
+    if (!hasProp(header, 'ephemeral') || !validateKey(header.ephemeral)) return false;
 
     // Attempt decryptInfo decryptions until one succeeds
     var actualDecryptInfo = null;
@@ -10255,12 +10132,7 @@ Peerio.Crypto.init = function () {
 
     for (var i in header.decryptInfo) {
       if (hasProp(header.decryptInfo, i) && validateNonce(i, decryptInfoNonceSize)) {
-        actualDecryptInfo = nacl.box.open(
-          decodeB64(header.decryptInfo[i]),
-          decodeB64(i),
-          decodeB64(header.ephemeral),
-          user.keyPair.secretKey
-        );
+        actualDecryptInfo = nacl.box.open(decodeB64(header.decryptInfo[i]), decodeB64(i), decodeB64(header.ephemeral), user.keyPair.secretKey);
 
         if (actualDecryptInfo) {
           actualDecryptInfo = JSON.parse(encodeUTF8(actualDecryptInfo));
@@ -10270,28 +10142,18 @@ Peerio.Crypto.init = function () {
       }
     }
 
-    if (!actualDecryptInfo || !hasProp(actualDecryptInfo, 'recipientID')
-      || actualDecryptInfo.recipientID !== user.publicKey)
-      return false;
+    if (!actualDecryptInfo || !hasProp(actualDecryptInfo, 'recipientID') || actualDecryptInfo.recipientID !== user.publicKey) return false;
 
-    if (!hasAllProps(actualDecryptInfo, 'fileInfo', 'senderID') || !validatePublicKey(actualDecryptInfo.senderID))
-      return false;
+    if (!hasAllProps(actualDecryptInfo, 'fileInfo', 'senderID') || !validatePublicKey(actualDecryptInfo.senderID)) return false;
 
     try {
-      actualFileInfo = nacl.box.open(
-        decodeB64(actualDecryptInfo.fileInfo),
-        actualDecryptInfoNonce,
-        Base58.decode(actualDecryptInfo.senderID).subarray(0, keySize),
-        user.keyPair.secretKey
-      );
+      actualFileInfo = nacl.box.open(decodeB64(actualDecryptInfo.fileInfo), actualDecryptInfoNonce, Base58.decode(actualDecryptInfo.senderID).subarray(0, keySize), user.keyPair.secretKey);
       actualFileInfo = JSON.parse(encodeUTF8(actualFileInfo));
-    }
-    catch (err) {
+    } catch (err) {
       return false;
     }
     actualDecryptInfo.fileInfo = actualFileInfo;
     return actualDecryptInfo;
-
   }
 
   /**
@@ -10309,9 +10171,7 @@ Peerio.Crypto.init = function () {
     };
 
     reader.onerror = function () {
-      if (typeof(errorCallback) === 'function')
-        errorCallback();
-
+      if (typeof errorCallback === 'function') errorCallback();
     };
 
     reader.readAsArrayBuffer(blob.slice(start, end));
@@ -10328,11 +10188,7 @@ Peerio.Crypto.init = function () {
   function encryptBlob(blob, publicKeys, user, callback) {
     var blobKey = nacl.randomBytes(keySize);
     var blobNonce = nacl.randomBytes(blobNonceSize);
-    var streamEncryptor = nacl.stream.createEncryptor(
-      blobKey,
-      blobNonce,
-      api.chunkSize
-    );
+    var streamEncryptor = nacl.stream.createEncryptor(blobKey, blobNonce, api.chunkSize);
 
     var paddedFileName = new Uint8Array(256);
     var fileNameBytes = decodeUTF8(blob.name);
@@ -10379,8 +10235,7 @@ Peerio.Crypto.init = function () {
         try {
           header = encodeUTF8(header.data);
           header = JSON.parse(header);
-        }
-        catch (error) {
+        } catch (error) {
           callback(false);
           return false;
         }
@@ -10392,11 +10247,7 @@ Peerio.Crypto.init = function () {
 
         // Begin actual ciphertext decryption
         var dataPosition = headerStart + headerLength;
-        var streamDecryptor = nacl.stream.createDecryptor(
-          decodeB64(actualDecryptInfo.fileInfo.fileKey),
-          decodeB64(actualDecryptInfo.fileInfo.fileNonce),
-          api.chunkSize
-        );
+        var streamDecryptor = nacl.stream.createDecryptor(decodeB64(actualDecryptInfo.fileInfo.fileKey), decodeB64(actualDecryptInfo.fileInfo.fileNonce), api.chunkSize);
         var hashObject = new BLAKE2s(keySize);
         decryptNextChunk({
           firstChunk: true,
@@ -10430,37 +10281,32 @@ Peerio.Crypto.init = function () {
    * @param {Function} e.callbackOnComplete {file, header, fileName, senderID}
    */
   function encryptNextChunk(e) {
-    readBlob(
-      e.blob,
-      e.dataPosition,
-      e.dataPosition + api.chunkSize,
-      function (chunk) {
-        chunk = chunk.data;
-        var isLast = e.dataPosition >= (e.blob.size - api.chunkSize);
+    readBlob(e.blob, e.dataPosition, e.dataPosition + api.chunkSize, function (chunk) {
+      chunk = chunk.data;
+      var isLast = e.dataPosition >= e.blob.size - api.chunkSize;
 
-        var encryptedChunk = e.streamEncryptor.encryptChunk(chunk, isLast);
-        if (!encryptedChunk) {
-          e.callbackOnComplete(false);
-          return false;
-        }
-
-        e.hashObject.update(encryptedChunk);
-        e.encryptedChunks.push(encryptedChunk);
-
-        if (isLast) {
-          e.streamEncryptor.clean();
-          var header = createHeader(e.publicKeys, e.user, e.fileKey, e.fileNonce, e.hashObject.digest());
-          header = JSON.stringify(header);
-          e.encryptedChunks.unshift(signature, numberToByteArray(header.length), header);
-
-          return e.callbackOnComplete(e.encryptedChunks, header, e.fileName, e.user.publicKey);
-        }
-
-        e.dataPosition += api.chunkSize;
-
-        return encryptNextChunk(e);
+      var encryptedChunk = e.streamEncryptor.encryptChunk(chunk, isLast);
+      if (!encryptedChunk) {
+        e.callbackOnComplete(false);
+        return false;
       }
-    );
+
+      e.hashObject.update(encryptedChunk);
+      e.encryptedChunks.push(encryptedChunk);
+
+      if (isLast) {
+        e.streamEncryptor.clean();
+        var header = createHeader(e.publicKeys, e.user, e.fileKey, e.fileNonce, e.hashObject.digest());
+        header = JSON.stringify(header);
+        e.encryptedChunks.unshift(signature, numberToByteArray(header.length), header);
+
+        return e.callbackOnComplete(e.encryptedChunks, header, e.fileName, e.user.publicKey);
+      }
+
+      e.dataPosition += api.chunkSize;
+
+      return encryptNextChunk(e);
+    });
   }
 
   /**
@@ -10479,82 +10325,75 @@ Peerio.Crypto.init = function () {
    * @param {Function} d.callbackOnComplete {file, senderID}
    */
   function decryptNextChunk(d) {
-    readBlob(
-      d.blob,
-      d.dataPosition,
-      d.dataPosition + numberSize + blobNonceSize + api.chunkSize,
-      function (chunk) {
-        chunk = chunk.data;
-        var chunkLength = byteArrayToNumber(chunk.subarray(0, numberSize));
+    readBlob(d.blob, d.dataPosition, d.dataPosition + numberSize + blobNonceSize + api.chunkSize, function (chunk) {
+      chunk = chunk.data;
+      var chunkLength = byteArrayToNumber(chunk.subarray(0, numberSize));
 
-        if (chunkLength > chunk.length) {
-          d.callbackOnComplete(false);
-          throw new Error('Invalid chunk length read while decrypting.');
-        }
-
-        chunk = chunk.subarray(0, chunkLength + numberSize + blobNonceSize);
-
-        var decryptedChunk;
-        var isLast = d.dataPosition >= ((d.blob.size) - (numberSize + blobNonceSize + chunkLength));
-
-        if (d.firstChunk) {
-          d.firstChunk = false;
-
-          decryptedChunk = d.streamDecryptor.decryptChunk(chunk, isLast);
-          if (!decryptedChunk) {
-            d.callbackOnComplete(false);
-            return false;
-          }
-
-          var fileName = encodeUTF8(decryptedChunk.subarray(0, fileNameSize));
-          var trimStart = fileName.indexOf('\0');
-          d.fileName = trimStart >= 0 ? fileName.slice(trimStart) : fileName;
-
-          d.hashObject.update(chunk.subarray(0, fileNameSize + numberSize + blobNonceSize));
-        } else { // if not first chunk
-          decryptedChunk = d.streamDecryptor.decryptChunk(chunk, isLast);
-
-          if (!decryptedChunk) {
-            d.callbackOnComplete(false);
-            throw new Error('Failed to decrypt chunk');
-          }
-
-          d.decryptedChunks.push(decryptedChunk);
-          d.hashObject.update(chunk);
-        }
-
-        d.dataPosition += chunk.length;
-        if (!isLast) return decryptNextChunk(d);
-
-        if (!nacl.verify(new Uint8Array(d.hashObject.digest()), decodeB64(d.fileInfo.fileHash))) {
-          d.callbackOnComplete(false);
-          throw new Error('Failed to verify decrypted data hash');
-        }
-
-        d.streamDecryptor.clean();
-        d.callbackOnComplete(new Blob(d.decryptedChunks), d.senderPublicKey);
-
+      if (chunkLength > chunk.length) {
+        d.callbackOnComplete(false);
+        throw new Error('Invalid chunk length read while decrypting.');
       }
-    );
+
+      chunk = chunk.subarray(0, chunkLength + numberSize + blobNonceSize);
+
+      var decryptedChunk;
+      var isLast = d.dataPosition >= d.blob.size - (numberSize + blobNonceSize + chunkLength);
+
+      if (d.firstChunk) {
+        d.firstChunk = false;
+
+        decryptedChunk = d.streamDecryptor.decryptChunk(chunk, isLast);
+        if (!decryptedChunk) {
+          d.callbackOnComplete(false);
+          return false;
+        }
+
+        var fileName = encodeUTF8(decryptedChunk.subarray(0, fileNameSize));
+        var trimStart = fileName.indexOf('\0');
+        d.fileName = trimStart >= 0 ? fileName.slice(trimStart) : fileName;
+
+        d.hashObject.update(chunk.subarray(0, fileNameSize + numberSize + blobNonceSize));
+      } else {
+        // if not first chunk
+        decryptedChunk = d.streamDecryptor.decryptChunk(chunk, isLast);
+
+        if (!decryptedChunk) {
+          d.callbackOnComplete(false);
+          throw new Error('Failed to decrypt chunk');
+        }
+
+        d.decryptedChunks.push(decryptedChunk);
+        d.hashObject.update(chunk);
+      }
+
+      d.dataPosition += chunk.length;
+      if (!isLast) return decryptNextChunk(d);
+
+      if (!nacl.verify(new Uint8Array(d.hashObject.digest()), decodeB64(d.fileInfo.fileHash))) {
+        d.callbackOnComplete(false);
+        throw new Error('Failed to verify decrypted data hash');
+      }
+
+      d.streamDecryptor.clean();
+      d.callbackOnComplete(new Blob(d.decryptedChunks), d.senderPublicKey);
+    });
   }
 
   function getCachedUsername() {
-    return (defaultUser && defaultUser.username) || null;
+    return defaultUser && defaultUser.username || null;
   }
 
   function getCachedKeyPair() {
-    return (defaultUser && defaultUser.keyPair) || null;
+    return defaultUser && defaultUser.keyPair || null;
   }
 
   function getCachedPublicKey() {
-    return (defaultUser && defaultUser.publicKey) || null;
+    return defaultUser && defaultUser.publicKey || null;
   }
-
 };
 /**
  * Worker script that imports crypto library and provides interface to it to UI thread
  */
-
 
 (function () {
   'use strict';
@@ -10587,7 +10426,7 @@ Peerio.Crypto.init = function () {
       console.log(message.randomBytes.length, 'random bytes received');
       var newArray = Array.prototype.slice.call(new Uint8Array(message.randomBytes));
       Array.prototype.push.apply(randomBytesStock, newArray);
-      console.log(randomBytesStock.length,'randombytes now in stock');
+      console.log(randomBytesStock.length, 'randombytes now in stock');
       return;
     }
 
@@ -10596,24 +10435,20 @@ Peerio.Crypto.init = function () {
       return;
     }
 
-    var response = {id: message.id};
+    var response = { id: message.id };
 
     try {
 
-      Peerio.Crypto[message.fnName].apply(Peerio.Crypto, message.args)
-        .then(function (result) {
-          response.result = result;
-        })
-        .catch(function (err) {
-          response.error = (err && err.toString()) || 'Unknown error';
-        })
-        .finally(function () {
-          self.postMessage(response);
-        });
-
+      Peerio.Crypto[message.fnName].apply(Peerio.Crypto, message.args).then(function (result) {
+        response.result = result;
+      })['catch'](function (err) {
+        response.error = err && err.toString() || 'Unknown error';
+      })['finally'](function () {
+        self.postMessage(response);
+      });
     } catch (e) {
       // warning, don't try to postMessage(e), error object can't be cloned automatically
-      response.error = (e && e.toString()) || 'Unknown error';
+      response.error = e && e.toString() || 'Unknown error';
       self.postMessage(response);
     }
   };
@@ -10632,8 +10467,7 @@ Peerio.Crypto.init = function () {
       console.log(arr.length, 'random bytes requested', randomBytesStock.length, 'is in stock');
       if (arr.length > randomBytesStock.length) throw 'Not enough random bytes in polyfill stock.';
 
-      for (var i = 0; i < arr.length; i++)
-        arr[i] = randomBytesStock[i];
+      for (var i = 0; i < arr.length; i++) arr[i] = randomBytesStock[i];
 
       randomBytesStock.splice(0, arr.length);
       return arr;
@@ -10641,6 +10475,5 @@ Peerio.Crypto.init = function () {
   }
 
   // informing UI thread on getRandomValues situation
-  self.postMessage({provideRandomBytes: randomBytesNeeded});
-
+  self.postMessage({ provideRandomBytes: randomBytesNeeded });
 })();

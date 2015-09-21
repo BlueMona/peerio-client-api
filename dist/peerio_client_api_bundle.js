@@ -12,18 +12,10 @@
  * data = base64decode(b64);
  */
 
-(function() {
+(function () {
 
   var base64EncodeChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-  var base64DecodeChars = new Array(
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 62, -1, -1, -1, 63,
-    52, 53, 54, 55, 56, 57, 58, 59, 60, 61, -1, -1, -1, -1, -1, -1,
-    -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14,
-    15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, -1, -1, -1, -1, -1,
-    -1, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
-    41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, -1, -1, -1, -1, -1);
+  var base64DecodeChars = new Array(-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 62, -1, -1, -1, 63, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, -1, -1, -1, -1, -1, -1, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, -1, -1, -1, -1, -1, -1, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, -1, -1, -1, -1, -1);
 
   function base64encode(str) {
     var out, i, len;
@@ -32,28 +24,26 @@
     len = str.length;
     i = 0;
     out = "";
-    while(i < len) {
+    while (i < len) {
       c1 = str.charCodeAt(i++) & 0xff;
-      if(i == len)
-      {
+      if (i == len) {
         out += base64EncodeChars.charAt(c1 >> 2);
         out += base64EncodeChars.charAt((c1 & 0x3) << 4);
         out += "==";
         break;
       }
       c2 = str.charCodeAt(i++);
-      if(i == len)
-      {
+      if (i == len) {
         out += base64EncodeChars.charAt(c1 >> 2);
-        out += base64EncodeChars.charAt(((c1 & 0x3)<< 4) | ((c2 & 0xF0) >> 4));
+        out += base64EncodeChars.charAt((c1 & 0x3) << 4 | (c2 & 0xF0) >> 4);
         out += base64EncodeChars.charAt((c2 & 0xF) << 2);
         out += "=";
         break;
       }
       c3 = str.charCodeAt(i++);
       out += base64EncodeChars.charAt(c1 >> 2);
-      out += base64EncodeChars.charAt(((c1 & 0x3)<< 4) | ((c2 & 0xF0) >> 4));
-      out += base64EncodeChars.charAt(((c2 & 0xF) << 2) | ((c3 & 0xC0) >>6));
+      out += base64EncodeChars.charAt((c1 & 0x3) << 4 | (c2 & 0xF0) >> 4);
+      out += base64EncodeChars.charAt((c2 & 0xF) << 2 | (c3 & 0xC0) >> 6);
       out += base64EncodeChars.charAt(c3 & 0x3F);
     }
     return out;
@@ -66,53 +56,46 @@
     len = str.length;
     i = 0;
     out = "";
-    while(i < len) {
+    while (i < len) {
       /* c1 */
       do {
         c1 = base64DecodeChars[str.charCodeAt(i++) & 0xff];
-      } while(i < len && c1 == -1);
-      if(c1 == -1)
-        break;
+      } while (i < len && c1 == -1);
+      if (c1 == -1) break;
 
       /* c2 */
       do {
         c2 = base64DecodeChars[str.charCodeAt(i++) & 0xff];
-      } while(i < len && c2 == -1);
-      if(c2 == -1)
-        break;
+      } while (i < len && c2 == -1);
+      if (c2 == -1) break;
 
-      out += String.fromCharCode((c1 << 2) | ((c2 & 0x30) >> 4));
+      out += String.fromCharCode(c1 << 2 | (c2 & 0x30) >> 4);
 
       /* c3 */
       do {
         c3 = str.charCodeAt(i++) & 0xff;
-        if(c3 == 61)
-          return out;
+        if (c3 == 61) return out;
         c3 = base64DecodeChars[c3];
-      } while(i < len && c3 == -1);
-      if(c3 == -1)
-        break;
+      } while (i < len && c3 == -1);
+      if (c3 == -1) break;
 
-      out += String.fromCharCode(((c2 & 0XF) << 4) | ((c3 & 0x3C) >> 2));
+      out += String.fromCharCode((c2 & 0XF) << 4 | (c3 & 0x3C) >> 2);
 
       /* c4 */
       do {
         c4 = str.charCodeAt(i++) & 0xff;
-        if(c4 == 61)
-          return out;
+        if (c4 == 61) return out;
         c4 = base64DecodeChars[c4];
-      } while(i < len && c4 == -1);
-      if(c4 == -1)
-        break;
-      out += String.fromCharCode(((c3 & 0x03) << 6) | c4);
+      } while (i < len && c4 == -1);
+      if (c4 == -1) break;
+      out += String.fromCharCode((c3 & 0x03) << 6 | c4);
     }
     return out;
   }
 
-  var scope = (typeof window !== "undefined") ? window : self;
+  var scope = typeof window !== "undefined" ? window : self;
   if (!scope.btoa) scope.btoa = base64encode;
   if (!scope.atob) scope.atob = base64decode;
-
 })();
 (function(nacl) {
 'use strict';
@@ -2540,7 +2523,6 @@ nacl.setPRNG = function(fn) {
  *
  */
 
-
 var Peerio = this.Peerio || {};
 Peerio.PhraseGenerator = {};
 
@@ -2580,33 +2562,30 @@ Peerio.PhraseGenerator.init = function () {
     if (!loadedDictionary) return null;
 
     var phrase = '';
-    for (var i = 0; i < wordsCount; i++)
-      phrase += getRandomWord() + ' ';
+    for (var i = 0; i < wordsCount; i++) phrase += getRandomWord() + ' ';
 
     return phrase.trim().toLowerCase();
   }
 
   // asynchronously builds dictionary cache for specified language
   function buildDict(lang) {
-    if (loadedDictionary && loadedDictionary.lang === lang)
-      return Promise.resolve();
+    if (loadedDictionary && loadedDictionary.lang === lang) return Promise.resolve();
 
     loadedDictionary = null;
-    return loadDict(lang)
-      .then(function (raw) {
-        // normalizing words
-        var words = raw.split('\n');
-        for (var i = 0; i < words.length; i++) {
-          // removing leading/trailing spaces and ensuring lower case
-          words[i] = words[i].trim();
-          // removing empty strings
-          if (words[i] === '') {
-            words.splice(i, 1);
-            i--;
-          }
+    return loadDict(lang).then(function (raw) {
+      // normalizing words
+      var words = raw.split('\n');
+      for (var i = 0; i < words.length; i++) {
+        // removing leading/trailing spaces and ensuring lower case
+        words[i] = words[i].trim();
+        // removing empty strings
+        if (words[i] === '') {
+          words.splice(i, 1);
+          i--;
         }
-        loadedDictionary = {lang: lang, dict: words};
-      });
+      }
+      loadedDictionary = { lang: lang, dict: words };
+    });
   }
 
   // loads dict by lang and return plaintext in promise
@@ -2615,15 +2594,11 @@ Peerio.PhraseGenerator.init = function () {
     return new Promise(function (resolve, reject) {
       var xhr = new XMLHttpRequest();
 
-      if (xhr.overrideMimeType)
-        xhr.overrideMimeType('text/plain');
+      if (xhr.overrideMimeType) xhr.overrideMimeType('text/plain');
 
       xhr.onreadystatechange = function () {
         if (xhr.readyState === 4) {
-          if (xhr.status === 200 || xhr.status === 0)
-            resolve(xhr.responseText);
-          else
-            reject();
+          if (xhr.status === 200 || xhr.status === 0) resolve(xhr.responseText);else reject();
         }
       };
 
@@ -2641,9 +2616,9 @@ Peerio.PhraseGenerator.init = function () {
     var skip = 0x7fffffff - 0x7fffffff % count;
     var result;
 
-    if (((count - 1) & count) === 0) {
+    if ((count - 1 & count) === 0) {
       window.crypto.getRandomValues(rand);
-      return rand[0] & (count - 1);
+      return rand[0] & count - 1;
     }
     do {
       window.crypto.getRandomValues(rand);
@@ -2651,9 +2626,7 @@ Peerio.PhraseGenerator.init = function () {
     } while (result >= skip);
     return result % count;
   }
-
 };
-
 /**
  *  Crypto Hub
  *  ===========================================
@@ -2663,10 +2636,6 @@ Peerio.PhraseGenerator.init = function () {
  *  This allows us to replace worker with regular UI-thread Peerio.Crypto library in no time.
  *
  */
-
-// todo: throttle/queue high request rate might lead to:
-// 1. randomBytesStock depletion (if shim is active)
-// 2. overall performance degradation
 
 var Peerio = this.Peerio || {};
 Peerio.Crypto = {};
@@ -2681,7 +2650,7 @@ Peerio.Crypto.init = function () {
   var hasProp = Function.call.bind(Object.prototype.hasOwnProperty);
   var workerScriptPath = Peerio.Config.apiFolder + 'crypto_worker_bundle.js';
   // web worker instance
-  var workers = []; // todo: maybe add a limit
+  var workers = [];
   // pending promises callbacks
   // id: {resolve: resolve callback, reject: reject callback}
   var callbacks = {};
@@ -2689,7 +2658,7 @@ Peerio.Crypto.init = function () {
 
   // we use x2 concurrency so that workers always have one request in queue,
   // making execution as fast as possible
-  Peerio.Crypto.recommendedConcurrency = {concurrency: Peerio.Crypto.workerInstanceCount * 2};
+  Peerio.Crypto.recommendedConcurrency = { concurrency: Peerio.Crypto.workerInstanceCount * 2 };
 
   // when started, workers will report if they need random values provided to them
   var provideRandomBytes = false;
@@ -2706,10 +2675,7 @@ Peerio.Crypto.init = function () {
     var promise = callbacks[data.id];
     if (!promise) return;
 
-    if (hasProp(data, 'error'))
-      promise.reject(data.error);
-    else
-      promise.resolve(data.result);
+    if (hasProp(data, 'error')) promise.reject(data.error);else promise.resolve(data.result);
 
     delete callbacks[data.id];
   }
@@ -2730,7 +2696,6 @@ Peerio.Crypto.init = function () {
     worker.onerror = function (error) {
       console.log('crypto worker error:', error);
     };
-
   }
 
   // this function is supposed to be called from worker.onmessage when worker reports it's random bytes stock
@@ -2738,7 +2703,7 @@ Peerio.Crypto.init = function () {
   function ensureRandomBytesStock(index, currentStock) {
     if (currentStock >= randomBytesThreshold) return;
     var data = crypto.getRandomValues(new Uint8Array(randomBytesThreshold));
-    workers[index].postMessage({randomBytes: data.buffer}, [data.buffer]);
+    workers[index].postMessage({ randomBytes: data.buffer }, [data.buffer]);
   }
 
   // creating worker instances
@@ -2751,69 +2716,42 @@ Peerio.Crypto.init = function () {
 
   // returns new worker instance in cycle
   function getWorker() {
-    if (++lastUsedWorkerIndex === workers.length)
-      lastUsedWorkerIndex = 0;
+    if (++lastUsedWorkerIndex === workers.length) lastUsedWorkerIndex = 0;
     return workers[lastUsedWorkerIndex];
   }
 
   // this two methods should execute on all workers
   // they don't expect a response from worker
-  [
-    'setDefaultUserData',
-    'setDefaultContacts'
-  ].forEach(function (fnName) {
-      Peerio.Crypto[fnName] = function () {
-        var args = [];
-        for (var a = 0; a < arguments.length; a++)
-          args[a] = arguments[a];
+  ['setDefaultUserData', 'setDefaultContacts'].forEach(function (fnName) {
+    Peerio.Crypto[fnName] = function () {
+      var args = [];
+      for (var a = 0; a < arguments.length; a++) args[a] = arguments[a];
 
-        for (var w = 0; w < workers.length; w++)
-          workers[w].postMessage({fnName: fnName, args: args});
-      };
-    });
+      for (var w = 0; w < workers.length; w++) workers[w].postMessage({ fnName: fnName, args: args });
+    };
+  });
 
   // this methods will execute on one of the workers,
   // each of them expect response from worker
-  [
-    'getKeyPair',
-    'getPublicKeyString',
-    'getPublicKeyBytes',
-    'secretBoxEncrypt',
-    'secretBoxDecrypt',
-    'getKeyFromPIN',
-    'decryptAccountCreationToken',
-    'decryptAuthToken',
-    'getAvatar',
-    'encryptMessage',
-    'decryptMessage',
-    'encryptFile',
-    'decryptFile',
-    'decryptFileName',
-    'encryptReceipt',
-    'decryptReceipt',
-    'recreateHeader'
-  ].forEach(function (fnName) {
-      Peerio.Crypto[fnName] = function () {
-        var id = uuid();
-        // we copy arguments object data into array, because that's what worker is expecting to use it with apply()
-        // don't change this to Array.slice() because it will prevent runtime optimisation
-        var args = [];
-        for (var i = 0; i < arguments.length; i++)
-          args[i] = arguments[i];
+  ['getKeyPair', 'getPublicKeyString', 'getPublicKeyBytes', 'secretBoxEncrypt', 'secretBoxDecrypt', 'getKeyFromPIN', 'decryptAccountCreationToken', 'decryptAuthToken', 'getAvatar', 'encryptMessage', 'decryptMessage', 'encryptFile', 'decryptFile', 'decryptFileName', 'encryptReceipt', 'decryptReceipt', 'recreateHeader'].forEach(function (fnName) {
+    Peerio.Crypto[fnName] = function () {
+      var id = uuid();
+      // we copy arguments object data into array, because that's what worker is expecting to use it with apply()
+      // don't change this to Array.slice() because it will prevent runtime optimisation
+      var args = [];
+      for (var i = 0; i < arguments.length; i++) args[i] = arguments[i];
 
-        var ret = new Promise(function (resolve, reject) {
-          callbacks[id] = {
-            resolve: resolve,
-            reject: reject
-          };
-        });
-        getWorker().postMessage({id: id, fnName: fnName, args: args});
-        return ret;
-      };
-    });
-
+      var ret = new Promise(function (resolve, reject) {
+        callbacks[id] = {
+          resolve: resolve,
+          reject: reject
+        };
+      });
+      getWorker().postMessage({ id: id, fnName: fnName, args: args });
+      return ret;
+    };
+  });
 };
-
 // Peerio AccountInfo object
 
 var Peerio = this.Peerio || {};
@@ -2838,7 +2776,6 @@ Peerio.Model = Peerio.Model || {};
     this.publicKeyString = publicKey;
     this.localeCode = localeCode || 'en';
   };
-
 })();
 /**
  * Custom js Error object.
@@ -2904,16 +2841,13 @@ Peerio.Model = Peerio.Model || {};
    */
   u.prototype.generateKeys = function () {
     var self = this;
-    return Peerio.Crypto.getKeyPair(self.username, self.passphrase)
-      .then(function (keys) {
-        self.keyPair = keys;
-        return Peerio.Crypto.getPublicKeyString(keys.publicKey);
-      })
-      .then(function (publicKey) {
-        self.publicKey = publicKey;
-      });
+    return Peerio.Crypto.getKeyPair(self.username, self.passphrase).then(function (keys) {
+      self.keyPair = keys;
+      return Peerio.Crypto.getPublicKeyString(keys.publicKey);
+    }).then(function (publicKey) {
+      self.publicKey = publicKey;
+    });
   };
-
 })();
 /**
  * Centralized place to collect and provide global application state information.
@@ -2931,8 +2865,8 @@ Peerio.AppState.init = function () {
   var d = Peerio.Dispatcher;
 
   // initial state
-  api.loading = false;     // is app currently transferring/waiting for data
-  api.connected = false;   // is app connected to peerio server socket
+  api.loading = false; // is app currently transferring/waiting for data
+  api.connected = false; // is app connected to peerio server socket
   api.authenticated = false; // is current connection authenticated
 
   /**
@@ -2945,7 +2879,7 @@ Peerio.AppState.init = function () {
    */
   api.addStateRule = function (action, property, value) {
     var setFn;
-    if (typeof(value) === 'function') {
+    if (typeof value === 'function') {
       setFn = value.bind(api);
     } else {
       setFn = setState.bind(api, property, value);
@@ -2977,12 +2911,10 @@ Peerio.AppState.init = function () {
   });
 
   d.onAuthenticated(setState.bind(api, 'authenticated', true));
-
 };
 /**
  * Peerio App Logic: Auth & Registration
  */
-
 
 var Peerio = this.Peerio || {};
 Peerio.Auth = {};
@@ -3011,33 +2943,28 @@ Peerio.Auth.init = function () {
    */
   api.login = function (username, passphraseOrPIN) {
     var isPinSet = false;
-    return Peerio.TinyDB.getObject(username+'PIN')
-      .then(function (encrypted) {
-        if (encrypted) {
-          isPinSet = true;
-          return getPassphraseFromPIN(username, passphraseOrPIN, encrypted);
-        }
-        return passphraseOrPIN;
-      })
-      .then(function (passphrase) {
-        Peerio.user = new Peerio.Model.User(username, passphrase || passphraseOrPIN);
-        Peerio.user.isPINSet = isPinSet;
-        return Peerio.user.generateKeys();
-      })
-      .then(function () {
-        return net.login(Peerio.user);
-      })
-      .then(function (user) {
-        Peerio.Crypto.setDefaultUserData(user.username, user.keyPair, user.publicKey);
-        return net.getSettings();
-      })
-      .then(function (settings) {
-        var u = Peerio.user;
-        u.settings = settings;
-        u.firstName = settings.firstName;
-        u.lastName = settings.lastName;
-        return Peerio.Contacts.updateContacts();
-      });
+    return Peerio.TinyDB.getObject(username + 'PIN').then(function (encrypted) {
+      if (encrypted) {
+        isPinSet = true;
+        return getPassphraseFromPIN(username, passphraseOrPIN, encrypted);
+      }
+      return passphraseOrPIN;
+    }).then(function (passphrase) {
+      Peerio.user = new Peerio.Model.User(username, passphrase || passphraseOrPIN);
+      Peerio.user.isPINSet = isPinSet;
+      return Peerio.user.generateKeys();
+    }).then(function () {
+      return net.login(Peerio.user);
+    }).then(function (user) {
+      Peerio.Crypto.setDefaultUserData(user.username, user.keyPair, user.publicKey);
+      return net.getSettings();
+    }).then(function (settings) {
+      var u = Peerio.user;
+      u.settings = settings;
+      u.firstName = settings.firstName;
+      u.lastName = settings.lastName;
+      return Peerio.Contacts.updateContacts();
+    });
   };
 
   /**
@@ -3056,10 +2983,9 @@ Peerio.Auth.init = function () {
    */
   api.saveLogin = function (username, firstName) {
     if (!firstName) firstName = username;
-    Peerio.TinyDB.setObject(lastLoginKey, {username: username, firstName: firstName})
-      .catch(function (e) {
-        alert('Failed to remember username. Error:' + e);
-      });
+    Peerio.TinyDB.setObject(lastLoginKey, { username: username, firstName: firstName })['catch'](function (e) {
+      alert('Failed to remember username. Error:' + e);
+    });
   };
 
   /**
@@ -3070,16 +2996,15 @@ Peerio.Auth.init = function () {
   };
 
   api.setPIN = function (PIN, username, passphrase) {
-    return Peerio.Crypto.getKeyFromPIN(PIN, username)
-      .then(function (PINkey) {
-        return Peerio.Crypto.secretBoxEncrypt(passphrase, PINkey);
-      }).then(function (encrypted) {
-        encrypted.ciphertext = nacl.util.encodeBase64(encrypted.ciphertext);
-        encrypted.nonce = nacl.util.encodeBase64(encrypted.nonce);
-        return Peerio.TinyDB.setObject(username + 'PIN', encrypted);
-      }).then(function(){
-        Peerio.user.isPINSet = true;
-      });
+    return Peerio.Crypto.getKeyFromPIN(PIN, username).then(function (PINkey) {
+      return Peerio.Crypto.secretBoxEncrypt(passphrase, PINkey);
+    }).then(function (encrypted) {
+      encrypted.ciphertext = nacl.util.encodeBase64(encrypted.ciphertext);
+      encrypted.nonce = nacl.util.encodeBase64(encrypted.nonce);
+      return Peerio.TinyDB.setObject(username + 'PIN', encrypted);
+    }).then(function () {
+      Peerio.user.isPINSet = true;
+    });
   };
 
   api.removePIN = function () {
@@ -3088,32 +3013,26 @@ Peerio.Auth.init = function () {
   };
 
   function getPassphraseFromPIN(username, PIN, encryptedPassphrase) {
-    return Peerio.Crypto.getKeyFromPIN(PIN, username)
-      .then(function (PINkey) {
-        return Peerio.Crypto.secretBoxDecrypt(nacl.util.decodeBase64(encryptedPassphrase.ciphertext),
-          nacl.util.decodeBase64(encryptedPassphrase.nonce), PINkey);
-      }).catch(function () {
-        return Promise.resolve(null);
-      });
+    return Peerio.Crypto.getKeyFromPIN(PIN, username).then(function (PINkey) {
+      return Peerio.Crypto.secretBoxDecrypt(nacl.util.decodeBase64(encryptedPassphrase.ciphertext), nacl.util.decodeBase64(encryptedPassphrase.nonce), PINkey);
+    })['catch'](function () {
+      return Promise.resolve(null);
+    });
   }
 
   api.signup = function (username, passphrase, firstName, lastName) {
     var keys;
-    return Peerio.Crypto.getKeyPair(username, passphrase)
-      .then(function (keyPair) {
-        keys = keyPair;
-        return Peerio.Crypto.getPublicKeyString(keyPair.publicKey);
-      })
-      .then(function (publicKeyString) {
-        var info = new Peerio.Model.AccountInfo(username, firstName, lastName, publicKeyString, 'en');
-        return net.registerAccount(info);
-      })
-      .then(function (creationToken) {
-        return Peerio.Crypto.decryptAccountCreationToken(creationToken, username, keys);
-      })
-      .then(function (decryptedToken) {
-        return net.activateAccount(decryptedToken);
-      });
+    return Peerio.Crypto.getKeyPair(username, passphrase).then(function (keyPair) {
+      keys = keyPair;
+      return Peerio.Crypto.getPublicKeyString(keyPair.publicKey);
+    }).then(function (publicKeyString) {
+      var info = new Peerio.Model.AccountInfo(username, firstName, lastName, publicKeyString, 'en');
+      return net.registerAccount(info);
+    }).then(function (creationToken) {
+      return Peerio.Crypto.decryptAccountCreationToken(creationToken, username, keys);
+    }).then(function (decryptedToken) {
+      return net.activateAccount(decryptedToken);
+    });
   };
 };
 /**
@@ -3145,88 +3064,84 @@ Peerio.Contacts.init = function () {
     Peerio.Net.addContact(username);
   };
 
-
   function removeContact(data) {
     delete Peerio.user.contacts[data.contact];
-    var i = _.findIndex(Peerio.user.contacts, function(c){ return c.username === data.contact;});
+    var i = _.findIndex(Peerio.user.contacts, function (c) {
+      return c.username === data.contact;
+    });
     Peerio.user.contacts.splice(i, 1);
     Peerio.Action.contactsUpdated();
   }
 
   api.updateContacts = function () {
-    return net.getContacts()
-      .then(function (contacts) {
-        var contactMap = [];
+    return net.getContacts().then(function (contacts) {
+      var contactMap = [];
 
-        contacts.contacts.forEach(function (c) {
-          c.publicKey = c.miniLockID;// todo: remove after this gets renamed on server
-          c.fullName = getFullName(c);
-          c.fullNameAndUsername = getFullNameAndUsername(c);
+      contacts.contacts.forEach(function (c) {
+        c.publicKey = c.miniLockID; // todo: remove after this gets renamed on server
+        c.fullName = getFullName(c);
+        c.fullNameAndUsername = getFullNameAndUsername(c);
 
-          contactMap[c.username] = c;
-          contactMap.push(c);
-        });
-
-        Peerio.Util.sortAsc(contactMap, 'fullNameAndUsername');
-
-        return contactMap;
-      })
-      .then(function (contacts) {
-        var u = Peerio.user;
-        u.fullName = getFullName(u);
-        u.fullNameAndUsername = getFullNameAndUsername(u);
-
-        u.contacts = contacts;
-        u.isMe = true;
-        contacts[u.username] = u;
-        contacts.unshift(u);
-
-        Peerio.Crypto.setDefaultContacts(contacts);
-        return contacts;
-      }).then(function (contacts) {
-        return buildIdenticons(contacts);
-      }).then(function () {
-        return net.getSentContactRequests();
-      }).then(function (data) {
-        data.contactRequests.forEach(function (username) {
-          var c = {username: username, isRequest: true};
-          Peerio.user.contacts.push(c);
-          Peerio.user.contacts[username] = c;
-        });
-        return net.getReceivedContactRequests();
-      }).then(function (data) {
-        data.contactRequests.forEach(function (c) {
-          c.isRequest= true;
-          c.isReceivedRequest= true;
-          c.publicKey = c.miniLockID;// todo: remove after this gets renamed on server
-          c.fullName = getFullName(c);
-          c.fullNameAndUsername = getFullNameAndUsername(c);
-
-          Peerio.user.contacts.push(c);
-          Peerio.user.contacts[c.username] = c;
-        });
-      }).then(function () {
-        Peerio.Action.contactsUpdated();
+        contactMap[c.username] = c;
+        contactMap.push(c);
       });
+
+      Peerio.Util.sortAsc(contactMap, 'fullNameAndUsername');
+
+      return contactMap;
+    }).then(function (contacts) {
+      var u = Peerio.user;
+      u.fullName = getFullName(u);
+      u.fullNameAndUsername = getFullNameAndUsername(u);
+
+      u.contacts = contacts;
+      u.isMe = true;
+      contacts[u.username] = u;
+      contacts.unshift(u);
+
+      Peerio.Crypto.setDefaultContacts(contacts);
+      return contacts;
+    }).then(function (contacts) {
+      return buildIdenticons(contacts);
+    }).then(function () {
+      return net.getSentContactRequests();
+    }).then(function (data) {
+      data.contactRequests.forEach(function (username) {
+        var c = { username: username, isRequest: true };
+        Peerio.user.contacts.push(c);
+        Peerio.user.contacts[username] = c;
+      });
+      return net.getReceivedContactRequests();
+    }).then(function (data) {
+      data.contactRequests.forEach(function (c) {
+        c.isRequest = true;
+        c.isReceivedRequest = true;
+        c.publicKey = c.miniLockID; // todo: remove after this gets renamed on server
+        c.fullName = getFullName(c);
+        c.fullNameAndUsername = getFullNameAndUsername(c);
+
+        Peerio.user.contacts.push(c);
+        Peerio.user.contacts[c.username] = c;
+      });
+    }).then(function () {
+      Peerio.Action.contactsUpdated();
+    });
   };
 
-  api.removeContact = function(username){
+  api.removeContact = function (username) {
     var c = Peerio.user.contacts[username];
-    if(c.isRequest && !c.isReceivedRequest)
-      net.cancelContactRequest(username);
-    else
-      net.removeContact(username);
+    if (c.isRequest && !c.isReceivedRequest) net.cancelContactRequest(username);else net.removeContact(username);
   };
 
-  api.acceptContact =function(username){
+  api.acceptContact = function (username) {
     var c = Peerio.user.contacts[username];
-    if(c.isRequest && c.isReceivedRequest){
+    if (c.isRequest && c.isReceivedRequest) {
       net.acceptContactRequest(username);
     }
   };
-  api.rejectContact =function(username){
+  api.rejectContact = function (username) {
     var c = Peerio.user.contacts[username];
-    if(c.isRequest && c.isReceivedRequest){
+    if (c.isRequest && c.isReceivedRequest) {
       net.declineContactRequest(username);
     }
   };
@@ -3236,27 +3151,23 @@ Peerio.Contacts.init = function () {
     Promise.map(contacts, function (c) {
       if (!c.publicKey) return;
 
-      return Peerio.Crypto.getAvatar(c.username, c.publicKey)
-        .then(function (avatar) {
+      return Peerio.Crypto.getAvatar(c.username, c.publicKey).then(function (avatar) {
 
-          var size = 12;
-          c.icon12 = [];
-          c.icon12.push(header + new Identicon(avatar[0].substring(0, 32), size, 0).toString());
-          c.icon12.push(header + new Identicon(avatar[0].substring(32, 64), size, 0).toString());
-          c.icon12.push(header + new Identicon(avatar[1].substring(0, 32), size, 0).toString());
-          c.icon12.push(header + new Identicon(avatar[1].substring(32, 64), size, 0).toString());
+        var size = 12;
+        c.icon12 = [];
+        c.icon12.push(header + new Identicon(avatar[0].substring(0, 32), size, 0).toString());
+        c.icon12.push(header + new Identicon(avatar[0].substring(32, 64), size, 0).toString());
+        c.icon12.push(header + new Identicon(avatar[1].substring(0, 32), size, 0).toString());
+        c.icon12.push(header + new Identicon(avatar[1].substring(32, 64), size, 0).toString());
 
-          size = 18;
-          c.icon18 = [];
-          c.icon18.push(header + new Identicon(avatar[0].substring(0, 32), size, 0).toString());
-          c.icon18.push(header + new Identicon(avatar[0].substring(32, 64), size, 0).toString());
-          c.icon18.push(header + new Identicon(avatar[1].substring(0, 32), size, 0).toString());
-          c.icon18.push(header + new Identicon(avatar[1].substring(32, 64), size, 0).toString());
-
-        });
-
-    }, Peerio.Crypto.recommendedConcurrency)
-      .return(contacts);
+        size = 18;
+        c.icon18 = [];
+        c.icon18.push(header + new Identicon(avatar[0].substring(0, 32), size, 0).toString());
+        c.icon18.push(header + new Identicon(avatar[0].substring(32, 64), size, 0).toString());
+        c.icon18.push(header + new Identicon(avatar[1].substring(0, 32), size, 0).toString());
+        c.icon18.push(header + new Identicon(avatar[1].substring(32, 64), size, 0).toString());
+      });
+    }, Peerio.Crypto.recommendedConcurrency)['return'](contacts);
   }
 
   function getFullName(user) {
@@ -3273,7 +3184,6 @@ Peerio.Contacts.init = function () {
   net.injectPeerioEventHandler('receivedContactRequestRemoved', removeContact);
   net.injectPeerioEventHandler('sentContactRequestRemoved', removeContact);
   net.injectPeerioEventHandler('contactRemoved', removeContact);
-
 };
 /**
  * Peerio App Logic: files
@@ -3302,44 +3212,38 @@ Peerio.Files.init = function () {
   api.getAllFiles = function () {
     if (getAllFilesPromise) return getAllFilesPromise;
 
-    if (api.cache)
-      return Promise.resolve(api.cache);
+    if (api.cache) return Promise.resolve(api.cache);
 
     var decrypted = [];
     api.cache = [];
-    return getAllFilesPromise = net.getFiles()
-      .then(function (response) {
-        var files = response.files;
-        var keys = Object.keys(files);
+    return getAllFilesPromise = net.getFiles().then(function (response) {
+      var files = response.files;
+      var keys = Object.keys(files);
 
-        return Promise.map(keys, function (fileId) {
-          var file = files[fileId];
-          return Peerio.Crypto.decryptFileName(fileId, file.header)
-            .then(function (name) {
-              file.name = name;
-              file.shortId = Peerio.Util.sha256(fileId);
-              decrypted.push(file);
-              decrypted[file.shortId] = file;
-            });
-        }, Peerio.Crypto.recommendedConcurrency)
-          .return(decrypted);
-      })
-      .then(addFilesToCache)
-      .then(function(){
-        Peerio.Action.filesUpdated();
-        return api.cache;
-      });
+      return Promise.map(keys, function (fileId) {
+        var file = files[fileId];
+        return Peerio.Crypto.decryptFileName(fileId, file.header).then(function (name) {
+          file.name = name;
+          file.shortId = Peerio.Util.sha256(fileId);
+          decrypted.push(file);
+          decrypted[file.shortId] = file;
+        });
+      }, Peerio.Crypto.recommendedConcurrency)['return'](decrypted);
+    }).then(addFilesToCache).then(function () {
+      Peerio.Action.filesUpdated();
+      return api.cache;
+    });
   };
 
-  api.delete =function(shortId){
+  api['delete'] = function (shortId) {
     var file = api.cache[shortId];
-    if(!file) return;
+    if (!file) return;
     Peerio.Net.removeFile(file.id);
   };
 
-  api.nuke =function(shortId){
+  api.nuke = function (shortId) {
     var file = api.cache[shortId];
-    if(!file) return;
+    if (!file) return;
     Peerio.Net.nukeFile(file.id);
   };
 
@@ -3362,30 +3266,30 @@ Peerio.Files.init = function () {
   net.injectPeerioEventHandler('fileAdded', addFile);
   net.injectPeerioEventHandler('fileRemoved', removeFile);
 
-  function removeFile(data){
-    var i = _.findIndex(api.cache, function(c){ return c.id === data.id;});
-    if(i<0) return;
-    var file = api.cache.splice(i,1)[0];
+  function removeFile(data) {
+    var i = _.findIndex(api.cache, function (c) {
+      return c.id === data.id;
+    });
+    if (i < 0) return;
+    var file = api.cache.splice(i, 1)[0];
     delete api.cache[file.shortId];
     delete api.cache[file.id];
     Peerio.Action.filesUpdated();
   }
 
-  function addFile(file){
-    if(api.cache[file.id]) return;
+  function addFile(file) {
+    if (api.cache[file.id]) return;
 
-    return Peerio.Crypto.decryptFileName(file.id, file.header)
-      .then(function (name) {
-        if(api.cache[file.id]) return;
-        file.name = name;
-        file.shortId = Peerio.Util.sha256(file.id);
-        api.cache[file.shortId] = file;
-        api.cache[file.id] = file;
-        api.cache.push(file);
-        Peerio.Action.filesUpdated();
-      });
+    return Peerio.Crypto.decryptFileName(file.id, file.header).then(function (name) {
+      if (api.cache[file.id]) return;
+      file.name = name;
+      file.shortId = Peerio.Util.sha256(file.id);
+      api.cache[file.shortId] = file;
+      api.cache[file.id] = file;
+      api.cache.push(file);
+      Peerio.Action.filesUpdated();
+    });
   }
-
 };
 /**
  * Peerio App Logic: messages
@@ -3394,7 +3298,6 @@ Peerio.Files.init = function () {
 var Peerio = this.Peerio || {};
 Peerio.Messages = {};
 
-// todo conversation modified
 Peerio.Messages.init = function () {
   'use strict';
 
@@ -3410,13 +3313,13 @@ Peerio.Messages.init = function () {
   api.onMessageAdded = function (message) {
     var convPromise = api.cache[message.conversationID] ? Promise.resolve() : api.getOneConversation(message.conversationID);
 
-    convPromise.then(function () {return decryptMessage(message);})
-      .then(function (decrypted) {
-        if(!decrypted) return Promise.reject();
-        decrypted.isModified = true;
-        return addMessageToCache(message.conversationID, decrypted);
-      })
-      .then(Peerio.Action.messageAdded.bind(null, message.conversationID));
+    convPromise.then(function () {
+      return decryptMessage(message);
+    }).then(function (decrypted) {
+      if (!decrypted) return Promise.reject();
+      decrypted.isModified = true;
+      return addMessageToCache(message.conversationID, decrypted);
+    }).then(Peerio.Action.messageAdded.bind(null, message.conversationID));
   };
 
   net.injectPeerioEventHandler('messageAdded', api.onMessageAdded);
@@ -3427,29 +3330,26 @@ Peerio.Messages.init = function () {
     Promise.map(data.recipients, function (recipient) {
       if (recipient.username === Peerio.user.username || !recipient.receipt || !recipient.receipt.encryptedReturnReceipt) return;
 
-      return Peerio.Crypto.decryptReceipt(recipient.username, recipient.receipt.encryptedReturnReceipt)
-        .then(function (decryptedReceipt) {
-          // decrypted receipt contains timestamp
-          if (decryptedReceipt.indexOf(message.receipt) === 0) {
-            if (message.receipts.indexOf(recipient.username) < 0)
-              message.receipts.push(recipient.username);
-          }
-        });
-
-    })
-      .then(function () {
-        Peerio.Action.receiptAdded(data.conversationID);
+      return Peerio.Crypto.decryptReceipt(recipient.username, recipient.receipt.encryptedReturnReceipt).then(function (decryptedReceipt) {
+        // decrypted receipt contains timestamp
+        if (decryptedReceipt.indexOf(message.receipt) === 0) {
+          if (message.receipts.indexOf(recipient.username) < 0) message.receipts.push(recipient.username);
+        }
       });
+    }).then(function () {
+      Peerio.Action.receiptAdded(data.conversationID);
+    });
   });
 
-
-  api.removeConversation = function(id){
+  api.removeConversation = function (id) {
     net.removeConversation([id]);
   };
 
-  net.injectPeerioEventHandler('conversationRemoved', function(data){
-    var i = _.findIndex(api.cache, function(c){ return c.id === data.id;});
-    if(i<0) return;
+  net.injectPeerioEventHandler('conversationRemoved', function (data) {
+    var i = _.findIndex(api.cache, function (c) {
+      return c.id === data.id;
+    });
+    if (i < 0) return;
     api.cache.splice(i, 1);
     delete api.cache[data.id];
     Peerio.Action.conversationsUpdated();
@@ -3457,11 +3357,9 @@ Peerio.Messages.init = function () {
 
   api.getOneConversation = function (id) {
     if (api.cache[id]) Promise.resolve();
-    return net.getConversationPages([{id: id, page: -1}])
-      .then(function (response) {
-        return decryptConversations(response.conversations);
-      })
-      .then(addConversationsToCache);
+    return net.getConversationPages([{ id: id, page: -1 }]).then(function (response) {
+      return decryptConversations(response.conversations);
+    }).then(addConversationsToCache);
   };
 
   /**
@@ -3470,7 +3368,6 @@ Peerio.Messages.init = function () {
    * Calls progress callback for every page, passing entire cache array to it.
    * Resolves once everything is loaded and decrypted.
    * @promise
-   * todo: resume support in case of disconnection/error in progress
    */
   api.getAllConversations = function () {
     if (getAllConversationsPromise) return getAllConversationsPromise;
@@ -3479,51 +3376,41 @@ Peerio.Messages.init = function () {
 
     api.cache = [];
     // temporary paging based on what getConversationIDs returns
-    return getAllConversationsPromise = net.getConversationIDs()
-      .then(function (response) {
-        // building array with arrays of requests to pull conversation with 1 message
-        var ids = response.conversationID;
-        var pages = [];
-        for (var i = 0; i < ids.length; i++) {
-          var request = [];
-          for (var j = 0; j < 10 && i < ids.length; j++, i++) {
-            request.push({id: ids[i], page: -1});
-          }
-          pages.push(request);
+    return getAllConversationsPromise = net.getConversationIDs().then(function (response) {
+      // building array with arrays of requests to pull conversation with 1 message
+      var ids = response.conversationID;
+      var pages = [];
+      for (var i = 0; i < ids.length; i++) {
+        var request = [];
+        for (var j = 0; j < 10 && i < ids.length; j++, i++) {
+          request.push({ id: ids[i], page: -1 });
         }
-        return pages;
-      })
-      .then(function (pages) {
-        // Promise.each executes next function call after previous promise is resolved
-        return Promise.each(pages, function (page) {
-          return net.getConversationPages(page)
-            .then(function (response) {
-              return decryptConversations(response.conversations);
-            })
-            .then(addConversationsToCache);
-
-        });
-      })
-      .then(function () {
-        getAllConversationsPromise = null;
-      })
-      .then(function () {
-        return api.markModifiedConversations();
-      })
-      .return(api.cache);
-
+        pages.push(request);
+      }
+      return pages;
+    }).then(function (pages) {
+      // Promise.each executes next function call after previous promise is resolved
+      return Promise.each(pages, function (page) {
+        return net.getConversationPages(page).then(function (response) {
+          return decryptConversations(response.conversations);
+        }).then(addConversationsToCache);
+      });
+    }).then(function () {
+      getAllConversationsPromise = null;
+    }).then(function () {
+      return api.markModifiedConversations();
+    })['return'](api.cache);
   };
 
-  // todo
   api.loadAllConversationMessages = function (conversationID) {
     var conversation = api.cache[conversationID];
     if (conversation._pendingLoadPromise) return conversation._pendingLoadPromise;
 
     return conversation._pendingLoadPromise = new Promise(function (resolve, reject) {
       var page = 0;
-      var load = function () {
+      var load = function load() {
         loadPage(conversation, page).then(function (length) {
-          if (length === 0){
+          if (length === 0) {
             resolve(conversation);
             return;
           }
@@ -3537,45 +3424,41 @@ Peerio.Messages.init = function () {
   };
 
   function loadPage(conversation, page) {
-    return Peerio.Net.getConversationPages([{id: conversation.id, page: page}])
-      .then(function (response) {
-        var messages = response.conversations[conversation.id].messages;
-        if (Object.keys(messages).length === 0) return [];
-        return decryptMessages(messages);
-      })
-      .then(function (messages) {
-        if (messages.length) addMessagesToCache(conversation, messages);
-        return messages.length;
-      });
+    return Peerio.Net.getConversationPages([{ id: conversation.id, page: page }]).then(function (response) {
+      var messages = response.conversations[conversation.id].messages;
+      if (Object.keys(messages).length === 0) return [];
+      return decryptMessages(messages);
+    }).then(function (messages) {
+      if (messages.length) addMessagesToCache(conversation, messages);
+      return messages.length;
+    });
   }
 
   api.markAsRead = function (conversation) {
     var toSend = [];
     Promise.map(conversation.messages, function (msg) {
       if (!msg.isModified) return;
-      return Peerio.Crypto.encryptReceipt(msg.receipt.toString() + Date.now(), msg.sender)
-        .then(function (receipt) {
-          toSend.push({id: msg.id, encryptedReturnReceipt: receipt});
-        });
+      return Peerio.Crypto.encryptReceipt(msg.receipt.toString() + Date.now(), msg.sender).then(function (receipt) {
+        toSend.push({ id: msg.id, encryptedReturnReceipt: receipt });
+      });
     }).then(function () {
       if (!toSend.length) return;
       return Peerio.Net.readMessages(toSend);
     }).then(function () {
       conversation.isModified = false;
-
     });
   };
 
   api.markModifiedConversations = function () {
-    return Peerio.Net.getModifiedMessageIDs()
-      .then(function (resp) { return Peerio.Net.getMessages(resp.messageIDs);})
-      .then(function (resp) {
-        for (var id in resp.messages) {
-          if (!resp.messages.hasOwnProperty(id)) return;
-          var conv = api.cache[resp.messages[id].conversationID];
-          if (conv) conv.isModified = true;
-        }
-      });
+    return Peerio.Net.getModifiedMessageIDs().then(function (resp) {
+      return Peerio.Net.getMessages(resp.messageIDs);
+    }).then(function (resp) {
+      for (var id in resp.messages) {
+        if (!resp.messages.hasOwnProperty(id)) return;
+        var conv = api.cache[resp.messages[id].conversationID];
+        if (conv) conv.isModified = true;
+      }
+    });
   };
 
   function getEncryptedMessage(recipients, subject, body, fileIDs) {
@@ -3593,11 +3476,9 @@ Peerio.Messages.init = function () {
   function buildFileHeaders(recipients, fileIds) {
     return Promise.map(fileIds, function (id) {
 
-      return generateFileHeader(recipients, id)
-        .then(function (header) {
-          return {id: id, header: header};
-        });
-
+      return generateFileHeader(recipients, id).then(function (header) {
+        return { id: id, header: header };
+      });
     }, Peerio.Crypto.recommendedConcurrency);
   }
 
@@ -3613,34 +3494,30 @@ Peerio.Messages.init = function () {
   }
 
   api.sendMessage = function (recipients, subject, body, fileIds, conversationID) {
-    if (recipients.indexOf(Peerio.user.username) < 0)
-      recipients.push(Peerio.user.username);
+    if (recipients.indexOf(Peerio.user.username) < 0) recipients.push(Peerio.user.username);
 
     return getEncryptedMessage(recipients, subject, body, fileIds)
-      // building data transfer object
-      .then(function (encrypted) {
-        if (!encrypted.header || !encrypted.body) return Promise.reject('Message encryption failed.');
-        return {
-          recipients: recipients,
-          header: encrypted.header,
-          body: encrypted.body,
-          conversationID: conversationID,
-          isDraft: false
+    // building data transfer object
+    .then(function (encrypted) {
+      if (!encrypted.header || !encrypted.body) return Promise.reject('Message encryption failed.');
+      return {
+        recipients: recipients,
+        header: encrypted.header,
+        body: encrypted.body,
+        conversationID: conversationID,
+        isDraft: false
 
-        };
-      })
-      // re-encrypting file headers (sharing files)
-      .then(function (messageDTO) {
-        return buildFileHeaders(recipients, fileIds)
-          .then(function (fileHeaders) {
-            messageDTO.files = fileHeaders;
-            return messageDTO;
-          });
-      })
-      .then(function (messageDTO) {
-        return Peerio.Net.createMessage(messageDTO);
+      };
+    })
+    // re-encrypting file headers (sharing files)
+    .then(function (messageDTO) {
+      return buildFileHeaders(recipients, fileIds).then(function (fileHeaders) {
+        messageDTO.files = fileHeaders;
+        return messageDTO;
       });
-
+    }).then(function (messageDTO) {
+      return Peerio.Net.createMessage(messageDTO);
+    });
   };
 
   api.sendACK = function (conversation) {
@@ -3659,7 +3536,6 @@ Peerio.Messages.init = function () {
       api.cache[item.id] = item;
       if (item.original.isModified) item.isModified = true;
     });
-    // todo: this can be a potential bottleneck, replace with a sorted list
     Peerio.Util.sortDesc(api.cache, 'lastTimestamp');
     Peerio.Action.conversationsUpdated();
   }
@@ -3672,7 +3548,6 @@ Peerio.Messages.init = function () {
       cachedMessages[item.id] = item;
       if (item.isModified) conversation.isModified = true;
     });
-    // todo: this can be a potential bottleneck, replace with a sorted list
     Peerio.Util.sortAsc(cachedMessages, 'timestamp');
   }
 
@@ -3685,7 +3560,6 @@ Peerio.Messages.init = function () {
 
     if (message.isModified) api.cache[conversationID].isModified = true;
 
-    // todo: this can be a potential bottleneck, replace with a sorted list
     Peerio.Util.sortAsc(cachedMessages, 'timestamp');
     return message;
   }
@@ -3713,35 +3587,29 @@ Peerio.Messages.init = function () {
         return;
       }
 
-      return decryptMessage(encMessage)
-        .then(function (message) {
-          // can't proceed unless we decrypted original message
-          if(!message) return;
-          conv.original = message;
-          // both indexed and associative ways to store conversation
-          decryptedConversations[convId] = conv;
-          decryptedConversations.push(conv);
-          // replace messages with decrypted ones
-          conv.messages = [];
-          conv.messages.push(message);
-          conv.messages[message.id] = message;
+      return decryptMessage(encMessage).then(function (message) {
+        // can't proceed unless we decrypted original message
+        if (!message) return;
+        conv.original = message;
+        // both indexed and associative ways to store conversation
+        decryptedConversations[convId] = conv;
+        decryptedConversations.push(conv);
+        // replace messages with decrypted ones
+        conv.messages = [];
+        conv.messages.push(message);
+        conv.messages[message.id] = message;
 
-          conv.lastTimestamp = +conv.lastTimestamp;
-          conv.lastMoment = moment(conv.lastTimestamp);
-          conv.formerParticipants = [];
-          if (conv.events)
-            conv.events.forEach(function (event) {
-              if (event.type !== 'remove') return;
-              conv.formerParticipants.push(event.participant);
-            });
-
-          conv.allParticipants = conv.formerParticipants ? conv.participants.concat(conv.formerParticipants) : conv.participants;
-
+        conv.lastTimestamp = +conv.lastTimestamp;
+        conv.lastMoment = moment(conv.lastTimestamp);
+        conv.formerParticipants = [];
+        if (conv.events) conv.events.forEach(function (event) {
+          if (event.type !== 'remove') return;
+          conv.formerParticipants.push(event.participant);
         });
 
-    }, Peerio.Crypto.recommendedConcurrency)
-      .return(decryptedConversations);
-
+        conv.allParticipants = conv.formerParticipants ? conv.participants.concat(conv.formerParticipants) : conv.participants;
+      });
+    }, Peerio.Crypto.recommendedConcurrency)['return'](decryptedConversations);
   }
 
   function decryptMessages(messages) {
@@ -3749,10 +3617,9 @@ Peerio.Messages.init = function () {
 
     return Promise.map(keys, function (msgId) {
       return decryptMessage(messages[msgId]);
-    }, Peerio.Crypto.recommendedConcurrency)
-      .filter(function(msg){
-        return !!msg;
-      });
+    }, Peerio.Crypto.recommendedConcurrency).filter(function (msg) {
+      return !!msg;
+    });
   }
 
   /**
@@ -3760,27 +3627,23 @@ Peerio.Messages.init = function () {
    * @promise resolves with decrypted message object
    */
   function decryptMessage(encMessage) {
-    return Peerio.Crypto.decryptMessage(encMessage)
-      .then(function (message) {
-        delete message.ack;
-        message.id = encMessage.id;
-        message.sender = encMessage.sender;
-        message.timestamp = +encMessage.timestamp;
-        message.moment = moment(message.timestamp);
-        message.isModified = encMessage.isModified;
-        return message;
-      }).catch(function(){
-        console.log('failed to decrypt message: ', encMessage);
-        return null;
-      });
+    return Peerio.Crypto.decryptMessage(encMessage).then(function (message) {
+      delete message.ack;
+      message.id = encMessage.id;
+      message.sender = encMessage.sender;
+      message.timestamp = +encMessage.timestamp;
+      message.moment = moment(message.timestamp);
+      message.isModified = encMessage.isModified;
+      return message;
+    })['catch'](function () {
+      console.log('failed to decrypt message: ', encMessage);
+      return null;
+    });
   }
-
 };
 /**
  * Peerio network protocol implementation
  */
-
-// todo: socket should not attempt reconnection when device is offline
 
 var Peerio = this.Peerio || {};
 Peerio.Net = {};
@@ -3850,27 +3713,22 @@ Peerio.Net.init = function () {
     } else {
       console.log('unhandled socket event ', eventName, data);
     }
-
   });
 
   function onConnect() {
-    sendToSocket('setApiVersion', {version: API_VERSION}, true)
-      .then(function () {
-        Peerio.Action.socketConnect();
-        connected = true;
-        fireEvent(api.EVENTS.onConnect);
-        api.login(user, true)
-          .catch(function (err) {
-            console.log('Auto re-login failed. No new attempts will be made until reconnect.', err);
-          });
-      })
-      .timeout(15000)// no crazy science behind this magic number, just common sense
-      .catch(function (err) {
-        // todo: this should not really happen
-        // todo: if it does and it's a server problem, we should limit the number of attempts, or make them sparse
-        console.error('setApiVersion ' + API_VERSION + ' failed', err);
-        Peerio.Socket.reconnect();
+    sendToSocket('setApiVersion', { version: API_VERSION }, true).then(function () {
+      Peerio.Action.socketConnect();
+      connected = true;
+      fireEvent(api.EVENTS.onConnect);
+      api.login(user, true)['catch'](function (err) {
+        console.log('Auto re-login failed. No new attempts will be made until reconnect.', err);
       });
+    }).timeout(15000) // no crazy science behind this magic number, just common sense
+    ['catch'](function (err) {
+      // This should not normally happen ever. But we must be prepared to not leave client in indeterminate state.
+      console.error('setApiVersion ' + API_VERSION + ' failed', err);
+      Peerio.Socket.reconnect();
+    });
   }
 
   function onDisconnect() {
@@ -3898,29 +3756,23 @@ Peerio.Net.init = function () {
     return sendToSocket('getAuthenticationToken', {
       username: user.username,
       publicKeyString: user.publicKey
-    })
-      .then(function (encryptedAuthToken) {
-        return Peerio.Crypto.decryptAuthToken(encryptedAuthToken, user.keyPair);
-      })
-      .then(function (authToken) {
-        return sendToSocket('login', {authToken: authToken});
-      })
-      .then(function () {
-        authenticated = true;
-        console.log('authenticated');
-        if (autoLogin)
-          fireEvent(api.EVENTS.onAuthenticated);
+    }).then(function (encryptedAuthToken) {
+      return Peerio.Crypto.decryptAuthToken(encryptedAuthToken, user.keyPair);
+    }).then(function (authToken) {
+      return sendToSocket('login', { authToken: authToken });
+    }).then(function () {
+      authenticated = true;
+      console.log('authenticated');
+      if (autoLogin) fireEvent(api.EVENTS.onAuthenticated);
 
-        return user;
-      })
-      .timeout(60000) // magic number based on common sense
-      .catch(function (err) {
-        // if it was a call from login page, we don't want to use wrong credentials upon reconnect
-        console.log('authentication failed.', err);
-        if (!autoLogin) user = null;
-        else fireEvent(api.EVENTS.onAuthFail);
-        return Promise.reject(err);
-      });
+      return user;
+    }).timeout(60000) // magic number based on common sense
+    ['catch'](function (err) {
+      // if it was a call from login page, we don't want to use wrong credentials upon reconnect
+      console.log('authentication failed.', err);
+      if (!autoLogin) user = null;else fireEvent(api.EVENTS.onAuthFail);
+      return Promise.reject(err);
+    });
   };
 
   //-- PROMISE MANAGEMENT ----------------------------------------------------------------------------------------------
@@ -3969,18 +3821,15 @@ Peerio.Net.init = function () {
       id = addPendingPromise(reject);
       Peerio.Socket.send(name, data, resolve);
     })
-      // we want to catch all exceptions, log them and reject promise
-      .catch(function (error) {
-        console.log(error);
-        return Promise.reject();
-      })
-      // if we got response, let's check it for 'error' property and reject promise if it exists
-      .then(function (response) {
-        return hasProp(response, 'error')
-          ? Promise.reject(new PeerioServerError(response.error))
-          : Promise.resolve(response);
-      })
-      .finally(removePendingPromise.bind(this, id));
+    // we want to catch all exceptions, log them and reject promise
+    ['catch'](function (error) {
+      console.log(error);
+      return Promise.reject();
+    })
+    // if we got response, let's check it for 'error' property and reject promise if it exists
+    .then(function (response) {
+      return hasProp(response, 'error') ? Promise.reject(new PeerioServerError(response.error)) : Promise.resolve(response);
+    })['finally'](removePendingPromise.bind(this, id));
   }
 
   //-- PUBLIC API ------------------------------------------------------------------------------------------------------
@@ -4000,15 +3849,14 @@ Peerio.Net.init = function () {
    * @promise {Boolean} - true if username is valid (free)
    */
   api.validateUsername = function (username) {
-    if (!username) { return Promise.resolve(false); }
-    return sendToSocket('validateUsername', {username: username})
-      .then(function(response){
-        return response.available;
-      })
-      .catch(PeerioServerError, function (error) {
-        if (error.code === 400) return Promise.resolve(false);
-        else return Promise.reject();
-      });
+    if (!username) {
+      return Promise.resolve(false);
+    }
+    return sendToSocket('validateUsername', { username: username }).then(function (response) {
+      return response.available;
+    })['catch'](PeerioServerError, function (error) {
+      if (error.code === 400) return Promise.resolve(false);else return Promise.reject();
+    });
   };
 
   /**
@@ -4019,12 +3867,9 @@ Peerio.Net.init = function () {
   api.validateAddress = function (address) {
     var parsed = Peerio.Util.parseAddress(address);
     if (!parsed) return Promise.resolve(false);
-    return sendToSocket('validateAddress', {address: parsed})
-      .return(true)
-      .catch(PeerioServerError, function (error) {
-        if (error.code === 400) return Promise.resolve(false);
-        else return Promise.reject();
-      });
+    return sendToSocket('validateAddress', { address: parsed })['return'](true)['catch'](PeerioServerError, function (error) {
+      if (error.code === 400) return Promise.resolve(false);else return Promise.reject();
+    });
   };
 
   /**
@@ -4049,8 +3894,7 @@ Peerio.Net.init = function () {
    * @promise {Boolean} - always returns true or throws a PeerioServerError
    */
   api.activateAccount = function (decryptedToken) {
-    return sendToSocket('activateAccount', {accountCreationToken: decryptedToken})
-      .return(true);
+    return sendToSocket('activateAccount', { accountCreationToken: decryptedToken })['return'](true);
   };
 
   /**
@@ -4060,8 +3904,7 @@ Peerio.Net.init = function () {
    * @promise {Boolean}
    */
   api.confirmAddress = function (username, confirmationCode) {
-    return sendToSocket('confirmAddress', {username: username, confirmationCode: confirmationCode})
-      .return(true);
+    return sendToSocket('confirmAddress', { username: username, confirmationCode: confirmationCode })['return'](true);
   };
 
   /**
@@ -4096,7 +3939,7 @@ Peerio.Net.init = function () {
    * @promise
    */
   api.confirmAddress = function (code) {
-    return sendToSocket('confirmAddress', {confirmationCode: code});
+    return sendToSocket('confirmAddress', { confirmationCode: code });
   };
 
   /**
@@ -4105,7 +3948,7 @@ Peerio.Net.init = function () {
    * @promise
    */
   api.setPrimaryAddress = function (address) {
-    return sendToSocket('setPrimaryAddress', {address: address});
+    return sendToSocket('setPrimaryAddress', { address: address });
   };
 
   /**
@@ -4114,7 +3957,7 @@ Peerio.Net.init = function () {
    * @promise
    */
   api.removeAddress = function (address) {
-    return sendToSocket('removeAddress', {address: address});
+    return sendToSocket('removeAddress', { address: address });
   };
 
   /**
@@ -4123,7 +3966,7 @@ Peerio.Net.init = function () {
    * @promise
    */
   api.getPublicKey = function (username) {
-    return sendToSocket('getUserPublicKey', {username: username});
+    return sendToSocket('getUserPublicKey', { username: username });
   };
 
   /**
@@ -4165,7 +4008,7 @@ Peerio.Net.init = function () {
    * @promise
    */
   api.addContact = function (username) {
-    return sendToSocket('addContact', {contacts: [{username: username}]});
+    return sendToSocket('addContact', { contacts: [{ username: username }] });
   };
 
   /**
@@ -4174,7 +4017,7 @@ Peerio.Net.init = function () {
    * @promise
    */
   api.cancelContactRequest = function (username) {
-    return sendToSocket('cancelContactRequest', {username: username});
+    return sendToSocket('cancelContactRequest', { username: username });
   };
 
   /**
@@ -4183,7 +4026,7 @@ Peerio.Net.init = function () {
    * @promise
    */
   api.acceptContactRequest = function (username) {
-    return sendToSocket('acceptContactRequest', {username: username});
+    return sendToSocket('acceptContactRequest', { username: username });
   };
 
   /**
@@ -4192,7 +4035,7 @@ Peerio.Net.init = function () {
    * @promise
    */
   api.declineContactRequest = function (username) {
-    return sendToSocket('declineContactRequest', {username: username});
+    return sendToSocket('declineContactRequest', { username: username });
   };
 
   /**
@@ -4201,7 +4044,7 @@ Peerio.Net.init = function () {
    * @promise
    */
   api.removeContact = function (username) {
-    return sendToSocket('removeContact', {username: username});
+    return sendToSocket('removeContact', { username: username });
   };
 
   /**
@@ -4210,7 +4053,7 @@ Peerio.Net.init = function () {
    * @promise
    */
   Peerio.Net.inviteUserAddress = function (address) {
-    return sendToSocket('inviteUserAddress', {address: address});
+    return sendToSocket('inviteUserAddress', { address: address });
   };
 
   /**
@@ -4236,7 +4079,7 @@ Peerio.Net.init = function () {
    * @promise
    */
   api.getMessages = function (ids) {
-    return sendToSocket('getMessages', {ids: ids});
+    return sendToSocket('getMessages', { ids: ids });
   };
 
   /**
@@ -4277,7 +4120,7 @@ Peerio.Net.init = function () {
    * @promise
    */
   api.getConversationPages = function (conversations) {
-    return sendToSocket('getConversationPages', {conversations: conversations});
+    return sendToSocket('getConversationPages', { conversations: conversations });
   };
 
   /**
@@ -4286,7 +4129,7 @@ Peerio.Net.init = function () {
    * @promise
    */
   api.readMessages = function (read) {
-    return sendToSocket('readMessages', {read: read});
+    return sendToSocket('readMessages', { read: read });
   };
 
   /**
@@ -4295,7 +4138,7 @@ Peerio.Net.init = function () {
    * @promise
    */
   api.removeConversation = function (ids) {
-    return sendToSocket('removeConversation', {ids: ids});
+    return sendToSocket('removeConversation', { ids: ids });
   };
 
   /**
@@ -4330,7 +4173,7 @@ Peerio.Net.init = function () {
    * @promise
    */
   api.getFile = function (id) {
-    return sendToSocket('getFile', {id: id});
+    return sendToSocket('getFile', { id: id });
   };
 
   /**
@@ -4347,7 +4190,7 @@ Peerio.Net.init = function () {
    * @promise
    */
   api.downloadFile = function (id) {
-    return sendToSocket('downloadFile', {id: id});
+    return sendToSocket('downloadFile', { id: id });
   };
 
   /**
@@ -4356,7 +4199,7 @@ Peerio.Net.init = function () {
    * @promise
    */
   api.removeFile = function (id) {
-    return sendToSocket('removeFile', {ids: [id]});
+    return sendToSocket('removeFile', { ids: [id] });
   };
 
   /**
@@ -4365,7 +4208,7 @@ Peerio.Net.init = function () {
    * @promise
    */
   api.nukeFile = function (id) {
-    return sendToSocket('nukeFile', {ids: [id]});
+    return sendToSocket('nukeFile', { ids: [id] });
   };
 
   /**
@@ -4382,7 +4225,7 @@ Peerio.Net.init = function () {
    * @promise
    */
   api.confirm2FA = function (code) {
-    return sendToSocket('confirm2FA', {twoFACode: code});
+    return sendToSocket('confirm2FA', { twoFACode: code });
   };
 
   /**
@@ -4407,7 +4250,6 @@ Peerio.Net.init = function () {
   api.closeAccount = function () {
     return sendToSocket('closeAccount');
   };
-
 };
 /**
  *  Portion of web socket handling code that runs in UI thread.
@@ -4456,7 +4298,7 @@ Peerio.Socket.init = function () {
 
   function messageHandler(message) {
     var data = message.data;
-    if(Peerio.Util.processWorkerConsoleLog(data)) return;
+    if (Peerio.Util.processWorkerConsoleLog(data)) return;
 
     if (hasProp(data, 'callbackID') && data.callbackID) {
       callbacks[data.callbackID](data.data);
@@ -4480,7 +4322,7 @@ Peerio.Socket.init = function () {
 
     // registering the callback, if provided
     var callbackID = null;
-    if (typeof(callback) === 'function') {
+    if (typeof callback === 'function') {
       callbackID = uuid();
       callbacks[callbackID] = callback;
     }
@@ -4505,10 +4347,9 @@ Peerio.Socket.init = function () {
    * Breaks current connection and reconnects
    */
   Peerio.Socket.reconnect = function () {
-    worker.postMessage({name: 'reconnectSocket'});
+    worker.postMessage({ name: 'reconnectSocket' });
   };
 };
-
 /**
  * Tiny permanent storage abstraction/wrapper.
  * Use it for storing small (few megabytes) data only.
@@ -4527,24 +4368,22 @@ Peerio.TinyDB.init = function () {
 
   var keySize = 32;
 
-  var secretKey = function () {
+  var secretKey = (function () {
     var strKey = '';
 
-    while (strKey.length < keySize)
-      strKey += Peerio.Config.lowImportanceDeviceKey;
+    while (strKey.length < keySize) strKey += Peerio.Config.lowImportanceDeviceKey;
 
     var ret = nacl.util.decodeUTF8(strKey);
 
     return ret.subarray(0, keySize);
-  }();
+  })();
 
   function encrypt(str) {
-    return Peerio.Crypto.secretBoxEncrypt(str, secretKey)
-      .then(function (decInfo) {
-        decInfo.ciphertext = nacl.util.encodeBase64(decInfo.ciphertext);
-        decInfo.nonce = nacl.util.encodeBase64(decInfo.nonce);
-        return JSON.stringify(decInfo);
-      });
+    return Peerio.Crypto.secretBoxEncrypt(str, secretKey).then(function (decInfo) {
+      decInfo.ciphertext = nacl.util.encodeBase64(decInfo.ciphertext);
+      decInfo.nonce = nacl.util.encodeBase64(decInfo.nonce);
+      return JSON.stringify(decInfo);
+    });
   }
 
   function decrypt(str) {
@@ -4564,11 +4403,10 @@ Peerio.TinyDB.init = function () {
    * @promise
    */
   api.setVar = function (key, value) {
-    return encrypt(value.toString())
-      .then(function (encryptedStr) {
-        db.setItem(key, encryptedStr);
-        return true;
-      });
+    return encrypt(value.toString()).then(function (encryptedStr) {
+      db.setItem(key, encryptedStr);
+      return true;
+    });
   };
 
   /**
@@ -4578,11 +4416,10 @@ Peerio.TinyDB.init = function () {
    * @promise
    */
   api.setObject = function (key, value) {
-    return encrypt(JSON.stringify(value))
-      .then(function (encryptedStr) {
-        db.setItem(key, encryptedStr);
-        return true;
-      });
+    return encrypt(JSON.stringify(value)).then(function (encryptedStr) {
+      db.setItem(key, encryptedStr);
+      return true;
+    });
   };
 
   /**
@@ -4611,10 +4448,9 @@ Peerio.TinyDB.init = function () {
    * @promise {number|null} value
    */
   api.getNumber = function (key) {
-    return api.getString(key)
-      .then(function (val) {
-        return val == null ? null : +val;
-      });
+    return api.getString(key).then(function (val) {
+      return val == null ? null : +val;
+    });
   };
 
   /**
@@ -4623,10 +4459,9 @@ Peerio.TinyDB.init = function () {
    * @promise {boolean|null} value
    */
   api.getBool = function (key) {
-    return api.getString(key)
-      .then(function (val) {
-        return val == null ? null : val === 'true';
-      });
+    return api.getString(key).then(function (val) {
+      return val == null ? null : val === 'true';
+    });
   };
 
   /**
@@ -4635,12 +4470,10 @@ Peerio.TinyDB.init = function () {
    * @promise {object|null} value
    */
   api.getObject = function (key) {
-    return api.getString(key)
-      .then(function (val) {
-        return val == null ? null : JSON.parse(val);
-      });
+    return api.getString(key).then(function (val) {
+      return val == null ? null : JSON.parse(val);
+    });
   };
-
 };
 /**
  *  Peerio Actions to use with Dispatcher
@@ -4665,8 +4498,8 @@ Peerio.Action.init = function () {
    * There is no way to remove action type atm, as it is not needed.
    * @param {string} actionName - the name of new action. Important: PascalCase.
    */
-  Peerio.Action.add = function(actionName){
-    if(Peerio.Action[actionName]) throw 'Illegal attempt to register existing Action. Or other property with same name exists.';
+  Peerio.Action.add = function (actionName) {
+    if (Peerio.Action[actionName]) throw 'Illegal attempt to register existing Action. Or other property with same name exists.';
 
     Peerio.Action[actionName] = actionName;
 
@@ -4692,22 +4525,17 @@ Peerio.Action.init = function () {
   // 4. Action execution methods will have action name but with first letter in lower case
   //      Peerio.Action.myAction(...params)
   [
-    //------- ACTIONS EMITTED BY CORE -------
-    'SocketConnect',       // WebSocket reported successful connect
-    'SocketDisconnect',    // WebSocket reported disconnected(and reconnecting) state
-    'Authenticated',       // WebSocket connection was authenticated
-    'Loading',             // Data transfer is in process
-    'LoadingDone',         // Data transfer ended
-    'LoginSuccess',        // login attempt succeeded
-    'LoginFail',            // login attempt failed
-    'MessageAdded',
-    'ReceiptAdded',
-    'ConversationsUpdated',
-    'ContactsUpdated',
-    'FilesUpdated'
-  ].forEach(function (action) {
-      Peerio.Action.add(action);
-    });
+  //------- ACTIONS EMITTED BY CORE -------
+  'SocketConnect', // WebSocket reported successful connect
+  'SocketDisconnect', // WebSocket reported disconnected(and reconnecting) state
+  'Authenticated', // WebSocket connection was authenticated
+  'Loading', // Data transfer is in process
+  'LoadingDone', // Data transfer ended
+  'LoginSuccess', // login attempt succeeded
+  'LoginFail', // login attempt failed
+  'MessageAdded', 'ReceiptAdded', 'ConversationsUpdated', 'ContactsUpdated', 'FilesUpdated'].forEach(function (action) {
+    Peerio.Action.add(action);
+  });
 
   // Enums
   Peerio.Action.Statuses = {
@@ -4715,10 +4543,7 @@ Peerio.Action.init = function () {
     Success: 1,
     Fail: 2
   };
-
 };
-
-
 /**
  *  Dispatcher manages system-wide events
  *  --------------------------------------------------------------
@@ -4775,8 +4600,8 @@ Peerio.Dispatcher.init = function () {
    * Note that if callback is passed, it will be unsubscribed from all actions.
    */
   api.unsubscribe = function () {
-    var removeSubscriber = function (subscriber) {
-      var predicate = typeof (subscriber) === 'function' ? {handler: subscriber} : {id: subscriber};
+    var removeSubscriber = function removeSubscriber(subscriber) {
+      var predicate = typeof subscriber === 'function' ? { handler: subscriber } : { id: subscriber };
       _.forIn(subscribers, function (value) {
         _.remove(value, predicate);
       });
@@ -4784,8 +4609,7 @@ Peerio.Dispatcher.init = function () {
     // if array is passed, we will iterate it. If not, we will iterate arguments.
     for (var i = 0; i < arguments.length; i++) {
       var a = arguments[i];
-      if (Array.isArray(a)) a.forEach(removeSubscriber);
-      else removeSubscriber(a);
+      if (Array.isArray(a)) a.forEach(removeSubscriber);else removeSubscriber(a);
     }
   };
 
@@ -4811,8 +4635,8 @@ Peerio.Dispatcher.init = function () {
    * Instead, register new actions with Peerio.Action.add(actionName).
    * @param {string} actionName - the name of new action. Important: PascalCase.
    */
-  api.addActionType = function(actionName){
-    if(subscribers[actionName]) throw 'Illegal attempt to register existing Action';
+  api.addActionType = function (actionName) {
+    if (subscribers[actionName]) throw 'Illegal attempt to register existing Action';
     // pre-creating action subscribers array
     subscribers[actionName] = [];
     // creating syntactic sugar method wrapping Peerio.Dispatcher.subscribe
@@ -4820,14 +4644,12 @@ Peerio.Dispatcher.init = function () {
       return api.subscribe(actionName, handler);
     };
   };
-
 };
 /**
  * Special cases for some of the standard action dispatching.
  * You can do the same for your custom actions,
  * just override Peerio.Action.actionName function.
  */
-
 
 var Peerio = this.Peerio || {};
 Peerio.ActionOverrides = {};
@@ -4853,13 +4675,11 @@ Peerio.ActionOverrides.init = function () {
     };
 
     function doneFn() {
-      if(i.loadingCounter !== 0) return;
+      if (i.loadingCounter !== 0) return;
       Peerio.Dispatcher.notify('LoadingDone');
     }
-  }());
-
+  })();
 };
-
 /**
  * Various Peerio utility functions
  */
@@ -4900,8 +4720,7 @@ Peerio.Util.init = function () {
       var phone = address.match(phoneExp)[0].split('');
 
       for (var i = 0; i < phone.length; i++) {
-        if (!phone[i].match(/\d/))
-          phone.splice(i, 1);
+        if (!phone[i].match(/\d/)) phone.splice(i, 1);
       }
 
       return {
@@ -4952,7 +4771,6 @@ Peerio.Util.init = function () {
       return 0;
     });
   };
-
 };
 /**
  * Various extensions to system/lib objects
@@ -4961,12 +4779,10 @@ Peerio.Util.init = function () {
 (function () {
   'use strict';
 
-  String.prototype.isEmpty = function() {
-    return (this.length === 0 || !this.trim());
+  String.prototype.isEmpty = function () {
+    return this.length === 0 || !this.trim();
   };
-
-}());
-
+})();
 /**
  * Starts Error interceptor and reporter.
  *
@@ -5018,7 +4834,7 @@ Peerio.ErrorReporter.init = function () {
     if (known && known.row === aRow && known.col === aCol) return false;
 
     // cache this report to prevent reporting it again
-    reported[aUrl] = {row: aRow, col: aCol};
+    reported[aUrl] = { row: aRow, col: aCol };
 
     var report = {
       ts: Math.floor(getUTCTimeStamp() / 1000),
@@ -5057,8 +4873,6 @@ Peerio.ErrorReporter.init = function () {
     var now = new Date();
     return now.valueOf() + now.getTimezoneOffset() * 60000;
   }
-
-
 };
 /**
  * Main library file, contains initialisation code
@@ -5072,30 +4886,29 @@ var Peerio = this.Peerio || {};
  * Init order matters.
  */
 Peerio.initAPI = function () {
-  return Peerio.Config.init()
-    .then(function () {
-      Peerio.Config.apiFolder = Peerio.apiFolder;
-      delete Peerio.apiFolder;
-      Peerio.ErrorReporter.init(); // this does not enable error reporting, just initializes.
-      Peerio.TinyDB.init();
-      Peerio.Util.init();
-      Peerio.Crypto.init();
-      Peerio.PhraseGenerator.init();
-      Peerio.Socket.init();
-      Peerio.Net.init();
-      Peerio.Dispatcher.init();
-      Peerio.Action.init();
-      Peerio.ActionOverrides.init();
-      Peerio.AppState.init();
-      Peerio.Auth.init();
-      Peerio.Messages.init();
-      Peerio.Files.init();
-      Peerio.Contacts.init();
+  return Peerio.Config.init().then(function () {
+    Peerio.Config.apiFolder = Peerio.apiFolder;
+    delete Peerio.apiFolder;
+    Peerio.ErrorReporter.init(); // this does not enable error reporting, just initializes.
+    Peerio.TinyDB.init();
+    Peerio.Util.init();
+    Peerio.Crypto.init();
+    Peerio.PhraseGenerator.init();
+    Peerio.Socket.init();
+    Peerio.Net.init();
+    Peerio.Dispatcher.init();
+    Peerio.Action.init();
+    Peerio.ActionOverrides.init();
+    Peerio.AppState.init();
+    Peerio.Auth.init();
+    Peerio.Messages.init();
+    Peerio.Files.init();
+    Peerio.Contacts.init();
 
-      Peerio.Socket.start();
+    Peerio.Socket.start();
 
-      delete Peerio.initAPI;
-    });
+    delete Peerio.initAPI;
+  });
 };
 
 // detecting api folder, this has to be done at script's first evaluation,
@@ -5103,8 +4916,7 @@ Peerio.initAPI = function () {
 (function () {
   'use strict';
 
-  var path = document.currentScript && document.currentScript.getAttribute('src')
-    || document.scripts[document.scripts.length - 1].getAttribute('src');
+  var path = document.currentScript && document.currentScript.getAttribute('src') || document.scripts[document.scripts.length - 1].getAttribute('src');
   // temporary saving api folder in root namespace until Config is initalized
   Peerio.apiFolder = path.substring(0, path.lastIndexOf('/')) + '/';
-}());
+})();
