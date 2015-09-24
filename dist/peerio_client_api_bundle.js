@@ -2494,7 +2494,10 @@ nacl.setPRNG = function(fn) {
       crypto = window.crypto; // Standard
     } else if (window.msCrypto && window.msCrypto.getRandomValues) {
       crypto = window.msCrypto; // Internet Explorer 11+
+    } else if (window.cryptoShim) { 
+      crypto = window.cryptoShim;
     }
+    
     if (crypto) {
       nacl.setPRNG(function(x, n) {
         var i, v = new Uint8Array(n);
