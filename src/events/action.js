@@ -55,12 +55,13 @@ Peerio.Action.init = function () {
     'Loading',             // Data transfer is in process
     'LoadingDone',         // Data transfer ended
     'LoginSuccess',        // login attempt succeeded
-    'LoginFail',            // login attempt failed
+    'LoginFail',           // login attempt failed
     'MessageAdded',
     'ReceiptAdded',
     'ConversationsUpdated',
     'ContactsUpdated',
-    'FilesUpdated'
+    'FilesUpdated',
+    'FileUpdated'          // ({file})
   ].forEach(function (action) {
       Peerio.Action.add(action);
     });

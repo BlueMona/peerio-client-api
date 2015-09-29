@@ -18,8 +18,6 @@ self.console = {
   // debug:function(){}
 };
 
-console.log('crypto', self.crypto);
-console.log('pnrg', self.crypto && self.crypto.getRandomValues);
 //}
 var Base58 = {};
 
@@ -9869,15 +9867,15 @@ Peerio.Crypto.init = function () {
    * @param {string} id - File ID in base64
    * @param {object} blob - File ciphertext as blob
    * @param {object} header
-   * @param {object} file
+   * @param {object} fileInfo
    * @param {User} [user] - decrypting user
    * @promise {object} plaintext blob
    */
-  api.decryptFile = function (id, blob, header, file, user) {
+  api.decryptFile = function (id, blob, fileInfo, user) {
     user = user || defaultUser;
     return new Promise(function (resolve, reject) {
 
-      var headerString = JSON.stringify(header);
+      var headerString = JSON.stringify(fileInfo.header);
       var headerStringLength = decodeUTF8(headerString).length;
       var peerioBlob = new Blob([signature, numberToByteArray(headerStringLength), headerString, numberToByteArray(fileNameSize), decodeB64(id), blob]);
 
@@ -9887,10 +9885,11 @@ Peerio.Crypto.init = function () {
           return;
         }
 
-        var claimedSender = hasProp(file, 'sender') ? file.sender : file.creator;
+        var claimedSender = hasProp(fileInfo, 'sender') ? fileInfo.sender : fileInfo.creator;
         // this looks strange that we call success callback when sender is not in contacts
         // but it can be the case and we skip public key verification,
         // because we don't have sender's public key
+        // todo make sure we have our contact's pk even after they are deleted
         if (hasProp(user.contacts, claimedSender) && user.contacts[claimedSender].publicKey !== senderID) reject();else resolve(decryptedBlob);
       });
     });
@@ -10467,8 +10466,6 @@ Peerio.Crypto.init = function () {
   };
 
   var randomBytesNeeded = !self.crypto;
-  console.log('random bytes:');
-  console.log(randomBytesNeeded);
   if (randomBytesNeeded) {
     var nativePostFn = self.postMessage;
     // overriding postMessage to attach stock report

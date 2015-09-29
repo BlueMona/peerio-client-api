@@ -185,7 +185,7 @@ describe('Crypto', function () {
         expect(data.chunks).toBeDefined();
         var blob = new Blob(data.chunks, {type: 'application/octet-stream'});
 
-        return C.decryptFile(data.fileName, blob, data.header, {sender: testUser.username}, testUser);
+        return C.decryptFile(data.fileName, blob, {header: data.header, sender: testUser.username}, testUser);
       })
       .then(function (decrypted) {
         expect(decrypted).toBeDefined();

@@ -3189,6 +3189,153 @@ Peerio.Contacts.init = function () {
   net.injectPeerioEventHandler('contactRemoved', removeContact);
 };
 /**
+ * File system interface.
+ * ======================
+ * It has some logic that is one level above simple create/read/write/delete file,
+ * but relies on the lower level implementation of basic file system access.
+ * Implement file system plugin and set Peerio.FileSystem.plugin variable to it.
+ *
+ */
+
+var Peerio = this.Peerio || {};
+Peerio.FileSystem = {};
+
+Peerio.FileSystem.init = function () {
+  'use strict';
+
+  var api = Peerio.FileSystem;
+  delete Peerio.FileSystem.init;
+
+  var filesDirectoryName = 'files';
+  var filesDirectoryEntry; // lazy init cache
+
+  // file system access plugin to implement in clients
+  api.plugin = {
+    /**
+     * @returns {Promise<DirectoryEntry>} - root folder
+     */
+    getRootDir: function getRootDir() {
+      console.log('getRootDir');
+    },
+    /**
+     * @param {string} name
+     * @param {DirectoryEntry} parent
+     * @returns {Promise<DirectoryEntry>}
+     */
+    getDirectory: function getDirectory(name, parent) {
+      console.log('getDirectory:', name, parent);
+    },
+    /**
+     * @param {string} name
+     * @param {DirectoryEntry} parent
+     * @returns {Promise<FileEntry>}
+     */
+    createFile: function createFile(name, parent) {
+      console.log('createFile:', name, parent);
+    },
+    /**
+     * @param {Blob} blob
+     * @param {FileEntry} file
+     * @returns {Promise}
+     */
+    writeToFile: function writeToFile(blob, file) {
+      console.log('writeToFile');
+    },
+    /**
+     * @param {DirectoryEntry} dir
+     * @returns {Promise<FileEntry[]>}
+     */
+    getFiles: function getFiles(dir) {
+      console.log('getFiles:', dir);
+    },
+    /**
+     * @param {string} name
+     * @param {DirectoryEntry} parent
+     * @returns {Promise<FileEntry>}
+     */
+    getFile: function getFile(name, parent) {
+      console.log('getFile:', name, parent);
+    },
+    /**
+     * Opens file with OS api
+     * @param {FileEntry} fileEntry
+     */
+    openFile: function openFile(fileEntry) {
+      console.log('openFile:', fileEntry);
+    },
+    /**
+     * @param {string} name
+     * @param {DirectoryEntry} parent
+     * @returns {Promise}
+     */
+    removeFile: function removeFile(name, parent) {
+      console.log('removeFile:', name, parent);
+    }
+
+  };
+
+  /**
+   * Saves decrypted cloud file to persistent and private local cache
+   * @param file - Peerio file
+   * @param {Blob} blob
+   */
+  api.cacheCloudFile = function (file, blob) {
+    return getFilesDirectory().then(function (dir) {
+      return api.plugin.createFile(getLocalName(file), dir);
+    }).then(function (fileEntry) {
+      return api.plugin.writeToFile(blob, fileEntry);
+    });
+  };
+
+  api.removeCachedFile = function (file) {
+    return getFilesDirectory().then(function (dir) {
+      return api.plugin.removeFile(getLocalName(file), dir);
+    });
+  };
+
+  api.openFileWithOS = function (file) {
+    return getFilesDirectory().then(function (dir) {
+      return api.plugin.getFile(getLocalName(file), dir);
+    }).then(function (fileEntry) {
+      return api.plugin.openFile(fileEntry);
+    });
+  };
+
+  /**
+   * Return a list of file names within cached files directory
+   * @returns {Promise<string[]>} - file names with extensions
+   */
+  api.getCachedFileNames = function () {
+    return getFilesDirectory().then(function (dir) {
+      return api.plugin.getFiles(dir);
+    }).then(function (files) {
+      return files.map(function (f) {
+        return f.name;
+      });
+    });
+  };
+
+  //-- INTERNALS -------------------------------------------------------------------------------------------------------
+  function getFilesDirectory() {
+    if (filesDirectoryEntry) return Promise.resolve(filesDirectoryEntry);
+
+    return api.plugin.getRootDir().then(function (root) {
+      return api.plugin.getDirectory(filesDirectoryName, root);
+    }).then(function (dir) {
+      filesDirectoryEntry = dir;
+      return dir;
+    });
+  }
+
+  function getLocalName(file) {
+    var name = file.shortId;
+    var ext = Peerio.Util.getFileExtension(file.name);
+
+    if (ext.length > 0) name = name + '.' + ext;
+    return name;
+  }
+};
+/**
  * Peerio App Logic: files
  */
 
@@ -3204,6 +3351,9 @@ Peerio.Files.init = function () {
 
   // Array, but contains same objects accessible both by index and by id
   api.cache = null;
+
+  api.STATE = { DOWNLOADING: 0, DECRYPTING: 1, SAVING: 2 };
+  var stateNames = { 0: 'Downloading', 1: 'Decrypting', 2: 'Saving' };
 
   var getAllFilesPromise = null;
 
@@ -3233,22 +3383,114 @@ Peerio.Files.init = function () {
         });
       }, Peerio.Crypto.recommendedConcurrency)['return'](decrypted);
     }).then(addFilesToCache).then(function () {
+      return Peerio.FileSystem.getCachedFileNames()['catch'](function (err) {
+        alert('Failed to read cached files folder. ' + err);
+      });
+    }).then(function (cachedNames) {
+      console.log('cached names', cachedNames);
+      if (!cachedNames) return;
+      cachedNames.forEach(function (name) {
+        var file = api.cache[Peerio.Util.getFileName(name)];
+        if (!file) return; // todo: remove file?
+        file.cached = true;
+        console.log('Found cached: ', file, name);
+      });
+    }).then(function () {
       Peerio.Action.filesUpdated();
       return api.cache;
     });
+  };
+  api.deleteFromCache = function (shortId) {
+    var file = api.cache[shortId];
+    if (!file) return;
+    Peerio.FileSystem.removeCachedFile(file);
+    file.cached = false;
+    Peerio.Action.filesUpdated();
   };
 
   api['delete'] = function (shortId) {
     var file = api.cache[shortId];
     if (!file) return;
+    Peerio.FileSystem.removeCachedFile(file);
     Peerio.Net.removeFile(file.id);
   };
 
   api.nuke = function (shortId) {
     var file = api.cache[shortId];
     if (!file) return;
+    Peerio.FileSystem.removeCachedFile(file);
     Peerio.Net.nukeFile(file.id);
   };
+
+  api.download = function (file) {
+
+    setDownloadState(file, api.STATE.DOWNLOADING);
+
+    // getting url
+    return net.downloadFile(file.id).then(function (data) {
+      return data && data.url || Promise.reject('Failed to get file url.');
+    })
+    // downloading blob
+    .then(function (url) {
+      return download(file, url);
+    })
+    // decrypting blob
+    .then(function (blob) {
+      setDownloadState(file, api.STATE.DECRYPTING);
+      return Peerio.Crypto.decryptFile(file.id, blob, file);
+    })
+    // saving blob
+    .then(function (decrypted) {
+      setDownloadState(file, api.STATE.SAVING);
+      return Peerio.FileSystem.cacheCloudFile(file, decrypted);
+    }).then(function () {
+      file.cached = true;
+      setDownloadState(file, null);
+    })['catch'](function (reason) {
+      setDownloadState(file, null);
+      alert('failed to download file. ' + reason);
+    });
+  };
+
+  // updates file object properties related to download progress indication
+  // notifies on file change
+  function setDownloadState(file, state, progress, total) {
+    if (state === null) {
+      delete file.downloadState;
+    } else {
+      file.downloadState = file.downloadState || {};
+      file.downloadState.state = state;
+      file.downloadState.stateName = stateNames[state];
+      file.downloadState.progress = progress;
+      file.downloadState.total = total;
+      file.downloadState.percent = progress == null ? '' : Math.min(100, Math.ceil(progress / (total / 100))) + '%';
+    }
+
+    Peerio.Action.filesUpdated();
+  }
+
+  function download(file, url) {
+    return new Promise(function (resolve, reject) {
+
+      var xhr = new XMLHttpRequest();
+
+      xhr.onprogress = function (progress) {
+        setDownloadState(file, api.STATE.DOWNLOADING, progress.loaded, progress.total);
+      };
+
+      xhr.onreadystatechange = function () {
+        console.log('readystate ' + this.readyState + ' status ' + this.status);
+        if (this.readyState !== 4) return;
+
+        //todo: not all success results might have status 200
+        if (this.status !== 200) reject(this);else resolve(this.response);
+      };
+
+      xhr.open('GET', url);
+      xhr.responseType = 'blob';
+      xhr.send();
+    });
+  }
 
   /**
    * adds file to cache with duplicate checks
@@ -4536,7 +4778,8 @@ Peerio.Action.init = function () {
   'LoadingDone', // Data transfer ended
   'LoginSuccess', // login attempt succeeded
   'LoginFail', // login attempt failed
-  'MessageAdded', 'ReceiptAdded', 'ConversationsUpdated', 'ContactsUpdated', 'FilesUpdated'].forEach(function (action) {
+  'MessageAdded', 'ReceiptAdded', 'ConversationsUpdated', 'ContactsUpdated', 'FilesUpdated', 'FileUpdated' // ({file})
+  ].forEach(function (action) {
     Peerio.Action.add(action);
   });
 
@@ -4774,6 +5017,26 @@ Peerio.Util.init = function () {
       return 0;
     });
   };
+
+  /**
+   * Extracts extension from file name
+   * @param fileName
+   * @returns {string} dot-less extension
+   */
+  api.getFileExtension = function (fileName) {
+    var dotInd = fileName.lastIndexOf('.');
+    return dotInd >= 0 ? fileName.substring(dotInd + 1) : '';
+  };
+
+  /**
+   * Removes extension (including dot) from file name
+   * @param fileName
+   * @returns {string}
+   */
+  api.getFileName = function (fileName) {
+    var dotInd = fileName.lastIndexOf('.');
+    return dotInd >= 0 ? fileName.substring(0, dotInd) : fileName;
+  };
 };
 /**
  * Various extensions to system/lib objects
@@ -4905,6 +5168,7 @@ Peerio.initAPI = function () {
     Peerio.AppState.init();
     Peerio.Auth.init();
     Peerio.Messages.init();
+    Peerio.FileSystem.init();
     Peerio.Files.init();
     Peerio.Contacts.init();
 

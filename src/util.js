@@ -91,4 +91,24 @@ Peerio.Util.init = function () {
     });
   };
 
+  /**
+   * Extracts extension from file name
+   * @param fileName
+   * @returns {string} dot-less extension
+   */
+  api.getFileExtension = function (fileName) {
+    var dotInd = fileName.lastIndexOf('.');
+    return dotInd >= 0 ? fileName.substring(dotInd + 1) : '';
+  };
+
+  /**
+   * Removes extension (including dot) from file name
+   * @param fileName
+   * @returns {string}
+   */
+  api.getFileName = function (fileName) {
+    var dotInd = fileName.lastIndexOf('.');
+    return dotInd >= 0 ? fileName.substring(0, dotInd) : fileName;
+  };
+
 };

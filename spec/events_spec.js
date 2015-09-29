@@ -20,7 +20,8 @@ describe('Events', function () {
       'ReceiptAdded',
       'ConversationsUpdated',
       'ContactsUpdated',
-      'FilesUpdated'
+      'FilesUpdated',
+      'FileUpdated'
     ];
     var callCount = actions.length;
     actions.forEach(function (action) {
