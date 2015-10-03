@@ -2737,6 +2737,11 @@ Peerio.Crypto.init = function () {
   // this methods will execute on one of the workers,
   // each of them expect response from worker
   ['getKeyPair', 'getPublicKeyString', 'getPublicKeyBytes', 'secretBoxEncrypt', 'secretBoxDecrypt', 'getKeyFromPIN', 'decryptAccountCreationToken', 'decryptAuthToken', 'getAvatar', 'encryptMessage', 'decryptMessage', 'encryptFile', 'decryptFile', 'decryptFileName', 'encryptReceipt', 'decryptReceipt', 'recreateHeader'].forEach(function (fnName) {
+    var transfer = null;
+    // extra love for 'encrypt file' to transfer array buffer
+    if (fnName === 'encryptFile') {
+      transfer = 0; // argument index
+    }
     Peerio.Crypto[fnName] = function () {
       var id = uuid();
       // we copy arguments object data into array, because that's what worker is expecting to use it with apply()
@@ -2750,7 +2755,7 @@ Peerio.Crypto.init = function () {
           reject: reject
         };
       });
-      getWorker().postMessage({ id: id, fnName: fnName, args: args });
+      getWorker().postMessage({ id: id, fnName: fnName, args: args }, transfer === null ? null : [args[transfer]]);
       return ret;
     };
   });
@@ -3209,69 +3214,69 @@ Peerio.FileSystem.init = function () {
   var filesDirectoryName = 'files';
   var filesDirectoryEntry; // lazy init cache
 
+  function dummy(name) {
+    var msg = name + ' not implemented.';
+    console.log(msg);
+    return Promise.reject(msg);
+  }
+
   // file system access plugin to implement in clients
   api.plugin = {
     /**
      * @returns {Promise<DirectoryEntry>} - root folder
      */
-    getRootDir: function getRootDir() {
-      console.log('getRootDir');
-    },
+    getRootDir: dummy.bind(null, 'getRootDir'),
     /**
      * @param {string} name
      * @param {DirectoryEntry} parent
      * @returns {Promise<DirectoryEntry>}
      */
-    getDirectory: function getDirectory(name, parent) {
-      console.log('getDirectory:', name, parent);
-    },
+    getDirectory: dummy.bind(null, 'getDirectory'),
     /**
      * @param {string} name
      * @param {DirectoryEntry} parent
      * @returns {Promise<FileEntry>}
      */
-    createFile: function createFile(name, parent) {
-      console.log('createFile:', name, parent);
-    },
+    createFile: dummy.bind(null, 'createFile'),
     /**
      * @param {Blob} blob
      * @param {FileEntry} file
      * @returns {Promise}
      */
-    writeToFile: function writeToFile(blob, file) {
-      console.log('writeToFile');
-    },
+    writeToFile: dummy.bind(null, 'writeToFile'),
     /**
      * @param {DirectoryEntry} dir
      * @returns {Promise<FileEntry[]>}
      */
-    getFiles: function getFiles(dir) {
-      console.log('getFiles:', dir);
-    },
+    getFiles: dummy.bind(null, 'getFiles'),
     /**
      * @param {string} name
      * @param {DirectoryEntry} parent
      * @returns {Promise<FileEntry>}
      */
-    getFile: function getFile(name, parent) {
-      console.log('getFile:', name, parent);
-    },
+    getFile: dummy.bind(null, 'getFile'),
     /**
      * Opens file with OS api
      * @param {FileEntry} fileEntry
      */
-    openFile: function openFile(fileEntry) {
-      console.log('openFile:', fileEntry);
-    },
+    openFile: dummy.bind(null, 'openFile'),
     /**
      * @param {string} name
      * @param {DirectoryEntry} parent
      * @returns {Promise}
      */
-    removeFile: function removeFile(name, parent) {
-      console.log('removeFile:', name, parent);
-    }
-
+    removeFile: dummy.bind(null, 'removeFile'),
+    /**
+     * @param {string} fileUrl - file/directory url in format `file://...`
+     * @returns {FileEntry|DirectoryEntry} depending on url provided
+     */
+    getByURL: dummy.bind(null, 'getByURL'),
+    /**
+     * Reads and returns contents of a file
+     * @param {FileEntry} fileEntry - file entry to read
+     * @returns {Promise<Object<File, ArrayBuffer>>} - File object and ArrayBuffer file data
+     */
+    readFile: dummy.bind(null, 'readFile')
   };
 
   /**
@@ -3351,9 +3356,14 @@ Peerio.Files.init = function () {
 
   // Array, but contains same objects accessible both by index and by id
   api.cache = null;
+  // uploads in progress
+  api.uploads = [];
 
-  api.STATE = { DOWNLOADING: 0, DECRYPTING: 1, SAVING: 2 };
-  var stateNames = { 0: 'Downloading', 1: 'Decrypting', 2: 'Saving' };
+  api.DL_STATE = { DOWNLOADING: 0, DECRYPTING: 1, SAVING: 2 };
+  var DLStateNames = { 0: 'Downloading', 1: 'Decrypting', 2: 'Saving' };
+
+  api.UL_STATE = { READING: 0, ENCRYPTING: 1, UPLOADING_META: 2, UPLOADING_CHUNKS: 3 };
+  var ULStateNames = { 0: 'Reading', 1: 'Encrypting', 2: 'Uploading metadata', 3: 'Uploading chunks' };
 
   var getAllFilesPromise = null;
 
@@ -3412,19 +3422,19 @@ Peerio.Files.init = function () {
     var file = api.cache[shortId];
     if (!file) return;
     Peerio.FileSystem.removeCachedFile(file);
-    Peerio.Net.removeFile(file.id);
+    net.removeFile(file.id);
   };
 
   api.nuke = function (shortId) {
     var file = api.cache[shortId];
     if (!file) return;
     Peerio.FileSystem.removeCachedFile(file);
-    Peerio.Net.nukeFile(file.id);
+    net.nukeFile(file.id);
   };
 
   api.download = function (file) {
 
-    setDownloadState(file, api.STATE.DOWNLOADING);
+    setDownloadState(file, api.DL_STATE.DOWNLOADING);
 
     // getting url
     return net.downloadFile(file.id).then(function (data) {
@@ -3436,12 +3446,12 @@ Peerio.Files.init = function () {
     })
     // decrypting blob
     .then(function (blob) {
-      setDownloadState(file, api.STATE.DECRYPTING);
+      setDownloadState(file, api.DL_STATE.DECRYPTING);
       return Peerio.Crypto.decryptFile(file.id, blob, file);
     })
     // saving blob
     .then(function (decrypted) {
-      setDownloadState(file, api.STATE.SAVING);
+      setDownloadState(file, api.DL_STATE.SAVING);
       return Peerio.FileSystem.cacheCloudFile(file, decrypted);
     }).then(function () {
       file.cached = true;
@@ -3452,6 +3462,76 @@ Peerio.Files.init = function () {
     });
   };
 
+  api.upload = function (fileUrl) {
+    var encrypted;
+    // temporary file id for current upload, helps identifying chunks
+    var clientFileID = Base58.encode(nacl.randomBytes(32));
+    addUploadState(clientFileID, fileUrl);
+
+    return Peerio.FileSystem.plugin.getByURL(fileUrl).then(Peerio.FileSystem.plugin.readFile).then(function (file) {
+      changeUploadState(clientFileID, api.UL_STATE.ENCRYPTING);
+      return Peerio.Crypto.encryptFile(file.data, file.file.name);
+    }).then(function (data) {
+      changeUploadState(clientFileID, api.UL_STATE.UPLOADING_META);
+      // todo: failed recipients
+      encrypted = data;
+      return net.uploadFile({
+        ciphertext: encrypted.chunks[0].buffer,
+        totalChunks: encrypted.chunks.length - 1, // first chunk is for file name
+        clientFileID: clientFileID // todo: this is redundant, we have an id already
+      });
+    }).then(function (data) {
+      //todo: server sends data.id which is === fileID, do we need to check if that's true?
+      //todo: or should server stop sending it?
+      //todo: or should crypto not return it and wait for server?
+      console.log('file info uploaded, ids match:', data.id === encrypted.fileName);
+    }).then(function () {
+      changeUploadState(clientFileID, api.UL_STATE.UPLOADING_CHUNKS, 1, encrypted.chunks.length - 1);
+      return Promise.each(encrypted.chunks, function (chunk, index) {
+        // skipping file name
+        if (index === 0) return;
+
+        changeUploadState(clientFileID, api.UL_STATE.UPLOADING_CHUNKS, index);
+
+        var dto = {
+          ciphertext: chunk.buffer,
+          chunkNumber: index - 1, //we skip first chunk (file name)
+          clientFileID: clientFileID
+        };
+        //attaching header to first chunk
+        if (index === 1) dto.header = encrypted.header;
+        return net.uploadFileChunk(dto);
+      });
+    })['finally'](function () {
+      changeUploadState(clientFileID, null);
+    });
+  };
+
+  function addUploadState(id, name) {
+    api.uploads[id] = {
+      fileName: name,
+      state: api.UL_STATE.READING,
+      stateName: ULStateNames[api.UL_STATE.READING]
+    };
+    api.uploads.push(api.uploads[id]);
+    Peerio.Action.filesUpdated();
+  }
+
+  function changeUploadState(id, state, currentChunk, totalChunks) {
+    if (state === null) {
+      var ind = api.uploads.indexOf(api.uploads[id]);
+      api.uploads.splice(ind, 1);
+      delete api.uploads[id];
+    } else {
+      var u = api.uploads[id];
+      u.state = state;
+      u.stateName = ULStateNames[state];
+      u.currentChunk = currentChunk || u.currentChunk;
+      u.totalChunks = totalChunks || u.totalChunks;
+    }
+    Peerio.Action.filesUpdated();
+  }
+
   // updates file object properties related to download progress indication
   // notifies on file change
   function setDownloadState(file, state, progress, total) {
@@ -3460,7 +3540,7 @@ Peerio.Files.init = function () {
     } else {
       file.downloadState = file.downloadState || {};
       file.downloadState.state = state;
-      file.downloadState.stateName = stateNames[state];
+      file.downloadState.stateName = DLStateNames[state];
       file.downloadState.progress = progress;
       file.downloadState.total = total;
       file.downloadState.percent = progress == null ? '' : Math.min(100, Math.ceil(progress / (total / 100))) + '%';
@@ -3475,7 +3555,7 @@ Peerio.Files.init = function () {
       var xhr = new XMLHttpRequest();
 
       xhr.onprogress = function (progress) {
-        setDownloadState(file, api.STATE.DOWNLOADING, progress.loaded, progress.total);
+        setDownloadState(file, api.DL_STATE.DOWNLOADING, progress.loaded, progress.total);
       };
 
       xhr.onreadystatechange = function () {
@@ -3532,6 +3612,7 @@ Peerio.Files.init = function () {
       api.cache[file.shortId] = file;
       api.cache[file.id] = file;
       api.cache.push(file);
+      Peerio.Util.sortDesc(api.cache, 'timestamp');
       Peerio.Action.filesUpdated();
     });
   }
@@ -4056,7 +4137,7 @@ Peerio.Net.init = function () {
    *  @param {bool} [ignoreConnectionState] - only setApiVersion needs it, couldn't find more elegant way
    *  @promise
    */
-  function sendToSocket(name, data, ignoreConnectionState) {
+  function sendToSocket(name, data, ignoreConnectionState, transfer) {
     if (!connected && !ignoreConnectionState) return Promise.reject('Not connected.');
     // unique (within reasonable time frame) promise id
     var id = null;
@@ -4064,7 +4145,7 @@ Peerio.Net.init = function () {
     return new Promise(function (resolve, reject) {
       Peerio.Action.loading();
       id = addPendingPromise(reject);
-      Peerio.Socket.send(name, data, resolve);
+      Peerio.Socket.send(name, data, resolve, transfer);
     })
     // we want to catch all exceptions, log them and reject promise
     ['catch'](function (error) {
@@ -4409,7 +4490,7 @@ Peerio.Net.init = function () {
    * @promise
    */
   api.uploadFileChunk = function (chunkObject) {
-    return sendToSocket('uploadFileChunk', chunkObject);
+    return sendToSocket('uploadFileChunk', chunkObject, false, [chunkObject.ciphertext]);
   };
 
   /**
@@ -4563,7 +4644,7 @@ Peerio.Socket.init = function () {
    * @param {Object} [data] - message data
    * @param {Function} [callback] - server response
    */
-  Peerio.Socket.send = function (name, data, callback) {
+  Peerio.Socket.send = function (name, data, callback, transfer) {
 
     // registering the callback, if provided
     var callbackID = null;
@@ -4578,13 +4659,6 @@ Peerio.Socket.init = function () {
       data: data,
       callbackID: callbackID
     };
-
-    // for file upload we want to transfer ownership of the chunk data
-    // so it won't get copied
-    var transfer = null;
-    if (name === 'uploadFileChunk') {
-      transfer = [message.ciphertext];
-    }
 
     worker.postMessage(message, transfer);
   };
@@ -5035,7 +5109,16 @@ Peerio.Util.init = function () {
    */
   api.getFileName = function (fileName) {
     var dotInd = fileName.lastIndexOf('.');
-    return dotInd >= 0 ? fileName.substring(0, dotInd) : fileName;
+    if (dotInd >= 0) fileName = fileName.substring(0, dotInd);
+    var slashInd = fileName.lastIndexOf('/');
+    var bslashInd = fileName.lastIndexOf("\\");
+    slashInd = Math.max(slashInd, bslashInd);
+    if (slashInd >= 0) fileName = fileName.substring(slashInd + 1);
+    return fileName;
+  };
+
+  api.getFileNameAndExtension = function (path) {
+    return api.getFileName(path) + '.' + api.getFileExtension(path);
   };
 };
 /**

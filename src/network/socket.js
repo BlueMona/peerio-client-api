@@ -65,7 +65,7 @@ Peerio.Socket.init = function () {
    * @param {Object} [data] - message data
    * @param {Function} [callback] - server response
    */
-  Peerio.Socket.send = function (name, data, callback) {
+  Peerio.Socket.send = function (name, data, callback, transfer) {
 
     // registering the callback, if provided
     var callbackID = null;
@@ -80,13 +80,6 @@ Peerio.Socket.init = function () {
       data: data,
       callbackID: callbackID
     };
-
-    // for file upload we want to transfer ownership of the chunk data
-    // so it won't get copied
-    var transfer = null;
-    if (name === 'uploadFileChunk') {
-      transfer = [message.ciphertext];
-    }
 
     worker.postMessage(message, transfer);
   };

@@ -179,7 +179,7 @@ Peerio.Net.init = function () {
    *  @param {bool} [ignoreConnectionState] - only setApiVersion needs it, couldn't find more elegant way
    *  @promise
    */
-  function sendToSocket(name, data, ignoreConnectionState) {
+  function sendToSocket(name, data, ignoreConnectionState, transfer) {
     if (!connected && !ignoreConnectionState) return Promise.reject('Not connected.');
     // unique (within reasonable time frame) promise id
     var id = null;
@@ -187,7 +187,7 @@ Peerio.Net.init = function () {
     return new Promise(function (resolve, reject) {
       Peerio.Action.loading();
       id = addPendingPromise(reject);
-      Peerio.Socket.send(name, data, resolve);
+      Peerio.Socket.send(name, data, resolve, transfer);
     })
       // we want to catch all exceptions, log them and reject promise
       .catch(function (error) {
@@ -541,7 +541,7 @@ Peerio.Net.init = function () {
    * @promise
    */
   api.uploadFileChunk = function (chunkObject) {
-    return sendToSocket('uploadFileChunk', chunkObject);
+    return sendToSocket('uploadFileChunk', chunkObject, false, [chunkObject.ciphertext]);
   };
 
   /**

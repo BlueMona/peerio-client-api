@@ -174,26 +174,28 @@ describe('Crypto', function () {
   });
 
   it('encrypts and decrypts file', function (done) {
-    var file = new Blob([1, 2, 3]);
-    file.name = 'test';
+    var file = new Uint8Array([1, 2, 3]);
+    var size = 3;
+    var name = 'lalala';
     var encrypted;
-    C.encryptFile(file, file.name, [testUser.username], testUser)
+    C.encryptFile(file.buffer, name, [testUser.username], testUser)
       .then(function (data) {
         encrypted = data;
         expect(data.fileName).toBeDefined();
         expect(data.header).toBeDefined();
         expect(data.chunks).toBeDefined();
+        data.chunks.splice(0,1);
         var blob = new Blob(data.chunks, {type: 'application/octet-stream'});
 
         return C.decryptFile(data.fileName, blob, {header: data.header, sender: testUser.username}, testUser);
       })
       .then(function (decrypted) {
         expect(decrypted).toBeDefined();
-        expect(file.size).toBe(decrypted.size);
+        expect(decrypted.size).toBe(3);
       }).then(function(){
         return C.decryptFileName(encrypted.fileName, encrypted.header);
       }).then(function(decryptedName){
-        expect(decryptedName).toBe(file.name);
+        expect(decryptedName).toBe(name);
         done();
       })
       .catch(done.fail);

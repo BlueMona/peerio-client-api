@@ -108,7 +108,15 @@ Peerio.Util.init = function () {
    */
   api.getFileName = function (fileName) {
     var dotInd = fileName.lastIndexOf('.');
-    return dotInd >= 0 ? fileName.substring(0, dotInd) : fileName;
+    if (dotInd >= 0)fileName = fileName.substring(0, dotInd);
+    var slashInd = fileName.lastIndexOf('/');
+    var bslashInd = fileName.lastIndexOf("\\");
+    slashInd = Math.max(slashInd, bslashInd);
+    if (slashInd >= 0) fileName = fileName.substring(slashInd + 1);
+    return fileName;
   };
 
+  api.getFileNameAndExtension = function (path) {
+    return api.getFileName(path) + '.' + api.getFileExtension(path);
+  };
 };

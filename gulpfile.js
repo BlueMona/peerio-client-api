@@ -90,7 +90,7 @@ gulp.task('build-api', function () {
   return gulp.src([
     '!src/network/socket_worker.js',
     'src/crypto/base64shim.js',
-    'bower_components/tweetnacl/nacl-fast.js',
+    'bower_components/tweetnacl/nacl-fast.js', // todo: can we move it to ext lib?
     'src/crypto/phrase_generator.js',
     'src/crypto/crypto_hub.js',
     'src/model/**/*',
@@ -110,6 +110,7 @@ gulp.task('build-api', function () {
 gulp.task('build-ext-lib', function () {
   // external libraries bundle
   return gulp.src([
+    'src/crypto/base58.js',
     'bower_components/lodash/lodash.js',
     'bower_components/moment/min/moment-with-locales.min.js',
     'bower_components/bluebird/js/browser/bluebird.js',

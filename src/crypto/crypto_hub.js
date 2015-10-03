@@ -133,6 +133,11 @@ Peerio.Crypto.init = function () {
     'decryptReceipt',
     'recreateHeader'
   ].forEach(function (fnName) {
+      var transfer = null;
+      // extra love for 'encrypt file' to transfer array buffer
+      if (fnName === 'encryptFile') {
+        transfer = 0; // argument index
+      }
       Peerio.Crypto[fnName] = function () {
         var id = uuid();
         // we copy arguments object data into array, because that's what worker is expecting to use it with apply()
@@ -147,7 +152,7 @@ Peerio.Crypto.init = function () {
             reject: reject
           };
         });
-        getWorker().postMessage({id: id, fnName: fnName, args: args});
+        getWorker().postMessage({id: id, fnName: fnName, args: args}, transfer === null ? null : [args[transfer]]);
         return ret;
       };
     });

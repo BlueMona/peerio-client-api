@@ -62,7 +62,7 @@ Peerio.Crypto.init = function () {
   }
 
   //-- PUBLIC API ------------------------------------------------------------------------------------------------------
-
+  // if u change it here, change it in crypto_hub.js and vice versa //todo: create single source of truth
   api.chunkSize = 1024 * 1024;
 
   /**
@@ -335,29 +335,31 @@ Peerio.Crypto.init = function () {
 
   /**
    * Encrypt a file to recipients, return UTF8 Blob and header (separate).
-   * @param {object} file - File object to encrypt.
-   * @param {string[]} recipients - Array of usernames of recipients.
+   * @param {ArrayBuffer} file - File data to encrypt.
+   * @param {string} name - file name
+   * @param {string[]} [recipients] - Array of usernames of recipients.
    * @param {User} [sender]
-   * @promise {object} fileName(base64 encoded), header, body and failedRecipients parameters.
+   * @returns {Promise<object>} fileName(base64 encoded), header, body and failedRecipients parameters.
    */
   api.encryptFile = function (file, name, recipients, sender) {
     sender = sender || defaultUser;
     return new Promise(function (resolve, reject) {
-      var validatedRecipients = validateRecipients(recipients, sender);
+      var validatedRecipients = validateRecipients(recipients||[], sender);
 
+      file = new Blob([file], {type: 'application/octet-stream'});
       file.name = name;
       encryptBlob(
         file,
         validatedRecipients.publicKeys,
         sender,
-        function (encryptedChunks, header, fileName) {
+        function (encryptedChunks, header) {
           if (!encryptedChunks) {
             reject();
             return;
           }
-          encryptedChunks.splice(0, numberSize);
+          encryptedChunks.splice(0, 3); // signature, header size, header
           resolve({
-            fileName: encodeB64(fileName.subarray(4)),
+            fileName: encodeB64(encryptedChunks[0].subarray(4)),
             header: JSON.parse(header),
             chunks: encryptedChunks,
             failed: validatedRecipients.failed
@@ -842,7 +844,6 @@ Peerio.Crypto.init = function () {
    * @param {{name: string, size: Number, data: ArrayBuffer}} blob
    * @param {string[]} publicKeys
    * @param {User} user
-   * @param {Function} fileNameCallback - A callback with the encrypted fileName.
    * @param {Function} callback - Callback function to which encrypted result is passed.
    */
   function encryptBlob(blob, publicKeys, user, callback) {
@@ -872,13 +873,10 @@ Peerio.Crypto.init = function () {
       return false;
     }
 
-    var fileName = encryptedChunk;
-
     var encryptedChunks = [encryptedChunk];
     hashObject.update(encryptedChunk);
 
     encryptNextChunk({
-      fileName: fileName,
       blob: blob, streamEncryptor: streamEncryptor, hashObject: hashObject,
       encryptedChunks: encryptedChunks, dataPosition: 0, fileKey: blobKey, fileNonce: blobNonce,
       publicKeys: publicKeys, user: user, callbackOnComplete: callback
@@ -973,7 +971,7 @@ Peerio.Crypto.init = function () {
           header = JSON.stringify(header);
           e.encryptedChunks.unshift(signature, numberToByteArray(header.length), header);
 
-          return e.callbackOnComplete(e.encryptedChunks, header, e.fileName, e.user.publicKey);
+          return e.callbackOnComplete(e.encryptedChunks, header, e.user.publicKey);
         }
 
         e.dataPosition += api.chunkSize;

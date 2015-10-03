@@ -19,53 +19,69 @@ Peerio.FileSystem.init = function () {
   var filesDirectoryName = 'files';
   var filesDirectoryEntry; // lazy init cache
 
+  function dummy(name) {
+    var msg = name + ' not implemented.';
+    console.log(msg);
+    return Promise.reject(msg);
+  }
+
   // file system access plugin to implement in clients
   api.plugin = {
     /**
      * @returns {Promise<DirectoryEntry>} - root folder
      */
-    getRootDir: function () { console.log('getRootDir');},
+    getRootDir: dummy.bind(null, 'getRootDir'),
     /**
      * @param {string} name
      * @param {DirectoryEntry} parent
      * @returns {Promise<DirectoryEntry>}
      */
-    getDirectory: function (name, parent) { console.log('getDirectory:', name, parent);},
+    getDirectory: dummy.bind(null, 'getDirectory'),
     /**
      * @param {string} name
      * @param {DirectoryEntry} parent
      * @returns {Promise<FileEntry>}
      */
-    createFile: function (name, parent) {console.log('createFile:', name, parent);},
+    createFile: dummy.bind(null, 'createFile'),
     /**
      * @param {Blob} blob
      * @param {FileEntry} file
      * @returns {Promise}
      */
-    writeToFile: function (blob, file) {console.log('writeToFile');},
+    writeToFile: dummy.bind(null, 'writeToFile'),
     /**
      * @param {DirectoryEntry} dir
      * @returns {Promise<FileEntry[]>}
      */
-    getFiles: function (dir) {console.log('getFiles:', dir);},
+    getFiles: dummy.bind(null, 'getFiles'),
     /**
      * @param {string} name
      * @param {DirectoryEntry} parent
      * @returns {Promise<FileEntry>}
      */
-    getFile: function (name, parent) {console.log('getFile:', name, parent);},
+    getFile: dummy.bind(null, 'getFile'),
     /**
      * Opens file with OS api
      * @param {FileEntry} fileEntry
      */
-    openFile: function (fileEntry) {console.log('openFile:', fileEntry);},
+    openFile: dummy.bind(null, 'openFile'),
     /**
      * @param {string} name
      * @param {DirectoryEntry} parent
      * @returns {Promise}
      */
-    removeFile: function (name, parent) {console.log('removeFile:', name, parent);}
-
+    removeFile: dummy.bind(null, 'removeFile'),
+    /**
+     * @param {string} fileUrl - file/directory url in format `file://...`
+     * @returns {FileEntry|DirectoryEntry} depending on url provided
+     */
+    getByURL: dummy.bind(null, 'getByURL'),
+    /**
+     * Reads and returns contents of a file
+     * @param {FileEntry} fileEntry - file entry to read
+     * @returns {Promise<Object<File, ArrayBuffer>>} - File object and ArrayBuffer file data
+     */
+    readFile: dummy.bind(null, 'readFile')
   };
 
   /**
