@@ -82,6 +82,7 @@ Peerio.Messages.init = function () {
    * @promise
    */
   api.getAllConversations = function () {
+
     if (getAllConversationsPromise) return getAllConversationsPromise;
 
     if (api.cache) return Promise.resolve(api.cache);
@@ -103,6 +104,7 @@ Peerio.Messages.init = function () {
         return pages;
       })
       .then(function (pages) {
+        if(pages.length === 0 ) Peerio.Action.conversationsUpdated();
         // Promise.each executes next function call after previous promise is resolved
         return Promise.each(pages, function (page) {
           return net.getConversationPages(page)

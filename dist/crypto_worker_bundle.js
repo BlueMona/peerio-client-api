@@ -19,96 +19,86 @@ self.console = {
 };
 
 //}
+// Base58 encoding/decoding
+// Originally written by Mike Hearn for BitcoinJ
+// Copyright (c) 2011 Google Inc
+// Ported to JavaScript by Stefan Thomas
+// Merged Buffer refactorings from base58-native by Stephen Pair
+// Copyright (c) 2013 BitPay Inc
+
 var Base58 = {};
 
-(function () {
+Base58.alphabet = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+Base58.alphabetMap = {};
 
-  var BASE = 58;
-  var BITS_PER_DIGIT = Math.log(BASE) / Math.log(2);
-  var ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
-  var ALPHABET_MAP = {};
+for (var i = 0; i < Base58.alphabet.length; i++) {
+  Base58.alphabetMap[Base58.alphabet.charAt(i)] = i;
+}
 
-  for (var i = 0; i < ALPHABET.length; i++) {
-    ALPHABET_MAP[ALPHABET.charAt(i)] = i;
-  }
+Base58.encode = function (buffer) {
+  if (buffer.length === 0) return '';
 
-  function decodedLen(n) {
-    return Math.floor(n * BITS_PER_DIGIT / 8);
-  }
+  var i,
+      j,
+      digits = [0];
+  for (i = 0; i < buffer.length; i++) {
+    for (j = 0; j < digits.length; j++) digits[j] <<= 8;
+    digits[digits.length - 1] += buffer[i];
 
-  function maxEncodedLen(n) {
-    return Math.ceil(n / BITS_PER_DIGIT);
-  }
-
-  Base58.encode = function (buffer) {
-    if (buffer.length === 0) return '';
-
-    var i,
-        j,
-        digits = [0];
-    for (i = 0; i < buffer.length; i++) {
-      for (j = 0; j < digits.length; j++) digits[j] <<= 8;
-
-      digits[0] += buffer[i];
-
-      var carry = 0;
-      for (j = 0; j < digits.length; ++j) {
-        digits[j] += carry;
-        carry = digits[j] / BASE | 0;
-        digits[j] %= BASE;
-      }
-
-      while (carry) {
-        digits.push(carry % BASE);
-        carry = carry / BASE | 0;
-      }
+    var carry = 0;
+    for (j = digits.length - 1; j >= 0; j--) {
+      digits[j] += carry;
+      carry = digits[j] / 58 | 0;
+      digits[j] %= 58;
     }
 
-    var zeros = maxEncodedLen(buffer.length * 8) - digits.length - 1;
-    // deal with leading zeros
-    for (i = 0; i < zeros; i++) digits.push(0);
+    while (carry) {
+      digits.unshift(carry);
+      carry = digits[0] / 58 | 0;
+      digits[0] %= 58;
+    }
+  }
 
-    return digits.reverse().map(function (digit) {
-      return ALPHABET[digit];
-    }).join('');
-  };
+  // deal with leading zeros
+  for (i = 0; i < buffer.length - 1 && buffer[i] == 0; i++) digits.unshift(0);
 
-  Base58.decode = function (string) {
-    if (string.length === 0) return [];
+  return digits.map(function (digit) {
+    return Base58.alphabet[digit];
+  }).join('');
+};
 
-    var i,
-        j,
-        bytes = [0];
-    for (i = 0; i < string.length; i++) {
-      var c = string[i];
-      if (!(c in ALPHABET_MAP)) throw new Error('Non-base58 character');
+Base58.decode = function (string) {
+  if (string.length === 0) return new Uint8Array();
 
-      for (j = 0; j < bytes.length; j++) bytes[j] *= BASE;
-      bytes[0] += ALPHABET_MAP[c];
+  var input = string.split('').map(function (c) {
+    return Base58.alphabetMap[c];
+  });
 
-      var carry = 0;
-      for (j = 0; j < bytes.length; ++j) {
-        bytes[j] += carry;
+  var i,
+      j,
+      bytes = [0];
+  for (i = 0; i < input.length; i++) {
+    for (j = 0; j < bytes.length; j++) bytes[j] *= 58;
+    bytes[bytes.length - 1] += input[i];
 
-        carry = bytes[j] >> 8;
-        bytes[j] &= 0xff;
-      }
-
-      while (carry) {
-        bytes.push(carry & 0xff);
-
-        carry >>= 8;
-      }
+    var carry = 0;
+    for (j = bytes.length - 1; j >= 0; j--) {
+      bytes[j] += carry;
+      carry = bytes[j] >> 8;
+      bytes[j] &= 0xff;
     }
 
-    var zeros = decodedLen(string.length) - bytes.length;
+    while (carry) {
+      bytes.unshift(carry);
+      carry = bytes[0] >> 8;
+      bytes[0] &= 0xff;
+    }
+  }
 
-    // deal with leading zeros
-    for (i = 0; i < zeros; i++) bytes.push(0);
-
-    return new Uint8Array(bytes.reverse());
-  };
-})();
+  // deal with leading zeros
+  for (i = 0; i < input.length - 1 && input[i] == 0; i++) bytes.unshift(0);
+  return new Uint8Array(bytes);
+};
 // Source: http://code.google.com/p/gflot/source/browse/trunk/flot/base64.js?r=153
 
 /* Copyright (C) 1999 Masanao Izumo <iz@onicos.co.jp>
@@ -9694,17 +9684,19 @@ Peerio.Crypto.init = function () {
    * @promise {object} decrypted token
    */
   api.decryptAuthToken = function (data, keyPair) {
+    console.log('decryptAuthToken(data,keypair)', data, keyPair);
     keyPair = keyPair || getCachedKeyPair();
-    if (hasProp(data, 'error')) {
-      console.error(data.error);
-      return Promise.reject(data.error);
-    }
-
+    console.log('resolved keypair:', keyPair);
+    console.log('converting server key to bytes');
     return api.getPublicKeyBytes(data.ephemeralServerPublicKey).then(function (serverKey) {
+      console.log('server key', serverKey);
+      console.log('decrypting token');
       var dToken = nacl.box.open(decodeB64(data.token), decodeB64(data.nonce), serverKey, keyPair.secretKey);
+      console.log('decrypted token:', dToken);
+      console.log('validating token');
       //todo: explain magic numbers
       if (dToken && dToken.length === 0x20 && dToken[0] === 0x41 && dToken[1] === 0x54) return Promise.resolve(encodeB64(dToken));
-
+      console.log('token validation failed.');
       return Promise.reject();
     });
   };

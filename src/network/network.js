@@ -192,13 +192,20 @@ Peerio.Net.init = function () {
       // we want to catch all exceptions, log them and reject promise
       .catch(function (error) {
         console.log(error);
-        return Promise.reject();
+        return Promise.reject(error);
       })
       // if we got response, let's check it for 'error' property and reject promise if it exists
       .then(function (response) {
-        return hasProp(response, 'error')
-          ? Promise.reject(new PeerioServerError(response.error))
-          : Promise.resolve(response);
+        if( hasProp(response, 'error'))
+        {
+          var err = new PeerioServerError(response.error);
+          console.log(err);
+          // todo: not the brightest idea to show alert here
+          Peerio.Action.showAlert({text: err.toString()});
+          return Promise.reject(err);
+        } else {
+          return Promise.resolve(response);
+        }
       })
       .finally(removePendingPromise.bind(this, id));
   }
@@ -224,10 +231,6 @@ Peerio.Net.init = function () {
     return sendToSocket('validateUsername', {username: username})
       .then(function(response){
         return response.available;
-      })
-      .catch(PeerioServerError, function (error) {
-        if (error.code === 400) return Promise.resolve(false);
-        else return Promise.reject();
       });
   };
 
@@ -240,11 +243,10 @@ Peerio.Net.init = function () {
     var parsed = Peerio.Util.parseAddress(address);
     if (!parsed) return Promise.resolve(false);
     return sendToSocket('validateAddress', {address: parsed})
-      .return(true)
-      .catch(PeerioServerError, function (error) {
-        if (error.code === 400) return Promise.resolve(false);
-        else return Promise.reject();
+      .then(function(response){
+        return response.available;
       });
+
   };
 
   /**
@@ -385,7 +387,7 @@ Peerio.Net.init = function () {
    * @promise
    */
   api.addContact = function (username) {
-    return sendToSocket('addContact', {contacts: [{username: username}]});
+    return sendToSocket('addOrInviteContacts', {add: [{username: username}]});
   };
 
   /**

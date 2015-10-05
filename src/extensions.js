@@ -9,4 +9,6 @@
     return (this.length === 0 || !this.trim());
   };
 
+  window.logfn = console.log.bind(console);
+
 }());

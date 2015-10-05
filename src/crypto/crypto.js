@@ -239,24 +239,26 @@ Peerio.Crypto.init = function () {
    * @promise {object} decrypted token
    */
   api.decryptAuthToken = function (data, keyPair) {
+    console.log('decryptAuthToken(data,keypair)', data, keyPair);
     keyPair = keyPair || getCachedKeyPair();
-    if (hasProp(data, 'error')) {
-      console.error(data.error);
-      return Promise.reject(data.error);
-    }
-
+    console.log('resolved keypair:', keyPair);
+    console.log('converting server key to bytes');
     return api.getPublicKeyBytes(data.ephemeralServerPublicKey)
       .then(function (serverKey) {
+        console.log('server key', serverKey);
+        console.log('decrypting token');
         var dToken = nacl.box.open(
           decodeB64(data.token),
           decodeB64(data.nonce),
           serverKey,
           keyPair.secretKey
         );
+        console.log('decrypted token:', dToken);
+        console.log('validating token');
         //todo: explain magic numbers
         if (dToken && dToken.length === 0x20 && dToken[0] === 0x41 && dToken[1] === 0x54)
           return Promise.resolve(encodeB64(dToken));
-
+        console.log('token validation failed.');
         return Promise.reject();
       });
   };

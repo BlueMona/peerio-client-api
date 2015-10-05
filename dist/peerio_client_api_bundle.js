@@ -2794,7 +2794,7 @@ function PeerioServerError(code) {
   this.code = +code;
   this.message = this.getMessage(code);
   this.timestamp = Date.now();
-  this.isOperational = true;
+  this.isOperational = true; // bluebird wants this
 }
 
 PeerioServerError.prototype = Object.create(Error.prototype);
@@ -2804,13 +2804,16 @@ PeerioServerError.prototype.getMessage = function (code) {
 };
 
 PeerioServerError.prototype.errorCodes = {
+  400: 'Unknown error',
   404: 'Resource does not exist or you are not allowed to access it.',
+  410: 'Api version request error',
   413: 'Storage quota exceeded.',
   406: 'Malformed request.',
   423: 'Authentication error.',
   424: 'Two-factor authentication required.',
   425: 'The account has been throttled (sent too many requests that failed to authenticate).',
-  426: 'User blacklisted.'
+  426: 'User blacklisted.',
+  435: 'Pending captcha.'
 };
 /**
  * Peerio User object
@@ -2972,6 +2975,8 @@ Peerio.Auth.init = function () {
       u.firstName = settings.firstName;
       u.lastName = settings.lastName;
       return Peerio.Contacts.updateContacts();
+    }).then(function () {
+      return Peerio.Files.getAllFiles();
     });
   };
 
@@ -3696,6 +3701,7 @@ Peerio.Messages.init = function () {
    * @promise
    */
   api.getAllConversations = function () {
+
     if (getAllConversationsPromise) return getAllConversationsPromise;
 
     if (api.cache) return Promise.resolve(api.cache);
@@ -3715,6 +3721,7 @@ Peerio.Messages.init = function () {
       }
       return pages;
     }).then(function (pages) {
+      if (pages.length === 0) Peerio.Action.conversationsUpdated();
       // Promise.each executes next function call after previous promise is resolved
       return Promise.each(pages, function (page) {
         return net.getConversationPages(page).then(function (response) {
@@ -4150,11 +4157,19 @@ Peerio.Net.init = function () {
     // we want to catch all exceptions, log them and reject promise
     ['catch'](function (error) {
       console.log(error);
-      return Promise.reject();
+      return Promise.reject(error);
     })
     // if we got response, let's check it for 'error' property and reject promise if it exists
     .then(function (response) {
-      return hasProp(response, 'error') ? Promise.reject(new PeerioServerError(response.error)) : Promise.resolve(response);
+      if (hasProp(response, 'error')) {
+        var err = new PeerioServerError(response.error);
+        console.log(err);
+        // todo: not the brightest idea to show alert here
+        Peerio.Action.showAlert({ text: err.toString() });
+        return Promise.reject(err);
+      } else {
+        return Promise.resolve(response);
+      }
     })['finally'](removePendingPromise.bind(this, id));
   }
 
@@ -4180,8 +4195,6 @@ Peerio.Net.init = function () {
     }
     return sendToSocket('validateUsername', { username: username }).then(function (response) {
       return response.available;
-    })['catch'](PeerioServerError, function (error) {
-      if (error.code === 400) return Promise.resolve(false);else return Promise.reject();
     });
   };
 
@@ -4193,8 +4206,8 @@ Peerio.Net.init = function () {
   api.validateAddress = function (address) {
     var parsed = Peerio.Util.parseAddress(address);
     if (!parsed) return Promise.resolve(false);
-    return sendToSocket('validateAddress', { address: parsed })['return'](true)['catch'](PeerioServerError, function (error) {
-      if (error.code === 400) return Promise.resolve(false);else return Promise.reject();
+    return sendToSocket('validateAddress', { address: parsed }).then(function (response) {
+      return response.available;
     });
   };
 
@@ -4334,7 +4347,7 @@ Peerio.Net.init = function () {
    * @promise
    */
   api.addContact = function (username) {
-    return sendToSocket('addContact', { contacts: [{ username: username }] });
+    return sendToSocket('addOrInviteContacts', { add: [{ username: username }] });
   };
 
   /**
@@ -5131,6 +5144,8 @@ Peerio.Util.init = function () {
   String.prototype.isEmpty = function () {
     return this.length === 0 || !this.trim();
   };
+
+  window.logfn = console.log.bind(console);
 })();
 /**
  * Starts Error interceptor and reporter.

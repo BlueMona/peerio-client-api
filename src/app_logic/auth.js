@@ -56,6 +56,9 @@ Peerio.Auth.init = function () {
         u.firstName = settings.firstName;
         u.lastName = settings.lastName;
         return Peerio.Contacts.updateContacts();
+      })
+      .then(function(){
+        return Peerio.Files.getAllFiles();
       });
   };
 
