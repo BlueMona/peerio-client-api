@@ -3467,6 +3467,10 @@ Peerio.Files.init = function () {
     });
   };
 
+  api.fetch = function (fileid) {
+    return net.getFile(fileid).then(addFile);
+  };
+
   api.upload = function (fileUrl) {
     var encrypted;
     // temporary file id for current upload, helps identifying chunks
@@ -3649,6 +3653,10 @@ Peerio.Messages.init = function () {
     }).then(function (decrypted) {
       if (!decrypted) return Promise.reject();
       decrypted.isModified = true;
+      if (decrypted.fileIDs) decrypted.fileIDs.forEach(function (fileid) {
+        if (Peerio.Files.cache.hasOwnProperty(fileid)) return;
+        Peerio.Files.fetch(fileid);
+      });
       return addMessageToCache(message.conversationID, decrypted);
     }).then(Peerio.Action.messageAdded.bind(null, message.conversationID));
   };

@@ -132,6 +132,10 @@ Peerio.Files.init = function () {
       });
   };
 
+  api.fetch = function(fileid){
+    return net.getFile(fileid).then(addFile);
+  };
+
   api.upload = function (fileUrl) {
     var encrypted;
     // temporary file id for current upload, helps identifying chunks
