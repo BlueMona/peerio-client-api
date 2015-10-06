@@ -7123,6 +7123,13 @@ function messageHandler(payload) {
     return;
   }
 
+  if (message.name === 'pauseConnection') {
+    stopPingChecks();
+  } else if (message.name === 'resumeConnection') {
+    startPingChecks();
+    resetConnection();
+  }
+
   self.peerioSocket.emit(message.name, message.data, function (response) {
     self.setLastPing();
     self.postMessage({

@@ -3368,7 +3368,7 @@ Peerio.Files.init = function () {
   var DLStateNames = { 0: 'Downloading', 1: 'Decrypting', 2: 'Saving' };
 
   api.UL_STATE = { READING: 0, ENCRYPTING: 1, UPLOADING_META: 2, UPLOADING_CHUNKS: 3 };
-  var ULStateNames = { 0: 'Reading', 1: 'Encrypting', 2: 'Uploading metadata', 3: 'Uploading chunks' };
+  var ULStateNames = { 0: 'Reading', 1: 'Encrypting', 2: 'Uploading encrypted metadata', 3: 'Uploading chunks' };
 
   var getAllFilesPromise = null;
 
@@ -4097,7 +4097,7 @@ Peerio.Net.init = function () {
     return sendToSocket('getAuthenticationToken', {
       username: user.username,
       publicKeyString: user.publicKey
-    }).then(function (encryptedAuthToken) {
+    }, null, null, true).then(function (encryptedAuthToken) {
       return Peerio.Crypto.decryptAuthToken(encryptedAuthToken, user.keyPair);
     }).then(function (authToken) {
       return sendToSocket('login', { authToken: authToken });
@@ -4150,9 +4150,11 @@ Peerio.Net.init = function () {
    *  @param {string} name - message name
    *  @param {Object} [data] - object to send
    *  @param {bool} [ignoreConnectionState] - only setApiVersion needs it, couldn't find more elegant way
+   *  @param {Array} [transfer] - array of object to transfer to worker (object won't be available on this thread anymore)
+   *  @param {bool} [noErrorReport] - don't show Alert with server error
    *  @promise
    */
-  function sendToSocket(name, data, ignoreConnectionState, transfer) {
+  function sendToSocket(name, data, ignoreConnectionState, transfer, noErrorReport) {
     if (!connected && !ignoreConnectionState) return Promise.reject('Not connected.');
     // unique (within reasonable time frame) promise id
     var id = null;
@@ -4173,7 +4175,7 @@ Peerio.Net.init = function () {
         var err = new PeerioServerError(response.error);
         console.log(err);
         // todo: not the brightest idea to show alert here
-        Peerio.Action.showAlert({ text: err.toString() });
+        if (!noErrorReport) Peerio.Action.showAlert({ text: err.toString() });
         return Promise.reject(err);
       } else {
         return Promise.resolve(response);
@@ -4596,6 +4598,14 @@ Peerio.Net.init = function () {
    */
   api.closeAccount = function () {
     return sendToSocket('closeAccount');
+  };
+
+  api.pauseConnection = function () {
+    return sendToSocket('pauseConnection', null, null, null, true);
+  };
+
+  api.resumeConnection = function () {
+    return sendToSocket('resumeConnection', null, null, null, true);
   };
 };
 /**
