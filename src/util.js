@@ -87,17 +87,28 @@ Peerio.Util.init = function () {
    * @return [array] [{id:String, email:String}, {id:String, phone:String}]
    */
   api.parseAddressesForLookup = function(deviceContacts){
+
     var addressLookups = [];
 
+    var processAddress = function(address, contactId) {
+      var parsed = api.parseAddress(address.value);
+      if (parsed) {
+        var parsedObj = {id:contactId};
+        parsedObj[parsed.type] = parsed.value;
+        addressLookups.push(parsedObj);
+      }
+    };
+
     _.forOwn(deviceContacts, function(contact){
-      _.each(contact.emails, function(email, index) {
-        addressLookups.push({id: contact.id, email: email.value});
+      _.each(contact.emails, function(email) {
+        processAddress(email, contact.id)
       });
 
-      _.each(contact.phones, function(phone, index){
-        addressLookups.push({id: contact.id, phone: phone.value });
+      _.each(contact.phones, function(phone){
+        processAddress(phone, contact.id)
       });
     });
+
     return addressLookups;
   };
 
