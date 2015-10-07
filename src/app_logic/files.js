@@ -21,7 +21,7 @@ Peerio.Files.init = function () {
   var DLStateNames = {0: 'Downloading', 1: 'Decrypting', 2: 'Saving'};
 
   api.UL_STATE = {READING: 0, ENCRYPTING: 1, UPLOADING_META: 2, UPLOADING_CHUNKS: 3};
-  var ULStateNames = {0: 'Reading', 1: 'Encrypting', 2: 'Uploading metadata', 3: 'Uploading chunks'};
+  var ULStateNames = {0: 'Reading', 1: 'Encrypting', 2: 'Uploading encrypted metadata', 3: 'Uploading chunks'};
 
   var getAllFilesPromise = null;
 
@@ -130,6 +130,10 @@ Peerio.Files.init = function () {
         setDownloadState(file, null);
         alert('failed to download file. ' + reason);
       });
+  };
+
+  api.fetch = function(fileid){
+    return net.getFile(fileid).then(addFile);
   };
 
   api.upload = function (fileUrl) {

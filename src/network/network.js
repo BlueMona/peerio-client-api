@@ -118,7 +118,7 @@ Peerio.Net.init = function () {
     return sendToSocket('getAuthenticationToken', {
       username: user.username,
       publicKeyString: user.publicKey
-    })
+    }, null, null,  true)
       .then(function (encryptedAuthToken) {
         return Peerio.Crypto.decryptAuthToken(encryptedAuthToken, user.keyPair);
       })
@@ -177,9 +177,11 @@ Peerio.Net.init = function () {
    *  @param {string} name - message name
    *  @param {Object} [data] - object to send
    *  @param {bool} [ignoreConnectionState] - only setApiVersion needs it, couldn't find more elegant way
+   *  @param {Array} [transfer] - array of object to transfer to worker (object won't be available on this thread anymore)
+   *  @param {bool} [noErrorReport] - don't show Alert with server error
    *  @promise
    */
-  function sendToSocket(name, data, ignoreConnectionState, transfer) {
+  function sendToSocket(name, data, ignoreConnectionState, transfer, noErrorReport) {
     if (!connected && !ignoreConnectionState) return Promise.reject('Not connected.');
     // unique (within reasonable time frame) promise id
     var id = null;
@@ -201,7 +203,7 @@ Peerio.Net.init = function () {
           var err = new PeerioServerError(response.error);
           console.log(err);
           // todo: not the brightest idea to show alert here
-          Peerio.Action.showAlert({text: err.toString()});
+          if(!noErrorReport) Peerio.Action.showAlert({text: err.toString()});
           return Promise.reject(err);
         } else {
           return Promise.resolve(response);
@@ -637,6 +639,14 @@ Peerio.Net.init = function () {
    */
   api.closeAccount = function () {
     return sendToSocket('closeAccount');
+  };
+
+  api.pauseConnection = function(){
+    return sendToSocket('pauseConnection', null, null, null, true);
+  };
+
+  api.resumeConnection = function(){
+    return sendToSocket('resumeConnection', null, null, null, true);
   };
 
 };
