@@ -35,20 +35,81 @@ Peerio.Util.init = function () {
     }
 
     if (phoneExp.test(address)) {
-      var phone = address.match(phoneExp)[0].split('');
-
-      for (var i = 0; i < phone.length; i++) {
-        if (!phone[i].match(/\d/))
-          phone.splice(i, 1);
-      }
-
       return {
         type: 'phone',
-        value: phone.join('')
+        value: address.replace(/\D+/g,'')
       };
     }
 
     return false;
+  };
+
+  /**
+   * Parses an array of contacts from iOS/android. Removes any invalid addresses
+   * parses valid addresses and returns an array of contact objects.
+   * @param [array] device contacts [{name:[],emails:[], phones:[]}]
+   * @return [array] [{name:String,emails:[], phones:[], id:String}]
+   */
+  api.filterDeviceContacts = function(deviceContacts){
+
+    var parsedContacts = [];
+
+    var validatePhone = function(phone){
+      var parsedPhone = Peerio.Util.parseAddress(phone.value);
+      if (parsedPhone) {
+        phone.display = phone.value;
+        phone.value = parsedPhone.value;
+      }
+      return parsedPhone;
+    };
+
+    var validateEmail = function(email){
+      return Peerio.Util.parseAddress(email.value);
+    };
+
+    deviceContacts.forEach(function(contact){
+      parsedContacts.push({
+        id:"contact-"+contact.id,
+        emails: _.filter(contact.emails, validateEmail),
+        name:contact.name.formatted,
+        phones: _.filter(contact.phoneNumbers, validatePhone)
+      });
+    });
+
+    return parsedContacts;
+
+  };
+
+  /**
+   * Parses an array of iOS/android contacts for Peerio.Net.AddressLookup
+   * Address objects require and ID property for lookup.
+   * @param [array] device contacts [{emails:[], phones:[], id:String}]
+   * @return [array] [{id:String, email:String}, {id:String, phone:String}]
+   */
+  api.parseAddressesForLookup = function(deviceContacts){
+
+    var addressLookups = [];
+
+    var processAddress = function(address, contactId) {
+      var parsed = api.parseAddress(address.value);
+      if (parsed) {
+        var parsedObj = {id:contactId};
+        parsedObj[parsed.type] = parsed.value;
+        addressLookups.push(parsedObj);
+      }
+    };
+
+    _.forOwn(deviceContacts, function(contact){
+      _.each(contact.emails, function(email) {
+        processAddress(email, contact.id)
+      });
+
+      _.each(contact.phones, function(phone){
+        processAddress(phone, contact.id)
+      });
+    });
+
+    return addressLookups;
   };
 
   /**

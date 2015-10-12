@@ -393,6 +393,15 @@ Peerio.Net.init = function () {
   };
 
   /**
+   * Sends a contact or invite request to usernames and/or addresses.
+   * @param {object} username or address {add:[{username:String}], invite:[{email:String}]}
+   * @promise
+   */
+  api.addOrInviteContacts = function (contacts) {
+    return sendToSocket('addOrInviteContacts', contacts);
+  };
+
+  /**
    * Cancel a contact request previously sent to a username.
    * @param {string} username
    * @promise
