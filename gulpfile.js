@@ -110,6 +110,7 @@ gulp.task('build-api', function () {
 gulp.task('build-ext-lib', function () {
   // external libraries bundle
   return gulp.src([
+    'bower_components/L.js/L.js',
     'src/crypto/base58.js',
     'bower_components/lodash/lodash.js',
     'bower_components/moment/min/moment-with-locales.min.js',

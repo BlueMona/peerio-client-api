@@ -23,10 +23,8 @@
     "/spec",
     "/src"
   ],
-  "dependencies": {
-    "tweetnacl": "git@github.com:PeerioTechnologies/tweetnacl-js.git#master"
-  },
   "devDependencies": {
+    "tweetnacl": "git@github.com:PeerioTechnologies/tweetnacl-js.git#master",
     "axios": "~0.5.4",
     "blake2s-js": "~1.0.3",
     "bluebird": "~2.10.0",
@@ -37,7 +35,8 @@
     "nacl-stream": "~0.3.3",
     "node-uuid": "~1.4.3",
     "scrypt-async": "~1.1.0",
-    "socket.io-client": "~1.3.5"
+    "socket.io-client": "~1.3.5",
+    "L.js": "~1.0.0"
   },
   "private": true,
   "resolutions": {

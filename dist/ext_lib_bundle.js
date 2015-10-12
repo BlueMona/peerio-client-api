@@ -1,3 +1,184 @@
+/**
+ *  L.js
+ *  ---------------------
+ *  Opinionated, unobtrusive yet powerful logging library originally made for Peerio apps (http://peerio.com).
+ *
+ *  Features:
+ *  - Logging
+ *  - Benchmarking
+ *  - String interpolation: log message may contain repeatable placeholders `{0}{1}{2}{1}`
+ *  - Logging code and calls can be completely wiped out in production builds with regex replace.
+ *
+ *  / Peerio / Anri Asaturov / 2015 /
+ */
+
+
+(function (root) {
+  'use strict';
+  var l = root.L = {};
+
+  //-- constants
+  // log message levels
+  l.LEVELS = {ERROR: 0, INFO: 1, VERBOSE: 2, SILLY: 3};
+  var levelNames = ['ERR', 'INF', 'VER', 'SIL'];
+  var originalConsole;
+  //-- settings
+  // by default benchmarks timeout after this number of seconds
+  l.benchmarkTimeout = 120;
+  // current log level
+  l.level = l.LEVELS.VERBOSE;
+  // amount of log entries to keep in FIFO L.cache queue. Set to 0 to disable.
+  l.cacheLimit = 1000;
+
+  // cached log entries
+  l.cache = [];
+
+  // benchmarks in progress
+  var runningBenchmarks = {};
+
+  // todo remove console writer from release
+  var writers = [console.log.bind(console), addToCache];
+
+  l.error = log.bind(l, l.LEVELS.ERROR);
+  l.info = log.bind(l, l.LEVELS.INFO);
+  l.verbose = log.bind(l, l.LEVELS.VERBOSE);
+  l.silly = log.bind(l, l.LEVELS.SILLY);
+
+  l.captureConsole = function () {
+    try {
+      if (originalConsole) return;
+      originalConsole = {
+        log: root.console.log,
+        error: root.console.error,
+        warn: root.console.warn
+      };
+
+      root.console.log = root.console.warn = function () {
+        l.info(Array.prototype.join.call(arguments, ' '));
+      };
+      root.console.error = function () {
+        l.error(Array.prototype.join.call(arguments, ' '));
+      };
+    } catch (e) {
+      l.error(e);
+    }
+  };
+
+  l.releaseConsole = function () {
+    try {
+      if (!originalConsole) return;
+      root.console.log = originalConsole.log;
+      root.console.error = originalConsole.error;
+      root.console.warn = originalConsole.warn;
+      originalConsole = null;
+    } catch (e) {
+      l.error(e);
+    }
+  };
+
+  //-- Benchmarks ------------------------------------------------------------------------------------------------------
+
+  l.B = {};
+  l.B.enabled = true;
+
+  l.B.start = function (name, msg, timeout) {
+    try {
+      if (!l.B.enabled) return;
+
+      if (runningBenchmarks.hasOwnProperty(name)) {
+        l.error('Duplicate benchmark name');
+        return;
+      }
+
+      runningBenchmarks[name] = {
+        ts: Date.now(),
+        msg: msg,
+        timeoutId: root.setTimeout(l.B.stop.bind(this, name, true), (timeout || l.benchmarkTimeout) * 1000)
+      };
+    } catch (e) {
+      l.error(e);
+      // yes, we are not interested in handling exception
+    }
+  };
+
+  l.B.stop = function (name, timeout) {
+    try {
+      if (!runningBenchmarks.hasOwnProperty(name)) {
+        l.error('Benchmark name {0} not found', name);
+        return;
+      }
+      var b = runningBenchmarks[name];
+      var time = Date.now() - b.ts;
+      delete runningBenchmarks[name];
+      l.info('{0}: {1} | {2} s.', name, timeout ? 'BENCHMARK TIMEOUT' : b.msg, time / 1000);
+      root.clearTimeout(b.timeoutId);
+    } catch (e) {
+      l.error(e);
+      // yes, we are not interested in handling exception
+    }
+  };
+
+  //-- Private -------------------------------------------------------------------------------------------------------
+
+  function log(level, msg) {
+    try {
+      if (level > l.level || writers.length === 0) return;
+      if (typeof(msg) === 'function') msg = msg();
+      var entry = interpolate('{0} {1}: ', [(new Date()).toJSON(), levelNames[level]]) + interpolate(msg, getArguments(arguments));
+      for (var i = 0; i < writers.length; i++)
+        writers[i](entry);
+    } catch (e) {
+      // silently swallowing exception is a bad practice, BUT
+      // 1. we don't want a fault in our logging code to break application
+      // 2. we don't want to send our app into infinite loop/stack overflow by logging this exception (even with console.log)
+      // todo: maybe make this optional
+    }
+  }
+
+  // cache writer
+  function addToCache(msg) {
+    l.cache.unshift(msg);
+
+    if (l.cache.length > l.cacheLimit)
+      l.cache.length = l.cacheLimit;
+  }
+
+  /**
+   * Extracts meaningful arguments from arguments object
+   * @param args
+   */
+  function getArguments(args) {
+    if (args.length <= 2) return null;
+
+    // splice on arguments prevents js optimisation, so we do it a bit longer way
+    var arg = [];
+    for (var i = 2; i < args.length; i++)
+      arg.push(args[i]);
+
+    return arg;
+  }
+
+  /**
+   *  Interpolates string replacing placeholders with arguments
+   *  @param {string | function} str - template string with placeholders in format {0} {1} {2}
+   *                                   where number is argument array index.
+   *                                   Numbers also can be replaced with property names or argument object.
+   *  @param {Array | Object} args - argument array or object
+   *  @returns {string} interpolated string
+   */
+  function interpolate(str, args) {
+    if (typeof str === 'function') str = str();
+
+    if (!args || !args.length) return str;
+
+    return str.replace(/{([^{}]*)}/g,
+      function (a, b) {
+        return args[b];
+      }
+    );
+  }
+
+}(this));
 // Base58 encoding/decoding
 // Originally written by Mike Hearn for BitcoinJ
 // Copyright (c) 2011 Google Inc
@@ -12531,7 +12712,7 @@ llll:"ddd, D MMM YYYY HH:mm"},calendar:{sameDay:"[Hôm nay lúc] LT",nextDay:"[N
  * 
  */
 /**
- * bluebird build version 2.10.1
+ * bluebird build version 2.10.2
  * Features enabled: core, race, call_get, generators, map, nodeify, promisify, props, reduce, settle, some, cancel, using, filter, any, each, timers
 */
 !function(e){if("object"==typeof exports&&"undefined"!=typeof module)module.exports=e();else if("function"==typeof define&&define.amd)define([],e);else{var f;"undefined"!=typeof window?f=window:"undefined"!=typeof global?f=global:"undefined"!=typeof self&&(f=self),f.Promise=e()}}(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof _dereq_=="function"&&_dereq_;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof _dereq_=="function"&&_dereq_;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(_dereq_,module,exports){
@@ -16795,10 +16976,16 @@ var TimeoutError = Promise.TimeoutError;
 
 var afterTimeout = function (promise, message) {
     if (!promise.isPending()) return;
-    if (typeof message !== "string") {
-        message = "operation timed out";
+    
+    var err;
+    if(!util.isPrimitive(message) && (message instanceof Error)) {
+        err = message;
+    } else {
+        if (typeof message !== "string") {
+            message = "operation timed out";
+        }
+        err = new TimeoutError(message);
     }
-    var err = new TimeoutError(message);
     util.markAsOriginatingFromRejection(err);
     promise._attachExtraTrace(err);
     promise._cancel(err);
