@@ -54,6 +54,7 @@ gulp.task('build-socket', function () {
   // we also concatenate it with dependencies
   return gulp.src([
     'src/worker_shim.js',
+    'bower_components/L.js/L.js',
     'bower_components/socket.io-client/socket.io.js',
     'src/network/socket_worker.js'
   ]).pipe(babel(babelOptions))
@@ -71,6 +72,7 @@ gulp.task('build-crypto', function () {
   // crypto worker bundle
   return gulp.src([
     'src/worker_shim.js',
+    'bower_components/L.js/L.js',
     'src/crypto/base58.js',
     'src/crypto/base64shim.js',
     'bower_components/blake2s-js/blake2s.js',
@@ -133,5 +135,5 @@ gulp.task('test', ['watch'], function () {
 });
 //----------------------------------------------------------------------------------------------------------------------
 gulp.task('watch',['build'], function(){
-  gulp.watch('src/**/*', ['build']);
+  gulp.watch(['src/**/*','bower_components/L.js/L.js'], ['build']);
 });

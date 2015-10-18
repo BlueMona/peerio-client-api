@@ -113,16 +113,14 @@ Peerio.Util.init = function () {
   };
 
   /**
-   *  1. detects if message from worker contains 'console.log' property
-   *  2. if it does, prints out value array
-   *  @param {Object} data - object passed by worker
-   *  @returns {boolean} true if it was a 'console.log' message
+   *  1. detects if message from worker contains 'ljsMessage' property
+   *  2. if it does - calls L.rawWrite(message)
+   *  @param {string} data - object passed by worker
+   *  @returns {boolean} true if it was a log message
    */
-  api.processWorkerConsoleLog = function (data) {
-    if (!data.hasOwnProperty('console.log')) return false;
-    var args = data['console.log'];
-    args.unshift('WORKER:');
-    console.log.apply(console, args);
+  api.processWorkerLog = function (data) {
+    if (!data.hasOwnProperty('ljsMessage')) return false;
+    L.rawWrite(data['ljsMessage']);
     return true;
   };
 

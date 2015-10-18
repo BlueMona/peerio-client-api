@@ -9,6 +9,8 @@ Peerio.AppState = {};
 Peerio.AppState.init = function () {
   'use strict';
 
+  L.verbose('Peerio.AppState.init() start');
+
   var api = Peerio.AppState;
   delete Peerio.AppState.init;
   var d = Peerio.Dispatcher;
@@ -27,6 +29,7 @@ Peerio.AppState.init = function () {
    * @param {null|string|number|object|Function} value - the value to set to property. Or function that will return such value.
    */
   api.addStateRule = function (action, property, value) {
+    L.verbose('AppState rule add: action: {0}, property: {1}, value: {2}', action, property, value);
     var setFn;
     if (typeof(value) === 'function') {
       setFn = value.bind(api);
@@ -46,7 +49,8 @@ Peerio.AppState.init = function () {
   };
 
   function setState(prop, value) {
-    this[prop] = value;
+    L.silly('AppState change: {0}={1}', prop, value);
+    api[prop] = value;
   }
 
   // subscribing to state-changing events
@@ -55,10 +59,12 @@ Peerio.AppState.init = function () {
 
   d.onSocketConnect(setState.bind(api, 'connected', true));
   d.onSocketDisconnect(function () {
-    api.connected = false;
-    api.authenticated = false;
+    setState('connected', false);
+    setState('authenticated', false);
   });
 
   d.onAuthenticated(setState.bind(api, 'authenticated', true));
+
+  L.verbose('Peerio.AppState.init() end');
 
 };

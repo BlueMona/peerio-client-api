@@ -1,7 +1,7 @@
 /**
  * Peerio User object
  *
- * todo: not sure if it is really needed, current idea is to put some validations and other simple user-related logic in here
+ *  todo: not sure if it is really needed, current idea is to put some validations and other simple user-related logic in here
  */
 
 var Peerio = this.Peerio || {};

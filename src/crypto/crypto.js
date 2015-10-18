@@ -22,6 +22,8 @@ Peerio.Crypto = {};
 Peerio.Crypto.init = function () {
   'use strict';
 
+  L.verbose('Peerio.Crypto.init() start');
+
   var api = Peerio.Crypto;
   delete Peerio.Crypto.init;
   //-- PRIVATE ---------------------------------------------------------------------------------------------------------
@@ -1069,5 +1071,7 @@ Peerio.Crypto.init = function () {
   function getCachedPublicKey() {
     return (defaultUser && defaultUser.publicKey) || null;
   }
+
+  L.verbose('Peerio.Crypto.init() end');
 
 };

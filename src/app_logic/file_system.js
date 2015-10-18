@@ -13,6 +13,8 @@ Peerio.FileSystem = {};
 Peerio.FileSystem.init = function () {
   'use strict';
 
+  L.verbose('Peerio.FileSystem.init() start');
+
   var api = Peerio.FileSystem;
   delete Peerio.FileSystem.init;
 
@@ -21,7 +23,7 @@ Peerio.FileSystem.init = function () {
 
   function dummy(name) {
     var msg = name + ' not implemented.';
-    console.log(msg);
+    L.error(msg);
     return Promise.reject(msg);
   }
 
@@ -90,29 +92,54 @@ Peerio.FileSystem.init = function () {
    * @param {Blob} blob
    */
   api.cacheCloudFile = function (file, blob) {
+    L.info('Peerio.File.cacheCloudFile(...) id:{0}', file && file.id);
+    L.silly(file);
     return getFilesDirectory()
       .then(function (dir) {
-        return api.plugin.createFile(getLocalName(file), dir);
+        var name = getLocalName(file);
+        L.info('Creating file {0}', name);
+        return api.plugin.createFile(name, dir);
       })
       .then(function (fileEntry) {
+        L.info('Saving file');
         return api.plugin.writeToFile(blob, fileEntry);
+      })
+      .catch(function(e){
+        L.error('Error saving file. {0}', e);
+        return Promise.reject();
       });
   };
 
   api.removeCachedFile = function (file) {
+    L.info('Peerio.File.removeCachedFile() id:{0}', file && file.id);
+    L.silly(file);
     return getFilesDirectory()
       .then(function (dir) {
-        return api.plugin.removeFile(getLocalName(file), dir);
+        var name = getLocalName(file);
+        L.info('Removing file {0}', name);
+        return api.plugin.removeFile(name, dir);
+      })
+      .catch(function(e){
+        L.error('Failed to remove file. {0}', e);
+        return Promise.reject();
       });
   };
 
   api.openFileWithOS = function (file) {
+    L.info('Peerio.File.openFileWithOS() id:{0}', file && file.id);
+    L.silly(file);
     return getFilesDirectory()
       .then(function (dir) {
+        L.info('Getting file entry');
         return api.plugin.getFile(getLocalName(file), dir);
       })
       .then(function (fileEntry) {
+        L.info('Opening file');
         return api.plugin.openFile(fileEntry);
+      })
+      .catch(function(e){
+        L.error('Error opening file with OS. {0}', e);
+        return Promise.reject(e);
       });
   };
 
@@ -121,6 +148,7 @@ Peerio.FileSystem.init = function () {
    * @returns {Promise<string[]>} - file names with extensions
    */
   api.getCachedFileNames = function () {
+    L.info('Peerio.File.getCachedFileNames()');
     return getFilesDirectory()
       .then(function (dir) {
         return api.plugin.getFiles(dir);
@@ -129,6 +157,10 @@ Peerio.FileSystem.init = function () {
         return files.map(function (f) {
           return f.name;
         });
+      })
+      .catch(function(e){
+        L.error('Failed to read cached file list. {0}', e);
+        return Promise.reject();
       });
   };
 
@@ -154,5 +186,7 @@ Peerio.FileSystem.init = function () {
       name = name + '.' + ext;
     return name;
   }
+
+  L.verbose('Peerio.FileSystem.init() end');
 
 };

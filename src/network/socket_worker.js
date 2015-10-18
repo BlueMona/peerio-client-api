@@ -15,6 +15,7 @@
  *       and it will be covered by networking tests anyway.
  */
 
+L.switchToWorkerMode('W_SOCK:');
 
   // First message from UI thread should contain configuration data to initialise worker.
   // All the following messages will be considered data to send through socket.
@@ -126,6 +127,12 @@ function initialize(cfg) {
 // this function receives data from UI thread and sends it through socket
 function messageHandler(payload) {
   var message = payload.data;
+
+  //L.js config
+  if (message.ljsConfig) {
+    L.setOptions(message.ljsConfig);
+    return;
+  }
 
   if (message.name === 'reconnectSocket') {
     console.log('Application logic requested connection reset.');

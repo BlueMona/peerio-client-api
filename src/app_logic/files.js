@@ -8,6 +8,8 @@ Peerio.Files = {};
 Peerio.Files.init = function () {
   'use strict';
 
+  L.verbose('Peerio.Files.init() start');
+
   var api = Peerio.Files;
   delete Peerio.Files.init;
   var net = Peerio.Net;
@@ -31,82 +33,120 @@ Peerio.Files.init = function () {
    * @promise
    */
   api.getAllFiles = function () {
-    if (getAllFilesPromise) return getAllFilesPromise;
+    L.info('Peerio.Files.getAllFiles()');
+    if (getAllFilesPromise) {
+      L.verbose('returning existing getAllFilesPromise');
+      return getAllFilesPromise;
+    }
 
-    if (api.cache)
+    if (api.cache) {
+      L.info('getAllFiles: resolving with cache');
       return Promise.resolve(api.cache);
+    }
 
+    L.B.start('loading files', 'Files loading time');
     var decrypted = [];
     api.cache = [];
+    L.info('Requesting file list from server.');
     return getAllFilesPromise = net.getFiles()
       .then(function (response) {
         var files = response.files;
         var keys = Object.keys(files);
+        L.info('{0} files received. Decrypting and processing.', keys && keys.length);
 
         return Promise.map(keys, function (fileId) {
           var file = files[fileId];
+          L.verbose('Decrypting {0}', fileId);
           return Peerio.Crypto.decryptFileName(fileId, file.header)
             .then(function (name) {
               file.name = name;
               file.shortId = Peerio.Util.sha256(fileId);
               decrypted.push(file);
               decrypted[file.shortId] = file;
+            })
+            .catch(function (e) {
+              L.error('Failed to decrypt and process {0}. {1}', fileId, e);
             });
         }, Peerio.Crypto.recommendedConcurrency)
           .return(decrypted);
       })
       .then(addFilesToCache)
       .then(function () {
-        return Peerio.FileSystem.getCachedFileNames()
-          .catch(function (err) {
-            alert('Failed to read cached files folder. ' + err);
-          });
+        L.info('Mapping file list to cached files.');
+        return Peerio.FileSystem.getCachedFileNames();
       })
       .then(function (cachedNames) {
-        console.log('cached names', cachedNames);
         if (!cachedNames) return;
         cachedNames.forEach(function (name) {
+          L.verbose('Mapping cached file {0}', name);
           var file = api.cache[Peerio.Util.getFileName(name)];
-          if (!file) return; // todo: remove file?
+          if (!file) {
+            // todo: remove file?
+            L.error('Match for locally cached file {0} not found.', name);
+            return;
+          }
           file.cached = true;
-          console.log('Found cached: ', file, name);
         });
       })
       .then(function () {
         Peerio.Action.filesUpdated();
+        L.info('Files loaded.');
         return api.cache;
+      })
+      .catch(function (e) {
+        L.error('Failed loading files. {0}', e);
+        return Promise.reject();
+      })
+      .finally(function () {
+        L.B.stop('loading files');
       });
   };
   api.deleteFromCache = function (shortId) {
+    L.info('Peerio.Files.deleteFromCache({0})', shortId);
     var file = api.cache[shortId];
-    if (!file) return;
+    if (!file) {
+      L.error('File not found in cache. Can\'t delete.');
+      return;
+    }
     Peerio.FileSystem.removeCachedFile(file);
     file.cached = false;
     Peerio.Action.filesUpdated();
   };
-
+  // todo request sent proof
   api.delete = function (shortId) {
+    L.info('Peerio.Files.delete({0})', shortId);
     var file = api.cache[shortId];
-    if (!file) return;
+    if (!file) {
+      L.error('File not found in cache. Can\'t delete.');
+      return;
+    }
     Peerio.FileSystem.removeCachedFile(file);
     net.removeFile(file.id);
   };
 
+  // todo request sent proof
   api.nuke = function (shortId) {
+    L.info('Peerio.Files.nuke({0})', shortId);
     var file = api.cache[shortId];
-    if (!file) return;
+    if (!file) {
+      L.error('File not found in cache. Can\'t delete.');
+      return;
+    }
     Peerio.FileSystem.removeCachedFile(file);
     net.nukeFile(file.id);
   };
 
   api.download = function (file) {
-
+    L.info('Peerio.Files.download() id:', file.id);
     setDownloadState(file, api.DL_STATE.DOWNLOADING);
 
+    L.B.start('download ' + file.shortId);
+    L.info('Requesting url');
     // getting url
     return net.downloadFile(file.id)
-      .then(function (data) {
-        return data && data.url || Promise.reject('Failed to get file url.');
+      .then(function (response) {
+        L.info('Received URL: {0}', response);
+        return response && response.url || Promise.reject('Failed to get file url.');
       })
       // downloading blob
       .then(function (url) {
@@ -114,41 +154,62 @@ Peerio.Files.init = function () {
       })
       // decrypting blob
       .then(function (blob) {
+        L.info('File downloaded. Size = {0}. Decrypting.', blob.size);
         setDownloadState(file, api.DL_STATE.DECRYPTING);
         return Peerio.Crypto.decryptFile(file.id, blob, file);
       })
       // saving blob
       .then(function (decrypted) {
+        L.info('File decrypted. Size = {0}. Saving.', decrypted.size);
         setDownloadState(file, api.DL_STATE.SAVING);
         return Peerio.FileSystem.cacheCloudFile(file, decrypted);
       })
       .then(function () {
         file.cached = true;
-        setDownloadState(file, null);
       })
       .catch(function (reason) {
+        L.error('Failed to download file. {0}', reason);
+        return Promise.reject(reason);
+      })
+      .finally(function () {
         setDownloadState(file, null);
-        alert('failed to download file. ' + reason);
+        L.B.stop('download ' + file.shortId);
       });
   };
 
-  api.fetch = function(fileid){
-    return net.getFile(fileid).then(addFile);
+  api.fetch = function (fileid) {
+    L.info('Peerio.Files.fetch({0})', fileid);
+    return net.getFile(fileid)
+      .then(addFile)
+      .catch(function (e) {
+        L.error('Failed to fetch file', e);
+        return Promise.reject();
+      });
   };
 
+  var uploadCounter = 0;
   api.upload = function (fileUrl) {
+    var uploadNum = uploadCounter++;
+    L.info('#{0} Peerio.Files.upload({1})', uploadNum, fileUrl);
+    L.B.start('#{0} upload', uploadNum);
     var encrypted;
     // temporary file id for current upload, helps identifying chunks
     var clientFileID = Base58.encode(nacl.randomBytes(32));
     addUploadState(clientFileID, fileUrl);
 
+    L.info('#{0} Opening file', uploadNum);
     return Peerio.FileSystem.plugin.getByURL(fileUrl)
-      .then(Peerio.FileSystem.plugin.readFile)
+      .then(function (fileEntry) {
+        L.info('#{0} Reading file', uploadNum);
+        return Peerio.FileSystem.plugin.readFile(fileEntry);
+      })
       .then(function (file) {
+        L.info('#{0} Encrypting file', uploadNum);
         changeUploadState(clientFileID, api.UL_STATE.ENCRYPTING);
         return Peerio.Crypto.encryptFile(file.data, file.file.name);
       })
       .then(function (data) {
+        L.info('#{0} Uploading file', uploadNum);
         changeUploadState(clientFileID, api.UL_STATE.UPLOADING_META);
         // todo: failed recipients
         encrypted = data;
@@ -162,16 +223,17 @@ Peerio.Files.init = function () {
         //todo: server sends data.id which is === fileID, do we need to check if that's true?
         //todo: or should server stop sending it?
         //todo: or should crypto not return it and wait for server?
-        console.log('file info uploaded, ids match:', data.id === encrypted.fileName);
+        L.info('#{0} File info uploaded, ids match: {1}', uploadNum, data.id === encrypted.fileName);
       })
       .then(function () {
+        L.info('#{0} Uploading chunks', uploadNum);
         changeUploadState(clientFileID, api.UL_STATE.UPLOADING_CHUNKS, 1, encrypted.chunks.length - 1);
         return Promise.each(encrypted.chunks, function (chunk, index) {
           // skipping file name
           if (index === 0) return;
 
           changeUploadState(clientFileID, api.UL_STATE.UPLOADING_CHUNKS, index);
-
+          L.verbose('#{0} Uploading chunk {1}/{2}. Size: {3}', uploadNum, index, encrypted.chunks.length - 1, chunk.buffer.length);
           var dto = {
             ciphertext: chunk.buffer,
             chunkNumber: index - 1,//we skip first chunk (file name)
@@ -183,8 +245,13 @@ Peerio.Files.init = function () {
         });
 
       })
-      .finally(function(){
-        changeUploadState(clientFileID,null);
+      .catch(function (e) {
+        L.error('#{0} Upload failed. {1}', uploadNum, e);
+        return Promise.reject();
+      })
+      .finally(function () {
+        changeUploadState(clientFileID, null);
+        L.B.stop('#{0} upload', uploadNum);
       });
 
   };
@@ -242,9 +309,8 @@ Peerio.Files.init = function () {
       };
 
       xhr.onreadystatechange = function () {
-        console.log('readystate ' + this.readyState + ' status ' + this.status);
         if (this.readyState !== 4) return;
-
+        L.info('Download {0} finished with {1}({2}). Response size: {3}', this.responseURL, this.statusText, this.status, this.response.size);;
         //todo: not all success results might have status 200
         if (this.status !== 200)
           reject(this);
@@ -265,6 +331,7 @@ Peerio.Files.init = function () {
    * @param files
    */
   function addFilesToCache(files) {
+    L.info('adding {0} files to cache', files.length);
     files.forEach(function (item) {
       if (api.cache[item.id]) return;
       api.cache.push(item);
@@ -302,5 +369,7 @@ Peerio.Files.init = function () {
         Peerio.Action.filesUpdated();
       });
   }
+
+  L.verbose('Peerio.Files.init() send');
 
 };

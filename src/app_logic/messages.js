@@ -8,6 +8,8 @@ Peerio.Messages = {};
 Peerio.Messages.init = function () {
   'use strict';
 
+  L.verbose('Peerio.Messages.init() start');
+
   var api = Peerio.Messages;
   delete Peerio.Messages.init;
   var net = Peerio.Net;
@@ -17,25 +19,25 @@ Peerio.Messages.init = function () {
 
   var getAllConversationsPromise = null;
 
-  api.onMessageAdded = function (message) {
+  function onMessageAdded(message) {
+    L.info('Handling MessageAdded server event');
     var convPromise = api.cache[message.conversationID] ? Promise.resolve() : api.getOneConversation(message.conversationID);
 
     convPromise.then(function () {return decryptMessage(message);})
       .then(function (decrypted) {
-        if(!decrypted) return Promise.reject();
+        if (!decrypted) return Promise.reject();
         decrypted.isModified = true;
-        if(decrypted.fileIDs) decrypted.fileIDs.forEach(function(fileid){
-          if(Peerio.Files.cache.hasOwnProperty(fileid)) return;
+        if (decrypted.fileIDs) decrypted.fileIDs.forEach(function (fileid) {
+          if (Peerio.Files.cache.hasOwnProperty(fileid)) return;
           Peerio.Files.fetch(fileid);
         });
         return addMessageToCache(message.conversationID, decrypted);
       })
       .then(Peerio.Action.messageAdded.bind(null, message.conversationID));
-  };
+  }
 
-  net.injectPeerioEventHandler('messageAdded', api.onMessageAdded);
-
-  net.injectPeerioEventHandler('messageRead', function (data) {
+  function onMessageRead(data) {
+    L.info('Handling MessageRead server event');
     var message = api.cache[data.conversationID].messages[data.messageID];
 
     Promise.map(data.recipients, function (recipient) {
@@ -50,26 +52,32 @@ Peerio.Messages.init = function () {
           }
         });
 
-    })
-      .then(function () {
-        Peerio.Action.receiptAdded(data.conversationID);
-      });
-  });
+    }).then(function () {
+      Peerio.Action.receiptAdded(data.conversationID);
+    });
+  }
 
-
-  api.removeConversation = function(id){
-    net.removeConversation([id]);
-  };
-
-  net.injectPeerioEventHandler('conversationRemoved', function(data){
-    var i = _.findIndex(api.cache, function(c){ return c.id === data.id;});
-    if(i<0) return;
+  function onConversationRemoved(data) {
+    L.info('Handling ConversationRemoved server event');
+    var i = _.findIndex(api.cache, function (c) { return c.id === data.id;});
+    if (i < 0) return;
     api.cache.splice(i, 1);
     delete api.cache[data.id];
     Peerio.Action.conversationsUpdated();
-  });
+  }
+
+  net.injectPeerioEventHandler('messageAdded', onMessageAdded);
+  net.injectPeerioEventHandler('messageRead', onMessageRead);
+  net.injectPeerioEventHandler('conversationRemoved', onConversationRemoved);
+
+  // todo: request proof, error handling
+  api.removeConversation = function (id) {
+    L.info('Peerio.Messages.removeConversation({0})', id);
+    net.removeConversation([id]);
+  };
 
   api.getOneConversation = function (id) {
+    L.info('Peerio.Messages.getOneConversation({0})', id);
     if (api.cache[id]) Promise.resolve();
     return net.getConversationPages([{id: id, page: -1}])
       .then(function (response) {
@@ -86,6 +94,7 @@ Peerio.Messages.init = function () {
    * @promise
    */
   api.getAllConversations = function () {
+    L.info('Peerio.Messages.getAllConversations()');
 
     if (getAllConversationsPromise) return getAllConversationsPromise;
 
@@ -108,7 +117,7 @@ Peerio.Messages.init = function () {
         return pages;
       })
       .then(function (pages) {
-        if(pages.length === 0 ) Peerio.Action.conversationsUpdated();
+        if (pages.length === 0) Peerio.Action.conversationsUpdated();
         // Promise.each executes next function call after previous promise is resolved
         return Promise.each(pages, function (page) {
           return net.getConversationPages(page)
@@ -130,6 +139,7 @@ Peerio.Messages.init = function () {
   };
 
   api.loadAllConversationMessages = function (conversationID) {
+    L.info('Peerio.Messages.loadAllConversationMessages({0})', conversationID);
     var conversation = api.cache[conversationID];
     if (conversation._pendingLoadPromise) return conversation._pendingLoadPromise;
 
@@ -137,7 +147,7 @@ Peerio.Messages.init = function () {
       var page = 0;
       var load = function () {
         loadPage(conversation, page).then(function (length) {
-          if (length === 0){
+          if (length === 0) {
             resolve(conversation);
             return;
           }
@@ -164,6 +174,7 @@ Peerio.Messages.init = function () {
   }
 
   api.markAsRead = function (conversation) {
+    L.info('Peerio.Messages.markAsRead({0})', conversation.id);
     var toSend = [];
     Promise.map(conversation.messages, function (msg) {
       if (!msg.isModified) return;
@@ -181,6 +192,7 @@ Peerio.Messages.init = function () {
   };
 
   api.markModifiedConversations = function () {
+    L.info('Peerio.Messages.markModifiedConversations()');
     return Peerio.Net.getModifiedMessageIDs()
       .then(function (resp) { return Peerio.Net.getMessages(resp.messageIDs);})
       .then(function (resp) {
@@ -227,6 +239,7 @@ Peerio.Messages.init = function () {
   }
 
   api.sendMessage = function (recipients, subject, body, fileIds, conversationID) {
+    L.info('Peerio.Messages.sendMessage({0}, , , {1}, {2})', recipients, fileIds, conversationID);
     if (recipients.indexOf(Peerio.user.username) < 0)
       recipients.push(Peerio.user.username);
 
@@ -327,7 +340,7 @@ Peerio.Messages.init = function () {
       return decryptMessage(encMessage)
         .then(function (message) {
           // can't proceed unless we decrypted original message
-          if(!message) return;
+          if (!message) return;
           conv.original = message;
           // both indexed and associative ways to store conversation
           decryptedConversations[convId] = conv;
@@ -361,7 +374,7 @@ Peerio.Messages.init = function () {
     return Promise.map(keys, function (msgId) {
       return decryptMessage(messages[msgId]);
     }, Peerio.Crypto.recommendedConcurrency)
-      .filter(function(msg){
+      .filter(function (msg) {
         return !!msg;
       });
   }
@@ -380,10 +393,12 @@ Peerio.Messages.init = function () {
         message.moment = moment(message.timestamp);
         message.isModified = encMessage.isModified;
         return message;
-      }).catch(function(){
+      }).catch(function () {
         console.log('failed to decrypt message: ', encMessage);
         return null;
       });
   }
+
+  L.verbose('Peerio.Messages.init() stop');
 
 };

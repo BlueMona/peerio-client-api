@@ -6,6 +6,15 @@
 (function () {
   'use strict';
 
+  // worker ID generation
+  // 3 digits, collision is not critical and unlikely
+  // this is diagnostic data, doesn't affect logic
+  var letters = ['A', 'B', 'C', 'E', 'F', 'K', 'L', 'H', 'X', 'Z']; // just a random 10 letters to encode id for easier reading
+  self.peerioWorkerId = letters[Math.trunc(Math.random() * 10)]
+    + letters[Math.trunc(Math.random() * 10)]
+    + letters[Math.trunc(Math.random() * 10)];
+  L.switchToWorkerMode('W_CRPT_' + self.peerioWorkerId + ': ');
+
   Peerio.Crypto.init();
 
   // service functions are there for performance reasons and they don't provide response
@@ -30,12 +39,23 @@
   self.onmessage = function (payload) {
     var message = payload.data;
 
-    if (message.randomBytes) {
-      console.log(message.randomBytes.length, 'random bytes received');
-      var newArray = Array.prototype.slice.call(new Uint8Array(message.randomBytes));
-      Array.prototype.push.apply(randomBytesStock, newArray);
-      console.log(randomBytesStock.length,'randombytes now in stock');
-      return;
+    // not a crypto function call)
+    if (!message.fnName) {
+      // random bytes
+      if (message.randomBytes) {
+        var bytes = new Uint8Array(message.randomBytes);
+        console.log(bytes.length, 'random bytes received');
+        var newArray = Array.prototype.slice.call(bytes);
+        Array.prototype.push.apply(randomBytesStock, newArray);
+        console.log(randomBytesStock.length, 'randombytes now in stock');
+        return;
+      }
+
+      //L.js config
+      if (message.ljsConfig) {
+        L.setOptions(message.ljsConfig);
+        return;
+      }
     }
 
     if (serviceFunctions.indexOf(message.fnName) >= 0) {

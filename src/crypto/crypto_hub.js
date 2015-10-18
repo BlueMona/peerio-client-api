@@ -39,9 +39,10 @@ Peerio.Crypto.init = function () {
   // worker message handler
   function messageHandler(index, message) {
     var data = message.data;
-    if (Peerio.Util.processWorkerConsoleLog(data)) return;
 
-    provideRandomBytes && ensureRandomBytesStock(index, data.randomBytesStock);
+    if (Peerio.Util.processWorkerLog(data)) return;
+
+    if(provideRandomBytes) ensureRandomBytesStock(index, data.randomBytesStock);
 
     var promise = callbacks[data.id];
     if (!promise) return;
@@ -59,7 +60,7 @@ Peerio.Crypto.init = function () {
     var worker = workers[index] = new Worker(workerScriptPath);
     // first message will be a feature report from worker
     worker.onmessage = function (message) {
-      if (Peerio.Util.processWorkerConsoleLog(message.data)) return;
+      if (Peerio.Util.processWorkerLog(message.data)) return;
       // all next messages are for different handler
       worker.onmessage = messageHandler.bind(self, index);
 
