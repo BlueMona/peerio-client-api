@@ -56,7 +56,7 @@ xdescribe('Peerio network protocol', function () {
       })
         .then(function (publicKey) {
           self.user.publicKey = publicKey;
-          self.accountInfo = new Peerio.Model.AccountInfo(self.user.username, self.user.firstName,
+          self.accountInfo = new Peerio.AccountInfo(self.user.username, self.user.firstName,
             self.user.lastName, self.user.publicKey, 'en');
           done();
         })
@@ -106,5 +106,7 @@ xdescribe('Peerio network protocol', function () {
     //expect(response.address).toEqual(self.accountInfo.address);
     //expect(response.miniLockID).toBe(self.user.publicKey);
   });
+
+});;
 
 });

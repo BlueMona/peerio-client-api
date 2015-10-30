@@ -1,7 +1,6 @@
 // Peerio AccountInfo object
 
 var Peerio = this.Peerio || {};
-Peerio.Model = Peerio.Model || {};
 
 (function () {
   'use strict';
@@ -14,8 +13,7 @@ Peerio.Model = Peerio.Model || {};
    * @param localeCode
    * @constructor
    */
-  Peerio.Model.AccountInfo = function (username, firstName, lastName, publicKey, localeCode) {
-
+  Peerio.AccountInfo = function (username, firstName, lastName, publicKey, localeCode) {
     this.username = username;
     this.firstName = firstName;
     this.lastName = lastName;

@@ -120,7 +120,7 @@ Peerio.Util.init = function () {
    */
   api.processWorkerLog = function (data) {
     if (!data.hasOwnProperty('ljsMessage')) return false;
-    L.rawWrite(data['ljsMessage']);
+    L.rawWrite(data.ljsMessage, data.level);
     return true;
   };
 

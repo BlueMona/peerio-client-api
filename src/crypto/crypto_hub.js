@@ -14,6 +14,8 @@ Peerio.Crypto = {};
 Peerio.Crypto.init = function () {
   'use strict';
 
+  L.verbose('CryptoHub: Peerio.Crypto.init() start');
+
   var self = this;
   delete Peerio.Crypto.init;
 
@@ -157,5 +159,7 @@ Peerio.Crypto.init = function () {
         return ret;
       };
     });
+
+  L.verbose('CryptoHub: Peerio.Crypto.init() end');
 
 };
