@@ -43,8 +43,8 @@ var Peerio = this.Peerio || {};
                     publicKey: user.publicKey,
                     keyPair: user.keyPair
                 }))
-                .then(() => Peerio.SqlDB.openUserDB(user.username, user.passphrase))
-                .then(db => Peerio.SqlMigrator.migrateUp(db))
+                //.then(() => Peerio.SqlDB.openUserDB(user.username, user.passphrase))
+                //.then(db => Peerio.SqlMigrator.migrateUp(db))
                 .then(() => Peerio.Crypto.setDefaultUserData(username, user.keyPair, user.publicKey))
                 .then(() => {
                     Peerio.Net.subscribe(Peerio.Net.EVENTS.onAuthenticated, reSync);
@@ -63,10 +63,10 @@ var Peerio = this.Peerio || {};
                 .then(() => {
                     // a bit ugly but we need app to be usable while messages are syncing,
                     // so reSync promise needs to be resolved before messages are done syncing
-                    window.setTimeout(()=> {
-                        Peerio.Sync.syncMessages()
-                            .then(() => Peerio.MessagesEventHandler.resume());
-                    }, 0);
+                    //window.setTimeout(()=> {
+                    //    Peerio.Sync.syncMessages()
+                    //        .then(() => Peerio.MessagesEventHandler.resume());
+                    //}, 0);
                 });
         }
 
