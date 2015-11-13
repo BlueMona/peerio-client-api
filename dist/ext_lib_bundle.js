@@ -14,311 +14,310 @@
 
 
 (function (root) {
-    'use strict';
-    var l = root.L = {};
+  'use strict';
+  var l = root.L = {};
 
-    //-- constants
-    // log message levels
-    l.LEVELS = {ERROR: 0, INFO: 1, VERBOSE: 2, SILLY: 3};
-    var levelNames = ['ERR', 'INF', 'VER', 'SIL'];
-    levelNames['-1'] = 'BNC';
-    var originalConsole, originalOnError, onErrorIsCaptured = false;
-    //-- settings
-    // current log level
-    l.level = l.LEVELS.INFO;
-    // amount of log entries to keep in FIFO L.cache queue. Set to 0 to disable.
-    l.cacheLimit = 1000;
+  //-- constants
+  // log message levels
+  l.LEVELS = {ERROR: 0, INFO: 1, VERBOSE: 2, SILLY: 3};
+  var levelNames = ['ERR', 'INF', 'VER', 'SIL'];
+  levelNames['-1'] = 'BNC';
+  var originalConsole, originalOnError, onErrorIsCaptured = false;
+  //-- settings
+  // current log level
+  l.level = l.LEVELS.INFO;
+  // amount of log entries to keep in FIFO L.cache queue. Set to 0 to disable.
+  l.cacheLimit = 1000;
 
-    l.benchmarkEnabled = true;
-    // by default benchmarks timeout after this number of seconds
-    l.benchmarkTimeout = 120;
-    // cached log entries
-    l.cache = [];
-    // registered web workers
-    var workers = [];
-    // benchmarks in progress
-    var runningBenchmarks = {};
+  l.benchmarkEnabled = true;
+  // by default benchmarks timeout after this number of seconds
+  l.benchmarkTimeout = 120;
+  // cached log entries
+  l.cache = [];
+  // registered web workers
+  var workers = [];
+  // benchmarks in progress
+  var runningBenchmarks = {};
 
-    // todo remove console writer from release
-    var writers = [consoleWriter, addToCache];
+  // todo remove console writer from release
+  var writers = [consoleWriter, addToCache];
 
-    l.error = log.bind(l, l.LEVELS.ERROR);
-    l.info = log.bind(l, l.LEVELS.INFO);
-    l.verbose = log.bind(l, l.LEVELS.VERBOSE);
-    l.silly = log.bind(l, l.LEVELS.SILLY);
+  l.error = log.bind(l, l.LEVELS.ERROR);
+  l.info = log.bind(l, l.LEVELS.INFO);
+  l.verbose = log.bind(l, l.LEVELS.VERBOSE);
+  l.silly = log.bind(l, l.LEVELS.SILLY);
 
-    /**
-     * Writes message without any pre-processing
-     * This is useful when writing pre-processed messages received from web worker
-     * @param msg
-     * @param [level]
-     */
-    l.rawWrite = function (msg, level) {
-        for (var i = 0; i < writers.length; i++)
-            writers[i](msg, level);
-    };
-    /**
-     * Overrides console.log, console.error and console.warn.
-     * Reroutes overridden calls to self.
-     */
-    l.captureConsole = function () {
-        try {
-            if (originalConsole) return;
+  /**
+   * Writes message without any pre-processing
+   * This is useful when writing pre-processed messages received from web worker
+   * @param msg
+   * @param [level]
+   */
+  l.rawWrite = function (msg, level) {
+    for (var i = 0; i < writers.length; i++)
+      writers[i](msg, level);
+  };
+  /**
+   * Overrides console.log, console.error and console.warn.
+   * Reroutes overridden calls to self.
+   */
+  l.captureConsole = function () {
+    try {
+      if (originalConsole) return;
 
-            if (!root.console) root.console = {};
+      if (!root.console) root.console = {};
 
-            originalConsole = {
-                log: root.console.log,
-                error: root.console.error,
-                warn: root.console.warn
-            };
+      originalConsole = {
+        log: root.console.log,
+        error: root.console.error,
+        warn: root.console.warn
+      };
 
-            root.console.log = root.console.warn = function () {
-                for (var i = 0; i < arguments.length; i++)
-                    l.info(arguments[i]);
-            };
-            root.console.error = function () {
-                for (var i = 0; i < arguments.length; i++)
-                    l.error(arguments[i]);
-            };
-        } catch (e) {
-            l.error(e);
-        }
-    };
-
-    /**
-     * Brings back console functions to the state they were before capturing
-     */
-    l.releaseConsole = function () {
-        try {
-            if (!originalConsole) return;
-            root.console.log = originalConsole.log;
-            root.console.error = originalConsole.error;
-            root.console.warn = originalConsole.warn;
-            originalConsole = null;
-        } catch (e) {
-            l.error(e);
-        }
-    };
-
-    function consoleWriter(msg, level) {
-        if (msg == null) msg = 'null';
-        if (originalConsole) {
-            if (level === l.LEVELS.ERROR)
-                originalConsole.error.call(root.console, msg);
-            else
-                originalConsole.log.call(root.console, msg);
-        } else {
-            if (level === l.LEVELS.ERROR)
-                root.console.error(msg);
-            else
-                root.console.log(msg);
-        }
+      root.console.log = root.console.warn = function () {
+        for (var i = 0; i < arguments.length; i++)
+          l.info(arguments[i]);
+      };
+      root.console.error = function () {
+        for (var i = 0; i < arguments.length; i++)
+          l.error(arguments[i]);
+      };
+    } catch (e) {
+      l.error(e);
     }
+  };
 
-    l.captureRootErrors = function () {
-        try {
-            if (onErrorIsCaptured) return;
-            onErrorIsCaptured = true;
-            originalOnError = root.onerror;
-            root.onerror = l.error;
-        } catch (e) {
-            l.error(e);
-        }
-    };
-
-    l.releaseRootErrors = function () {
-        try {
-            if (!onErrorIsCaptured) return;
-            onErrorIsCaptured = false;
-            root.onerror = originalOnError;
-        } catch (e) {
-            l.error(e);
-        }
-    };
-
-    l.switchToWorkerMode = function (workerName) {
-        l.captureConsole();
-        l.captureRootErrors();
-        l.workerName = workerName;
-        l.cacheLimit = 0;
-        writers = [postToUIThread];
-    };
-
-    /**
-     * Updates L.js options with values provided in config object.
-     * This function is supposed to be used when running in web worker,
-     * so it ignores irrelevant options
-     * @param options {{level: Number, benchmarkEnabled: Boolean, benchmarkTimeout: Number}}
-     */
-    l.setOptions = function (options) {
-        if (options.level) l.level = options.level;
-        if (options.benchmarkEnabled) l.level = options.benchmarkEnabled;
-        if (options.benchmarkTimeout) l.level = options.benchmarkTimeout;
-    };
-
-    l.setWorkersOptions = function (options) {
-        workers.forEach(function (w) {
-            w.postMessage(options);
-        });
-    };
-
-    l.addWorker = function (worker) {
-        if (workers.indexOf(worker) >= 0) return;
-        workers.push(worker);
-    };
-
-    l.removeWorker = function (worker) {
-        var ind = workers.indexOf(worker);
-        if (ind < 0) return;
-        workers.splice(ind, 1);
-    };
-
-    //-- Benchmarks ------------------------------------------------------------------------------------------------------
-
-    l.B = {};
-
-    l.B.start = function (name, msg, timeout) {
-        try {
-            if (!l.benchmarkEnabled) return;
-
-            if (runningBenchmarks.hasOwnProperty(name)) {
-                l.error('Duplicate benchmark name');
-                return;
-            }
-
-            runningBenchmarks[name] = {
-                ts: Date.now(),
-                msg: msg,
-                timeoutId: root.setTimeout(l.B.stop.bind(this, name, true), (timeout || l.benchmarkTimeout) * 1000)
-            };
-        } catch (e) {
-            l.error(e);
-            // yes, we are not interested in handling exception
-        }
-    };
-
-    l.B.stop = function (name, timeout) {
-        try {
-            if (!runningBenchmarks.hasOwnProperty(name)) {
-                l.error('Benchmark name {0} not found', name);
-                return;
-            }
-            var b = runningBenchmarks[name];
-            var time = Date.now() - b.ts;
-            delete runningBenchmarks[name];
-            log(-1, '{0}: {1} | {2} s.', name, timeout ? 'BENCHMARK TIMEOUT' : b.msg || '', time / 1000);
-            root.clearTimeout(b.timeoutId);
-        } catch (e) {
-            l.error(e);
-            // yes, we are not interested in handling exception
-        }
-    };
-
-    //-- Private -------------------------------------------------------------------------------------------------------
-
-    function log(level, msg) {
-        try {
-
-            if (level > l.level || writers.length === 0) return;
-            if (typeof(msg) === 'function') msg = msg();
-
-            msg = stringify(msg);
-
-            var head =
-                l.workerName
-                    ? interpolate('{0} {1}:{2} ', [getTimestamp(), levelNames[level], l.workerName])
-                    : interpolate('{0} {1}: ', [getTimestamp(), levelNames[level]]);
-
-            var entry = head + interpolate(msg, getArguments(arguments));
-            l.rawWrite(entry, level);
-
-        } catch (e) {
-            try {
-                l.error(e);
-            } catch (e) {
-                // well.. we tried
-            }
-        }
+  /**
+   * Brings back console functions to the state they were before capturing
+   */
+  l.releaseConsole = function () {
+    try {
+      if (!originalConsole) return;
+      root.console.log = originalConsole.log;
+      root.console.error = originalConsole.error;
+      root.console.warn = originalConsole.warn;
+      originalConsole = null;
+    } catch (e) {
+      l.error(e);
     }
+  };
 
-    // cache writer
-    function addToCache(msg) {
-        l.cache.unshift(msg);
-
-        if (l.cache.length > l.cacheLimit)
-            l.cache.length = l.cacheLimit;
+  function consoleWriter(msg, level) {
+    if (originalConsole) {
+      if (level === l.LEVELS.ERROR)
+        originalConsole.error.call(root.console, msg);
+      else
+        originalConsole.log.call(root.console, msg);
+    } else {
+      if (level === l.LEVELS.ERROR)
+        root.console.error(msg);
+      else
+        root.console.log(msg);
     }
+  }
 
-    // worker mode writer
-    function postToUIThread(msg, level) {
-        root.postMessage({ljsMessage: msg, level: level});
+  l.captureRootErrors = function () {
+    try {
+      if (onErrorIsCaptured) return;
+      onErrorIsCaptured = true;
+      originalOnError = root.onerror;
+      root.onerror = l.error;
+    } catch (e) {
+      l.error(e);
     }
+  };
 
-    /**
-     * Extracts meaningful arguments from arguments object
-     * @param args
-     */
-    function getArguments(args) {
-        if (args.length <= 2) return null;
-
-        // splice on arguments prevents js optimisation, so we do it a bit longer way
-        var arg = [];
-        for (var i = 2; i < args.length; i++)
-            arg.push(args[i]);
-
-        return arg;
+  l.releaseRootErrors = function () {
+    try {
+      if (!onErrorIsCaptured) return;
+      onErrorIsCaptured = false;
+      root.onerror = originalOnError;
+    } catch (e) {
+      l.error(e);
     }
+  };
 
-    /**
-     *  Interpolates string replacing placeholders with arguments
-     *  @param {string} str - template string with placeholders in format {0} {1} {2}
-     *                                   where number is argument array index.
-     *                                   Numbers also can be replaced with property names or argument object.
-     *  @param {Array | Object} args - argument array or object
-     *  @returns {string} interpolated string
-     */
-    function interpolate(str, args) {
-        if (!args || !args.length) return str;
+  l.switchToWorkerMode = function (workerName) {
+    l.captureConsole();
+    l.captureRootErrors();
+    l.workerName = workerName;
+    l.cacheLimit = 0;
+    writers = [postToUIThread];
+  };
 
-        return str.replace(/{([^{}]*)}/g,
-            function (a, b) {
-                return stringify(args[b]);
-            }
-        );
+  /**
+   * Updates L.js options with values provided in config object.
+   * This function is supposed to be used when running in web worker,
+   * so it ignores irrelevant options
+   * @param options {{level: Number, benchmarkEnabled: Boolean, benchmarkTimeout: Number}}
+   */
+  l.setOptions = function (options) {
+    if (options.level) l.level = options.level;
+    if (options.benchmarkEnabled) l.level = options.benchmarkEnabled;
+    if (options.benchmarkTimeout) l.level = options.benchmarkTimeout;
+  };
+
+  l.setWorkersOptions = function (options) {
+    workers.forEach(function (w) {
+      w.postMessage(options);
+    });
+  };
+
+  l.addWorker = function (worker) {
+    if (workers.indexOf(worker) >= 0) return;
+    workers.push(worker);
+  };
+
+  l.removeWorker = function (worker) {
+    var ind = workers.indexOf(worker);
+    if (ind < 0) return;
+    workers.splice(ind, 1);
+  };
+
+  //-- Benchmarks ------------------------------------------------------------------------------------------------------
+
+  l.B = {};
+
+  l.B.start = function (name, msg, timeout) {
+    try {
+      if (!l.benchmarkEnabled) return;
+
+      if (runningBenchmarks.hasOwnProperty(name)) {
+        l.error('Duplicate benchmark name');
+        return;
+      }
+
+      runningBenchmarks[name] = {
+        ts: Date.now(),
+        msg: msg,
+        timeoutId: root.setTimeout(l.B.stop.bind(this, name, true), (timeout || l.benchmarkTimeout) * 1000)
+      };
+    } catch (e) {
+      l.error(e);
+      // yes, we are not interested in handling exception
     }
+  };
 
-    // Opinionated any-value to string converter
-    function stringify(val) {
-        if (typeof(val) === 'string') return val;
-
-        if (val instanceof Error)
-            return val.message + ' ' + val.stack;
-
-        if (val instanceof Date)
-            return val.toISOString();
-
-        return JSON.stringify(val);
+  l.B.stop = function (name, timeout) {
+    try {
+      if (!runningBenchmarks.hasOwnProperty(name)) {
+        l.error('Benchmark name {0} not found', name);
+        return;
+      }
+      var b = runningBenchmarks[name];
+      var time = Date.now() - b.ts;
+      delete runningBenchmarks[name];
+      log(-1, '{0}: {1} | {2} s.', name, timeout ? 'BENCHMARK TIMEOUT' : b.msg || '', time / 1000);
+      root.clearTimeout(b.timeoutId);
+    } catch (e) {
+      l.error(e);
+      // yes, we are not interested in handling exception
     }
+  };
 
-    function getTimestamp() {
-        var d = new Date();
-        return pad(d.getDate())
-            + '.' + pad(d.getUTCHours()) + pad(d.getUTCMinutes()) + pad(d.getUTCSeconds())
-            + '.' + pad2(d.getUTCMilliseconds());
-    }
+  //-- Private -------------------------------------------------------------------------------------------------------
 
-    // performance over fanciness
-    function pad(n) {
-        var ret = n.toString();
-        return ret.length === 2 ? ret : ('0' + ret);
-    }
+  function log(level, msg) {
+    try {
 
-    // performance over fanciness
-    function pad2(n) {
-        var ret = n.toString();
-        return ret.length === 3 ? ret : ( ret.length === 2 ? ('0' + ret) : ('00' + ret));
+      if (level > l.level || writers.length === 0) return;
+      if (typeof(msg) === 'function') msg = msg();
+
+      msg = stringify(msg);
+
+      var head =
+        l.workerName
+          ? interpolate('{0} {1}:{2} ', [getTimestamp(), levelNames[level], l.workerName])
+          : interpolate('{0} {1}: ', [getTimestamp(), levelNames[level]]);
+
+      var entry = head + interpolate(msg, getArguments(arguments));
+      l.rawWrite(entry, level);
+
+    } catch (e) {
+      try {
+        l.error(e);
+      } catch (e) {
+        // well.. we tried
+      }
     }
+  }
+
+  // cache writer
+  function addToCache(msg) {
+    l.cache.unshift(msg);
+
+    if (l.cache.length > l.cacheLimit)
+      l.cache.length = l.cacheLimit;
+  }
+
+  // worker mode writer
+  function postToUIThread(msg, level) {
+    root.postMessage({ljsMessage: msg, level: level});
+  }
+
+  /**
+   * Extracts meaningful arguments from arguments object
+   * @param args
+   */
+  function getArguments(args) {
+    if (args.length <= 2) return null;
+
+    // splice on arguments prevents js optimisation, so we do it a bit longer way
+    var arg = [];
+    for (var i = 2; i < args.length; i++)
+      arg.push(args[i]);
+
+    return arg;
+  }
+
+  /**
+   *  Interpolates string replacing placeholders with arguments
+   *  @param {string} str - template string with placeholders in format {0} {1} {2}
+   *                                   where number is argument array index.
+   *                                   Numbers also can be replaced with property names or argument object.
+   *  @param {Array | Object} args - argument array or object
+   *  @returns {string} interpolated string
+   */
+  function interpolate(str, args) {
+    if (!args || !args.length) return str;
+
+    return str.replace(/{([^{}]*)}/g,
+      function (a, b) {
+        return stringify(args[b]);
+      }
+    );
+  }
+
+  // Opinionated any-value to string converter
+  function stringify(val) {
+    if (typeof(val) === 'string') return val;
+
+    if (val instanceof Error)
+      return val.message + ' ' + val.stack;
+
+    if (val instanceof Date)
+      return val.toISOString();
+
+    return JSON.stringify(val);
+  }
+
+  function getTimestamp() {
+    var d = new Date();
+    return pad(d.getDate())
+      + '.' + pad(d.getUTCHours()) + pad(d.getUTCMinutes()) + pad(d.getUTCSeconds())
+      + '.' + pad2(d.getUTCMilliseconds());
+  }
+
+  // performance over fanciness
+  function pad(n) {
+    var ret = n.toString();
+    return ret.length === 2 ? ret : ('0' + ret);
+  }
+
+  // performance over fanciness
+  function pad2(n) {
+    var ret = n.toString();
+    return ret.length === 3 ? ret : ( ret.length === 2 ? ('0' + ret) : ('00' + ret));
+  }
 
 }(this));
 // Base58 encoding/decoding
@@ -12854,7 +12853,7 @@ llll:"ddd, D MMM YYYY HH:mm"},calendar:{sameDay:"[Hôm nay lúc] LT",nextDay:"[N
  * 
  */
 /**
- * bluebird build version 3.0.2
+ * bluebird build version 3.0.5
  * Features enabled: core, race, call_get, generators, map, nodeify, promisify, props, reduce, settle, some, using, timers, filter, any, each
 */
 !function(e){if("object"==typeof exports&&"undefined"!=typeof module)module.exports=e();else if("function"==typeof define&&define.amd)define([],e);else{var f;"undefined"!=typeof window?f=window:"undefined"!=typeof global?f=global:"undefined"!=typeof self&&(f=self),f.Promise=e()}}(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof _dereq_=="function"&&_dereq_;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof _dereq_=="function"&&_dereq_;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(_dereq_,module,exports){
@@ -13421,7 +13420,7 @@ var contextStack = [];
 
 Promise.prototype._promiseCreated = function() {};
 Promise.prototype._pushContext = function() {};
-Promise.prototype._popContext = function() {return 0;};
+Promise.prototype._popContext = function() {return null;};
 Promise._peekContext = Promise.prototype._peekContext = function() {};
 
 function Context() {
@@ -13429,7 +13428,7 @@ function Context() {
 }
 Context.prototype._pushContext = function () {
     if (this._trace !== undefined) {
-        this._trace._promisesCreated = 0;
+        this._trace._promiseCreated = null;
         contextStack.push(this._trace);
     }
 };
@@ -13437,11 +13436,11 @@ Context.prototype._pushContext = function () {
 Context.prototype._popContext = function () {
     if (this._trace !== undefined) {
         var trace = contextStack.pop();
-        var ret = trace._promisesCreated;
-        trace._promisesCreated = 0;
+        var ret = trace._promiseCreated;
+        trace._promiseCreated = null;
         return ret;
     }
-    return 0;
+    return null;
 };
 
 function createContext() {
@@ -13464,7 +13463,7 @@ Context.activateLongStackTraces = function() {
     Promise._peekContext = Promise.prototype._peekContext = peekContext;
     Promise.prototype._promiseCreated = function() {
         var ctx = this._peekContext();
-        if (ctx) ctx._promisesCreated++;
+        if (ctx && ctx._promiseCreated == null) ctx._promiseCreated = this;
     };
 };
 return Context;
@@ -13486,8 +13485,10 @@ var stackFramePattern = null;
 var formatStack = null;
 var indentStackFrames = false;
 var printWarning;
-var debugging =!!(true || util.env("BLUEBIRD_DEBUG") ||
-                               util.env("NODE_ENV") === "development");
+var debugging = !!(util.env("BLUEBIRD_DEBUG") != 0 &&
+                        (true ||
+                         util.env("BLUEBIRD_DEBUG") ||
+                         util.env("NODE_ENV") === "development"));
 var warnings = !!(util.env("BLUEBIRD_WARNINGS") != 0 &&
     (debugging || util.env("BLUEBIRD_WARNINGS")));
 var longStackTraces = !!(util.env("BLUEBIRD_LONG_STACK_TRACES") != 0 &&
@@ -13547,8 +13548,8 @@ Promise.prototype._isRejectionUnhandled = function () {
     return (this._bitField & 1048576) > 0;
 };
 
-Promise.prototype._warn = function(message, shouldUseOwnTrace) {
-    return warn(message, shouldUseOwnTrace, this);
+Promise.prototype._warn = function(message, shouldUseOwnTrace, promise) {
+    return warn(message, shouldUseOwnTrace, promise || this);
 };
 
 Promise.onPossiblyUnhandledRejection = function (fn) {
@@ -13727,14 +13728,14 @@ function longStackTracesAttachExtraTrace(error, ignoreSelf) {
     }
 }
 
-function checkForgottenReturns(returnValue, promisesCreated, name, promise) {
+function checkForgottenReturns(returnValue, promiseCreated, name, promise) {
     if (returnValue === undefined &&
-        promisesCreated > 0 &&
+        promiseCreated !== null &&
         config.longStackTraces &&
         config.warnings) {
         var msg = "a promise was created in a " + name +
             " handler but was not returned from it";
-        promise._warn(msg);
+        promise._warn(msg, true, promiseCreated);
     }
 }
 
@@ -14223,7 +14224,7 @@ if (typeof console !== "undefined" && typeof console.warn !== "undefined") {
     if (util.isNode && process.stderr.isTTY) {
         printWarning = function(message, isSoft) {
             var color = isSoft ? "\u001b[33m" : "\u001b[31m";
-            process.stderr.write(color + message + "\u001b[0m\n");
+            console.warn(color + message + "\u001b[0m\n");
         };
     } else if (!util.isNode && typeof (new Error().stack) === "string") {
         printWarning = function(message, isSoft) {
@@ -15070,10 +15071,10 @@ MappingPromiseArray.prototype._promiseFulfilled = function (value, index) {
         var receiver = promise._boundValue();
         promise._pushContext();
         var ret = tryCatch(callback).call(receiver, value, index, length);
-        var promisesCreated = promise._popContext();
+        var promiseCreated = promise._popContext();
         debug.checkForgottenReturns(
             ret,
-            promisesCreated,
+            promiseCreated,
             preservedValues !== null ? "Promise.filter" : "Promise.map",
             promise
         );
@@ -15181,7 +15182,9 @@ Promise.method = function (fn) {
         ret._captureStackTrace();
         ret._pushContext();
         var value = tryCatch(fn).apply(this, arguments);
-        ret._popContext();
+        var promiseCreated = ret._popContext();
+        debug.checkForgottenReturns(
+            value, promiseCreated, "Promise.method", ret);
         ret._resolveFromSyncValue(value);
         return ret;
     };
@@ -15204,7 +15207,9 @@ Promise.attempt = Promise["try"] = function (fn) {
     } else {
         value = tryCatch(fn)();
     }
-    ret._popContext();
+    var promiseCreated = ret._popContext();
+    debug.checkForgottenReturns(
+        value, promiseCreated, "Promise.try", ret);
     ret._resolveFromSyncValue(value);
     return ret;
 };
@@ -15772,10 +15777,11 @@ Promise.prototype._resolveCallback = function(value, shouldBind) {
     }
 };
 
-Promise.prototype._rejectCallback = function(reason, synchronous) {
+Promise.prototype._rejectCallback =
+function(reason, synchronous, ignoreNonErrorWarnings) {
     var trace = util.ensureErrorObject(reason);
     var hasStack = trace === reason;
-    if (!hasStack && debug.warnings()) {
+    if (!hasStack && !ignoreNonErrorWarnings && debug.warnings()) {
         var message = "a promise was rejected with a non-error: " +
             util.classString(reason);
         this._warn(message, true);
@@ -15820,7 +15826,7 @@ Promise.prototype._settlePromiseFromHandler = function (
     } else {
         x = tryCatch(handler).call(receiver, value);
     }
-    var promisesCreatedDuringHandlerInvocation = promise._popContext();
+    var promiseCreated = promise._popContext();
     bitField = promise._bitField;
     if (((bitField & 65536) !== 0)) return;
 
@@ -15830,13 +15836,7 @@ Promise.prototype._settlePromiseFromHandler = function (
         var err = x === promise ? makeSelfResolutionError() : x.e;
         promise._rejectCallback(err, false);
     } else {
-        if (x === undefined &&
-            promisesCreatedDuringHandlerInvocation > 0 &&
-            debug.longStackTraces() &&
-            debug.warnings()) {
-            promise._warn("a promise was created in a handler but " +
-                "none were returned from it", true);
-        }
+        debug.checkForgottenReturns(x, promiseCreated, "",  promise);
         promise._resolveCallback(x);
     }
 };
@@ -16452,7 +16452,7 @@ function(callback, receiver, originalName, fn, _, multiArgs) {
                 [CodeForSwitchCase]                                          \n\
             }                                                                \n\
             if (ret === errorObj) {                                          \n\
-                promise._rejectCallback(maybeWrapAsError(ret.e), true);      \n\
+                promise._rejectCallback(maybeWrapAsError(ret.e), true, true);\n\
             }                                                                \n\
             if (!promise._isFateSealed()) promise._setAsyncGuaranteed();     \n\
             return promise;                                                  \n\
@@ -16503,7 +16503,7 @@ function makeNodePromisifiedClosure(callback, receiver, _, fn, __, multiArgs) {
         try {
             cb.apply(_receiver, withAppended(arguments, fn));
         } catch(e) {
-            promise._rejectCallback(maybeWrapAsError(e), true);
+            promise._rejectCallback(maybeWrapAsError(e), true, true);
         }
         if (!promise._isFateSealed()) promise._setAsyncGuaranteed();
         return promise;
@@ -17010,10 +17010,10 @@ function gotValue(value) {
     if (ret instanceof Promise) {
         array._currentCancellable = ret;
     }
-    var promisesCreated = promise._popContext();
+    var promiseCreated = promise._popContext();
     debug.checkForgottenReturns(
         ret,
-        promisesCreated,
+        promiseCreated,
         array._eachValues !== undefined ? "Promise.each" : "Promise.reduce",
         promise
     );
@@ -17414,7 +17414,7 @@ function doThenable(x, then, context) {
     synchronous = false;
 
     if (promise && result === errorObj) {
-        promise._rejectCallback(result.e, true);
+        promise._rejectCallback(result.e, true, true);
         promise = null;
     }
 
@@ -17426,7 +17426,7 @@ function doThenable(x, then, context) {
 
     function reject(reason) {
         if (!promise) return;
-        promise._rejectCallback(reason, synchronous);
+        promise._rejectCallback(reason, synchronous, true);
         promise = null;
     }
     return ret;
@@ -17686,9 +17686,9 @@ module.exports = function (Promise, apiRejection, tryConvertToPromise,
                 fn = tryCatch(fn);
                 var ret = spreadArgs
                     ? fn.apply(undefined, inspections) : fn(inspections);
-                var promisesCreated = promise._popContext();
+                var promiseCreated = promise._popContext();
                 debug.checkForgottenReturns(
-                    ret, promisesCreated, "Promise.using", promise);
+                    ret, promiseCreated, "Promise.using", promise);
                 return ret;
             });
 
@@ -18343,14 +18343,14 @@ function(a){return D(a,q)};break;case "BYTES":e=E;break;default:throw Error("out
 a[e]|=f<<8*(3-h%4)}return{value:a,binLen:4*g+b}}function J(c,a,b){var g=[],d,f,e,h,g=a||[0];b=b||0;f=b>>>3;for(d=0;d<c.length;d+=1)a=c.charCodeAt(d),h=d+f,e=h>>>2,g.length<=e&&g.push(0),g[e]|=a<<8*(3-h%4);return{value:g,binLen:8*c.length+b}}function K(c,a,b){var g=[],d=0,f,e,h,n,l,m,g=a||[0];b=b||0;a=b>>>3;if(-1===c.search(/^[a-zA-Z0-9=+\/]+$/))throw Error("Invalid character in base-64 string");e=c.indexOf("=");c=c.replace(/\=/g,"");if(-1!==e&&e<c.length)throw Error("Invalid '=' found in base-64 string");
 for(e=0;e<c.length;e+=4){l=c.substr(e,4);for(h=n=0;h<l.length;h+=1)f="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/".indexOf(l[h]),n|=f<<18-6*h;for(h=0;h<l.length-1;h+=1){m=d+a;for(f=m>>>2;g.length<=f;)g.push(0);g[f]|=(n>>>16-8*h&255)<<8*(3-m%4);d+=1}}return{value:g,binLen:8*d+b}}function C(c,a){var b="",g=4*c.length,d,f;for(d=0;d<g;d+=1)f=c[d>>>2]>>>8*(3-d%4),b+="0123456789abcdef".charAt(f>>>4&15)+"0123456789abcdef".charAt(f&15);return a.outputUpper?b.toUpperCase():b}function D(c,
 a){var b="",g=4*c.length,d,f,e;for(d=0;d<g;d+=3)for(e=d+1>>>2,f=c.length<=e?0:c[e],e=d+2>>>2,e=c.length<=e?0:c[e],e=(c[d>>>2]>>>8*(3-d%4)&255)<<16|(f>>>8*(3-(d+1)%4)&255)<<8|e>>>8*(3-(d+2)%4)&255,f=0;4>f;f+=1)8*d+6*f<=32*c.length?b+="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/".charAt(e>>>6*(3-f)&63):b+=a.b64Pad;return b}function E(c){var a="",b=4*c.length,g,d;for(g=0;g<b;g+=1)d=c[g>>>2]>>>8*(3-g%4)&255,a+=String.fromCharCode(d);return a}function B(c){var a={outputUpper:!1,b64Pad:"="};
-c=c||{};a.outputUpper=c.outputUpper||!1;a.b64Pad=c.b64Pad||"=";if("boolean"!==typeof a.outputUpper)throw Error("Invalid outputUpper formatting option");if("string"!==typeof a.b64Pad)throw Error("Invalid b64Pad formatting option");return a}function z(c,a){var b;switch(a){case "UTF8":case "UTF16BE":case "UTF16LE":break;default:throw Error("encoding must be UTF8, UTF16BE, or UTF16LE");}switch(c){case "HEX":b=I;break;case "TEXT":b=function(b,c,f){var e=[],h=[],n=0,l,m,k,r,p,e=c||[0];c=f||0;k=c>>>3;if("UTF8"===
-a)for(l=0;l<b.length;l+=1)for(f=b.charCodeAt(l),h=[],128>f?h.push(f):2048>f?(h.push(192|f>>>6),h.push(128|f&63)):55296>f||57344<=f?h.push(224|f>>>12,128|f>>>6&63,128|f&63):(l+=1,f=65536+((f&1023)<<10|b.charCodeAt(l)&1023),h.push(240|f>>>18,128|f>>>12&63,128|f>>>6&63,128|f&63)),m=0;m<h.length;m+=1){p=n+k;for(r=p>>>2;e.length<=r;)e.push(0);e[r]|=h[m]<<8*(3-p%4);n+=1}else if("UTF16BE"===a||"UTF16LE"===a)for(l=0;l<b.length;l+=1){f=b.charCodeAt(l);"UTF16LE"===a&&(m=f&255,f=m<<8|f>>>8);p=n+k;for(r=p>>>
-2;e.length<=r;)e.push(0);e[r]|=f<<8*(2-p%4);n+=2}return{value:e,binLen:8*n+c}};break;case "B64":b=K;break;case "BYTES":b=J;break;default:throw Error("format must be HEX, TEXT, B64, or BYTES");}return b}function t(c,a){return c>>>a|c<<32-a}function L(c,a,b){return c&a^~c&b}function M(c,a,b){return c&a^c&b^a&b}function N(c){return t(c,2)^t(c,13)^t(c,22)}function O(c){return t(c,6)^t(c,11)^t(c,25)}function P(c){return t(c,7)^t(c,18)^c>>>3}function Q(c){return t(c,17)^t(c,19)^c>>>10}function R(c,a){var b=
-(c&65535)+(a&65535);return((c>>>16)+(a>>>16)+(b>>>16)&65535)<<16|b&65535}function S(c,a,b,g){var d=(c&65535)+(a&65535)+(b&65535)+(g&65535);return((c>>>16)+(a>>>16)+(b>>>16)+(g>>>16)+(d>>>16)&65535)<<16|d&65535}function T(c,a,b,g,d){var f=(c&65535)+(a&65535)+(b&65535)+(g&65535)+(d&65535);return((c>>>16)+(a>>>16)+(b>>>16)+(g>>>16)+(d>>>16)+(f>>>16)&65535)<<16|f&65535}function w(c){var a,b;a=[3238371032,914150663,812702999,4144912697,4290775857,1750603025,1694076839,3204075428];b=[1779033703,3144134277,
-1013904242,2773480762,1359893119,2600822924,528734635,1541459225];switch(c){case "SHA-224":c=a;break;case "SHA-256":c=b;break;case "SHA-384":c=[new k,new k,new k,new k,new k,new k,new k,new k];break;case "SHA-512":c=[new k,new k,new k,new k,new k,new k,new k,new k];break;default:throw Error("Unknown SHA variant");}return c}function A(c,a,b){var g,d,f,e,h,n,l,m,k,r,p,t,q,v,u,y,w,z,A,B,C,D,x=[],E;if("SHA-224"===b||"SHA-256"===b)r=64,t=1,D=Number,q=R,v=S,u=T,y=P,w=Q,z=N,A=O,C=M,B=L,E=G;else throw Error("Unexpected error in SHA-2 implementation");
-b=a[0];g=a[1];d=a[2];f=a[3];e=a[4];h=a[5];n=a[6];l=a[7];for(p=0;p<r;p+=1)16>p?(k=p*t,m=c.length<=k?0:c[k],k=c.length<=k+1?0:c[k+1],x[p]=new D(m,k)):x[p]=v(w(x[p-2]),x[p-7],y(x[p-15]),x[p-16]),m=u(l,A(e),B(e,h,n),E[p],x[p]),k=q(z(b),C(b,g,d)),l=n,n=h,h=e,e=q(f,m),f=d,d=g,g=b,b=q(m,k);a[0]=q(b,a[0]);a[1]=q(g,a[1]);a[2]=q(d,a[2]);a[3]=q(f,a[3]);a[4]=q(e,a[4]);a[5]=q(h,a[5]);a[6]=q(n,a[6]);a[7]=q(l,a[7]);return a}var G;G=[1116352408,1899447441,3049323471,3921009573,961987163,1508970993,2453635748,2870763221,
-3624381080,310598401,607225278,1426881987,1925078388,2162078206,2614888103,3248222580,3835390401,4022224774,264347078,604807628,770255983,1249150122,1555081692,1996064986,2554220882,2821834349,2952996808,3210313671,3336571891,3584528711,113926993,338241895,666307205,773529912,1294757372,1396182291,1695183700,1986661051,2177026350,2456956037,2730485921,2820302411,3259730800,3345764771,3516065817,3600352804,4094571909,275423344,430227734,506948616,659060556,883997877,958139571,1322822218,1537002063,
-1747873779,1955562222,2024104815,2227730452,2361852424,2428436474,2756734187,3204031479,3329325298];"function"===typeof define&&define.amd?define(function(){return v}):"undefined"!==typeof exports?"undefined"!==typeof module&&module.exports?module.exports=exports=v:exports=v:H.jsSHA=v})(this);
+c=c||{};a.outputUpper=c.outputUpper||!1;!0===c.hasOwnProperty("b64Pad")&&(a.b64Pad=c.b64Pad);if("boolean"!==typeof a.outputUpper)throw Error("Invalid outputUpper formatting option");if("string"!==typeof a.b64Pad)throw Error("Invalid b64Pad formatting option");return a}function z(c,a){var b;switch(a){case "UTF8":case "UTF16BE":case "UTF16LE":break;default:throw Error("encoding must be UTF8, UTF16BE, or UTF16LE");}switch(c){case "HEX":b=I;break;case "TEXT":b=function(b,c,f){var e=[],h=[],n=0,l,m,k,
+r,p,e=c||[0];c=f||0;k=c>>>3;if("UTF8"===a)for(l=0;l<b.length;l+=1)for(f=b.charCodeAt(l),h=[],128>f?h.push(f):2048>f?(h.push(192|f>>>6),h.push(128|f&63)):55296>f||57344<=f?h.push(224|f>>>12,128|f>>>6&63,128|f&63):(l+=1,f=65536+((f&1023)<<10|b.charCodeAt(l)&1023),h.push(240|f>>>18,128|f>>>12&63,128|f>>>6&63,128|f&63)),m=0;m<h.length;m+=1){p=n+k;for(r=p>>>2;e.length<=r;)e.push(0);e[r]|=h[m]<<8*(3-p%4);n+=1}else if("UTF16BE"===a||"UTF16LE"===a)for(l=0;l<b.length;l+=1){f=b.charCodeAt(l);"UTF16LE"===a&&
+(m=f&255,f=m<<8|f>>>8);p=n+k;for(r=p>>>2;e.length<=r;)e.push(0);e[r]|=f<<8*(2-p%4);n+=2}return{value:e,binLen:8*n+c}};break;case "B64":b=K;break;case "BYTES":b=J;break;default:throw Error("format must be HEX, TEXT, B64, or BYTES");}return b}function t(c,a){return c>>>a|c<<32-a}function L(c,a,b){return c&a^~c&b}function M(c,a,b){return c&a^c&b^a&b}function N(c){return t(c,2)^t(c,13)^t(c,22)}function O(c){return t(c,6)^t(c,11)^t(c,25)}function P(c){return t(c,7)^t(c,18)^c>>>3}function Q(c){return t(c,
+17)^t(c,19)^c>>>10}function R(c,a){var b=(c&65535)+(a&65535);return((c>>>16)+(a>>>16)+(b>>>16)&65535)<<16|b&65535}function S(c,a,b,g){var d=(c&65535)+(a&65535)+(b&65535)+(g&65535);return((c>>>16)+(a>>>16)+(b>>>16)+(g>>>16)+(d>>>16)&65535)<<16|d&65535}function T(c,a,b,g,d){var f=(c&65535)+(a&65535)+(b&65535)+(g&65535)+(d&65535);return((c>>>16)+(a>>>16)+(b>>>16)+(g>>>16)+(d>>>16)+(f>>>16)&65535)<<16|f&65535}function w(c){var a,b;a=[3238371032,914150663,812702999,4144912697,4290775857,1750603025,1694076839,
+3204075428];b=[1779033703,3144134277,1013904242,2773480762,1359893119,2600822924,528734635,1541459225];switch(c){case "SHA-224":c=a;break;case "SHA-256":c=b;break;case "SHA-384":c=[new k,new k,new k,new k,new k,new k,new k,new k];break;case "SHA-512":c=[new k,new k,new k,new k,new k,new k,new k,new k];break;default:throw Error("Unknown SHA variant");}return c}function A(c,a,b){var g,d,f,e,h,n,l,m,k,r,p,t,q,v,u,y,w,z,A,B,C,D,x=[],E;if("SHA-224"===b||"SHA-256"===b)r=64,t=1,D=Number,q=R,v=S,u=T,y=P,
+w=Q,z=N,A=O,C=M,B=L,E=G;else throw Error("Unexpected error in SHA-2 implementation");b=a[0];g=a[1];d=a[2];f=a[3];e=a[4];h=a[5];n=a[6];l=a[7];for(p=0;p<r;p+=1)16>p?(k=p*t,m=c.length<=k?0:c[k],k=c.length<=k+1?0:c[k+1],x[p]=new D(m,k)):x[p]=v(w(x[p-2]),x[p-7],y(x[p-15]),x[p-16]),m=u(l,A(e),B(e,h,n),E[p],x[p]),k=q(z(b),C(b,g,d)),l=n,n=h,h=e,e=q(f,m),f=d,d=g,g=b,b=q(m,k);a[0]=q(b,a[0]);a[1]=q(g,a[1]);a[2]=q(d,a[2]);a[3]=q(f,a[3]);a[4]=q(e,a[4]);a[5]=q(h,a[5]);a[6]=q(n,a[6]);a[7]=q(l,a[7]);return a}var G;
+G=[1116352408,1899447441,3049323471,3921009573,961987163,1508970993,2453635748,2870763221,3624381080,310598401,607225278,1426881987,1925078388,2162078206,2614888103,3248222580,3835390401,4022224774,264347078,604807628,770255983,1249150122,1555081692,1996064986,2554220882,2821834349,2952996808,3210313671,3336571891,3584528711,113926993,338241895,666307205,773529912,1294757372,1396182291,1695183700,1986661051,2177026350,2456956037,2730485921,2820302411,3259730800,3345764771,3516065817,3600352804,4094571909,
+275423344,430227734,506948616,659060556,883997877,958139571,1322822218,1537002063,1747873779,1955562222,2024104815,2227730452,2361852424,2428436474,2756734187,3204031479,3329325298];"function"===typeof define&&define.amd?define(function(){return v}):"undefined"!==typeof exports?"undefined"!==typeof module&&module.exports?module.exports=exports=v:exports=v:H.jsSHA=v})(this);
 
 /**
 * A handy class to calculate color values.

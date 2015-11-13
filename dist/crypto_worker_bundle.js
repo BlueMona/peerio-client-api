@@ -22,311 +22,310 @@ this.window.cryptoShim = {};
 
 
 (function (root) {
-    'use strict';
-    var l = root.L = {};
+  'use strict';
+  var l = root.L = {};
 
-    //-- constants
-    // log message levels
-    l.LEVELS = {ERROR: 0, INFO: 1, VERBOSE: 2, SILLY: 3};
-    var levelNames = ['ERR', 'INF', 'VER', 'SIL'];
-    levelNames['-1'] = 'BNC';
-    var originalConsole, originalOnError, onErrorIsCaptured = false;
-    //-- settings
-    // current log level
-    l.level = l.LEVELS.INFO;
-    // amount of log entries to keep in FIFO L.cache queue. Set to 0 to disable.
-    l.cacheLimit = 1000;
+  //-- constants
+  // log message levels
+  l.LEVELS = {ERROR: 0, INFO: 1, VERBOSE: 2, SILLY: 3};
+  var levelNames = ['ERR', 'INF', 'VER', 'SIL'];
+  levelNames['-1'] = 'BNC';
+  var originalConsole, originalOnError, onErrorIsCaptured = false;
+  //-- settings
+  // current log level
+  l.level = l.LEVELS.INFO;
+  // amount of log entries to keep in FIFO L.cache queue. Set to 0 to disable.
+  l.cacheLimit = 1000;
 
-    l.benchmarkEnabled = true;
-    // by default benchmarks timeout after this number of seconds
-    l.benchmarkTimeout = 120;
-    // cached log entries
-    l.cache = [];
-    // registered web workers
-    var workers = [];
-    // benchmarks in progress
-    var runningBenchmarks = {};
+  l.benchmarkEnabled = true;
+  // by default benchmarks timeout after this number of seconds
+  l.benchmarkTimeout = 120;
+  // cached log entries
+  l.cache = [];
+  // registered web workers
+  var workers = [];
+  // benchmarks in progress
+  var runningBenchmarks = {};
 
-    // todo remove console writer from release
-    var writers = [consoleWriter, addToCache];
+  // todo remove console writer from release
+  var writers = [consoleWriter, addToCache];
 
-    l.error = log.bind(l, l.LEVELS.ERROR);
-    l.info = log.bind(l, l.LEVELS.INFO);
-    l.verbose = log.bind(l, l.LEVELS.VERBOSE);
-    l.silly = log.bind(l, l.LEVELS.SILLY);
+  l.error = log.bind(l, l.LEVELS.ERROR);
+  l.info = log.bind(l, l.LEVELS.INFO);
+  l.verbose = log.bind(l, l.LEVELS.VERBOSE);
+  l.silly = log.bind(l, l.LEVELS.SILLY);
 
-    /**
-     * Writes message without any pre-processing
-     * This is useful when writing pre-processed messages received from web worker
-     * @param msg
-     * @param [level]
-     */
-    l.rawWrite = function (msg, level) {
-        for (var i = 0; i < writers.length; i++)
-            writers[i](msg, level);
-    };
-    /**
-     * Overrides console.log, console.error and console.warn.
-     * Reroutes overridden calls to self.
-     */
-    l.captureConsole = function () {
-        try {
-            if (originalConsole) return;
+  /**
+   * Writes message without any pre-processing
+   * This is useful when writing pre-processed messages received from web worker
+   * @param msg
+   * @param [level]
+   */
+  l.rawWrite = function (msg, level) {
+    for (var i = 0; i < writers.length; i++)
+      writers[i](msg, level);
+  };
+  /**
+   * Overrides console.log, console.error and console.warn.
+   * Reroutes overridden calls to self.
+   */
+  l.captureConsole = function () {
+    try {
+      if (originalConsole) return;
 
-            if (!root.console) root.console = {};
+      if (!root.console) root.console = {};
 
-            originalConsole = {
-                log: root.console.log,
-                error: root.console.error,
-                warn: root.console.warn
-            };
+      originalConsole = {
+        log: root.console.log,
+        error: root.console.error,
+        warn: root.console.warn
+      };
 
-            root.console.log = root.console.warn = function () {
-                for (var i = 0; i < arguments.length; i++)
-                    l.info(arguments[i]);
-            };
-            root.console.error = function () {
-                for (var i = 0; i < arguments.length; i++)
-                    l.error(arguments[i]);
-            };
-        } catch (e) {
-            l.error(e);
-        }
-    };
-
-    /**
-     * Brings back console functions to the state they were before capturing
-     */
-    l.releaseConsole = function () {
-        try {
-            if (!originalConsole) return;
-            root.console.log = originalConsole.log;
-            root.console.error = originalConsole.error;
-            root.console.warn = originalConsole.warn;
-            originalConsole = null;
-        } catch (e) {
-            l.error(e);
-        }
-    };
-
-    function consoleWriter(msg, level) {
-        if (msg == null) msg = 'null';
-        if (originalConsole) {
-            if (level === l.LEVELS.ERROR)
-                originalConsole.error.call(root.console, msg);
-            else
-                originalConsole.log.call(root.console, msg);
-        } else {
-            if (level === l.LEVELS.ERROR)
-                root.console.error(msg);
-            else
-                root.console.log(msg);
-        }
+      root.console.log = root.console.warn = function () {
+        for (var i = 0; i < arguments.length; i++)
+          l.info(arguments[i]);
+      };
+      root.console.error = function () {
+        for (var i = 0; i < arguments.length; i++)
+          l.error(arguments[i]);
+      };
+    } catch (e) {
+      l.error(e);
     }
+  };
 
-    l.captureRootErrors = function () {
-        try {
-            if (onErrorIsCaptured) return;
-            onErrorIsCaptured = true;
-            originalOnError = root.onerror;
-            root.onerror = l.error;
-        } catch (e) {
-            l.error(e);
-        }
-    };
-
-    l.releaseRootErrors = function () {
-        try {
-            if (!onErrorIsCaptured) return;
-            onErrorIsCaptured = false;
-            root.onerror = originalOnError;
-        } catch (e) {
-            l.error(e);
-        }
-    };
-
-    l.switchToWorkerMode = function (workerName) {
-        l.captureConsole();
-        l.captureRootErrors();
-        l.workerName = workerName;
-        l.cacheLimit = 0;
-        writers = [postToUIThread];
-    };
-
-    /**
-     * Updates L.js options with values provided in config object.
-     * This function is supposed to be used when running in web worker,
-     * so it ignores irrelevant options
-     * @param options {{level: Number, benchmarkEnabled: Boolean, benchmarkTimeout: Number}}
-     */
-    l.setOptions = function (options) {
-        if (options.level) l.level = options.level;
-        if (options.benchmarkEnabled) l.level = options.benchmarkEnabled;
-        if (options.benchmarkTimeout) l.level = options.benchmarkTimeout;
-    };
-
-    l.setWorkersOptions = function (options) {
-        workers.forEach(function (w) {
-            w.postMessage(options);
-        });
-    };
-
-    l.addWorker = function (worker) {
-        if (workers.indexOf(worker) >= 0) return;
-        workers.push(worker);
-    };
-
-    l.removeWorker = function (worker) {
-        var ind = workers.indexOf(worker);
-        if (ind < 0) return;
-        workers.splice(ind, 1);
-    };
-
-    //-- Benchmarks ------------------------------------------------------------------------------------------------------
-
-    l.B = {};
-
-    l.B.start = function (name, msg, timeout) {
-        try {
-            if (!l.benchmarkEnabled) return;
-
-            if (runningBenchmarks.hasOwnProperty(name)) {
-                l.error('Duplicate benchmark name');
-                return;
-            }
-
-            runningBenchmarks[name] = {
-                ts: Date.now(),
-                msg: msg,
-                timeoutId: root.setTimeout(l.B.stop.bind(this, name, true), (timeout || l.benchmarkTimeout) * 1000)
-            };
-        } catch (e) {
-            l.error(e);
-            // yes, we are not interested in handling exception
-        }
-    };
-
-    l.B.stop = function (name, timeout) {
-        try {
-            if (!runningBenchmarks.hasOwnProperty(name)) {
-                l.error('Benchmark name {0} not found', name);
-                return;
-            }
-            var b = runningBenchmarks[name];
-            var time = Date.now() - b.ts;
-            delete runningBenchmarks[name];
-            log(-1, '{0}: {1} | {2} s.', name, timeout ? 'BENCHMARK TIMEOUT' : b.msg || '', time / 1000);
-            root.clearTimeout(b.timeoutId);
-        } catch (e) {
-            l.error(e);
-            // yes, we are not interested in handling exception
-        }
-    };
-
-    //-- Private -------------------------------------------------------------------------------------------------------
-
-    function log(level, msg) {
-        try {
-
-            if (level > l.level || writers.length === 0) return;
-            if (typeof(msg) === 'function') msg = msg();
-
-            msg = stringify(msg);
-
-            var head =
-                l.workerName
-                    ? interpolate('{0} {1}:{2} ', [getTimestamp(), levelNames[level], l.workerName])
-                    : interpolate('{0} {1}: ', [getTimestamp(), levelNames[level]]);
-
-            var entry = head + interpolate(msg, getArguments(arguments));
-            l.rawWrite(entry, level);
-
-        } catch (e) {
-            try {
-                l.error(e);
-            } catch (e) {
-                // well.. we tried
-            }
-        }
+  /**
+   * Brings back console functions to the state they were before capturing
+   */
+  l.releaseConsole = function () {
+    try {
+      if (!originalConsole) return;
+      root.console.log = originalConsole.log;
+      root.console.error = originalConsole.error;
+      root.console.warn = originalConsole.warn;
+      originalConsole = null;
+    } catch (e) {
+      l.error(e);
     }
+  };
 
-    // cache writer
-    function addToCache(msg) {
-        l.cache.unshift(msg);
-
-        if (l.cache.length > l.cacheLimit)
-            l.cache.length = l.cacheLimit;
+  function consoleWriter(msg, level) {
+    if (originalConsole) {
+      if (level === l.LEVELS.ERROR)
+        originalConsole.error.call(root.console, msg);
+      else
+        originalConsole.log.call(root.console, msg);
+    } else {
+      if (level === l.LEVELS.ERROR)
+        root.console.error(msg);
+      else
+        root.console.log(msg);
     }
+  }
 
-    // worker mode writer
-    function postToUIThread(msg, level) {
-        root.postMessage({ljsMessage: msg, level: level});
+  l.captureRootErrors = function () {
+    try {
+      if (onErrorIsCaptured) return;
+      onErrorIsCaptured = true;
+      originalOnError = root.onerror;
+      root.onerror = l.error;
+    } catch (e) {
+      l.error(e);
     }
+  };
 
-    /**
-     * Extracts meaningful arguments from arguments object
-     * @param args
-     */
-    function getArguments(args) {
-        if (args.length <= 2) return null;
-
-        // splice on arguments prevents js optimisation, so we do it a bit longer way
-        var arg = [];
-        for (var i = 2; i < args.length; i++)
-            arg.push(args[i]);
-
-        return arg;
+  l.releaseRootErrors = function () {
+    try {
+      if (!onErrorIsCaptured) return;
+      onErrorIsCaptured = false;
+      root.onerror = originalOnError;
+    } catch (e) {
+      l.error(e);
     }
+  };
 
-    /**
-     *  Interpolates string replacing placeholders with arguments
-     *  @param {string} str - template string with placeholders in format {0} {1} {2}
-     *                                   where number is argument array index.
-     *                                   Numbers also can be replaced with property names or argument object.
-     *  @param {Array | Object} args - argument array or object
-     *  @returns {string} interpolated string
-     */
-    function interpolate(str, args) {
-        if (!args || !args.length) return str;
+  l.switchToWorkerMode = function (workerName) {
+    l.captureConsole();
+    l.captureRootErrors();
+    l.workerName = workerName;
+    l.cacheLimit = 0;
+    writers = [postToUIThread];
+  };
 
-        return str.replace(/{([^{}]*)}/g,
-            function (a, b) {
-                return stringify(args[b]);
-            }
-        );
+  /**
+   * Updates L.js options with values provided in config object.
+   * This function is supposed to be used when running in web worker,
+   * so it ignores irrelevant options
+   * @param options {{level: Number, benchmarkEnabled: Boolean, benchmarkTimeout: Number}}
+   */
+  l.setOptions = function (options) {
+    if (options.level) l.level = options.level;
+    if (options.benchmarkEnabled) l.level = options.benchmarkEnabled;
+    if (options.benchmarkTimeout) l.level = options.benchmarkTimeout;
+  };
+
+  l.setWorkersOptions = function (options) {
+    workers.forEach(function (w) {
+      w.postMessage(options);
+    });
+  };
+
+  l.addWorker = function (worker) {
+    if (workers.indexOf(worker) >= 0) return;
+    workers.push(worker);
+  };
+
+  l.removeWorker = function (worker) {
+    var ind = workers.indexOf(worker);
+    if (ind < 0) return;
+    workers.splice(ind, 1);
+  };
+
+  //-- Benchmarks ------------------------------------------------------------------------------------------------------
+
+  l.B = {};
+
+  l.B.start = function (name, msg, timeout) {
+    try {
+      if (!l.benchmarkEnabled) return;
+
+      if (runningBenchmarks.hasOwnProperty(name)) {
+        l.error('Duplicate benchmark name');
+        return;
+      }
+
+      runningBenchmarks[name] = {
+        ts: Date.now(),
+        msg: msg,
+        timeoutId: root.setTimeout(l.B.stop.bind(this, name, true), (timeout || l.benchmarkTimeout) * 1000)
+      };
+    } catch (e) {
+      l.error(e);
+      // yes, we are not interested in handling exception
     }
+  };
 
-    // Opinionated any-value to string converter
-    function stringify(val) {
-        if (typeof(val) === 'string') return val;
-
-        if (val instanceof Error)
-            return val.message + ' ' + val.stack;
-
-        if (val instanceof Date)
-            return val.toISOString();
-
-        return JSON.stringify(val);
+  l.B.stop = function (name, timeout) {
+    try {
+      if (!runningBenchmarks.hasOwnProperty(name)) {
+        l.error('Benchmark name {0} not found', name);
+        return;
+      }
+      var b = runningBenchmarks[name];
+      var time = Date.now() - b.ts;
+      delete runningBenchmarks[name];
+      log(-1, '{0}: {1} | {2} s.', name, timeout ? 'BENCHMARK TIMEOUT' : b.msg || '', time / 1000);
+      root.clearTimeout(b.timeoutId);
+    } catch (e) {
+      l.error(e);
+      // yes, we are not interested in handling exception
     }
+  };
 
-    function getTimestamp() {
-        var d = new Date();
-        return pad(d.getDate())
-            + '.' + pad(d.getUTCHours()) + pad(d.getUTCMinutes()) + pad(d.getUTCSeconds())
-            + '.' + pad2(d.getUTCMilliseconds());
-    }
+  //-- Private -------------------------------------------------------------------------------------------------------
 
-    // performance over fanciness
-    function pad(n) {
-        var ret = n.toString();
-        return ret.length === 2 ? ret : ('0' + ret);
-    }
+  function log(level, msg) {
+    try {
 
-    // performance over fanciness
-    function pad2(n) {
-        var ret = n.toString();
-        return ret.length === 3 ? ret : ( ret.length === 2 ? ('0' + ret) : ('00' + ret));
+      if (level > l.level || writers.length === 0) return;
+      if (typeof(msg) === 'function') msg = msg();
+
+      msg = stringify(msg);
+
+      var head =
+        l.workerName
+          ? interpolate('{0} {1}:{2} ', [getTimestamp(), levelNames[level], l.workerName])
+          : interpolate('{0} {1}: ', [getTimestamp(), levelNames[level]]);
+
+      var entry = head + interpolate(msg, getArguments(arguments));
+      l.rawWrite(entry, level);
+
+    } catch (e) {
+      try {
+        l.error(e);
+      } catch (e) {
+        // well.. we tried
+      }
     }
+  }
+
+  // cache writer
+  function addToCache(msg) {
+    l.cache.unshift(msg);
+
+    if (l.cache.length > l.cacheLimit)
+      l.cache.length = l.cacheLimit;
+  }
+
+  // worker mode writer
+  function postToUIThread(msg, level) {
+    root.postMessage({ljsMessage: msg, level: level});
+  }
+
+  /**
+   * Extracts meaningful arguments from arguments object
+   * @param args
+   */
+  function getArguments(args) {
+    if (args.length <= 2) return null;
+
+    // splice on arguments prevents js optimisation, so we do it a bit longer way
+    var arg = [];
+    for (var i = 2; i < args.length; i++)
+      arg.push(args[i]);
+
+    return arg;
+  }
+
+  /**
+   *  Interpolates string replacing placeholders with arguments
+   *  @param {string} str - template string with placeholders in format {0} {1} {2}
+   *                                   where number is argument array index.
+   *                                   Numbers also can be replaced with property names or argument object.
+   *  @param {Array | Object} args - argument array or object
+   *  @returns {string} interpolated string
+   */
+  function interpolate(str, args) {
+    if (!args || !args.length) return str;
+
+    return str.replace(/{([^{}]*)}/g,
+      function (a, b) {
+        return stringify(args[b]);
+      }
+    );
+  }
+
+  // Opinionated any-value to string converter
+  function stringify(val) {
+    if (typeof(val) === 'string') return val;
+
+    if (val instanceof Error)
+      return val.message + ' ' + val.stack;
+
+    if (val instanceof Date)
+      return val.toISOString();
+
+    return JSON.stringify(val);
+  }
+
+  function getTimestamp() {
+    var d = new Date();
+    return pad(d.getDate())
+      + '.' + pad(d.getUTCHours()) + pad(d.getUTCMinutes()) + pad(d.getUTCSeconds())
+      + '.' + pad2(d.getUTCMilliseconds());
+  }
+
+  // performance over fanciness
+  function pad(n) {
+    var ret = n.toString();
+    return ret.length === 2 ? ret : ('0' + ret);
+  }
+
+  // performance over fanciness
+  function pad2(n) {
+    var ret = n.toString();
+    return ret.length === 3 ? ret : ( ret.length === 2 ? ('0' + ret) : ('00' + ret));
+  }
 
 }(this));
 // Base58 encoding/decoding
@@ -4916,7 +4915,7 @@ nacl.setPRNG = function(fn) {
  * 
  */
 /**
- * bluebird build version 3.0.2
+ * bluebird build version 3.0.5
  * Features enabled: core, race, call_get, generators, map, nodeify, promisify, props, reduce, settle, some, using, timers, filter, any, each
 */
 !function(e){if("object"==typeof exports&&"undefined"!=typeof module)module.exports=e();else if("function"==typeof define&&define.amd)define([],e);else{var f;"undefined"!=typeof window?f=window:"undefined"!=typeof global?f=global:"undefined"!=typeof self&&(f=self),f.Promise=e()}}(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof _dereq_=="function"&&_dereq_;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof _dereq_=="function"&&_dereq_;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(_dereq_,module,exports){
@@ -5483,7 +5482,7 @@ var contextStack = [];
 
 Promise.prototype._promiseCreated = function() {};
 Promise.prototype._pushContext = function() {};
-Promise.prototype._popContext = function() {return 0;};
+Promise.prototype._popContext = function() {return null;};
 Promise._peekContext = Promise.prototype._peekContext = function() {};
 
 function Context() {
@@ -5491,7 +5490,7 @@ function Context() {
 }
 Context.prototype._pushContext = function () {
     if (this._trace !== undefined) {
-        this._trace._promisesCreated = 0;
+        this._trace._promiseCreated = null;
         contextStack.push(this._trace);
     }
 };
@@ -5499,11 +5498,11 @@ Context.prototype._pushContext = function () {
 Context.prototype._popContext = function () {
     if (this._trace !== undefined) {
         var trace = contextStack.pop();
-        var ret = trace._promisesCreated;
-        trace._promisesCreated = 0;
+        var ret = trace._promiseCreated;
+        trace._promiseCreated = null;
         return ret;
     }
-    return 0;
+    return null;
 };
 
 function createContext() {
@@ -5526,7 +5525,7 @@ Context.activateLongStackTraces = function() {
     Promise._peekContext = Promise.prototype._peekContext = peekContext;
     Promise.prototype._promiseCreated = function() {
         var ctx = this._peekContext();
-        if (ctx) ctx._promisesCreated++;
+        if (ctx && ctx._promiseCreated == null) ctx._promiseCreated = this;
     };
 };
 return Context;
@@ -5548,8 +5547,10 @@ var stackFramePattern = null;
 var formatStack = null;
 var indentStackFrames = false;
 var printWarning;
-var debugging =!!(true || util.env("BLUEBIRD_DEBUG") ||
-                               util.env("NODE_ENV") === "development");
+var debugging = !!(util.env("BLUEBIRD_DEBUG") != 0 &&
+                        (true ||
+                         util.env("BLUEBIRD_DEBUG") ||
+                         util.env("NODE_ENV") === "development"));
 var warnings = !!(util.env("BLUEBIRD_WARNINGS") != 0 &&
     (debugging || util.env("BLUEBIRD_WARNINGS")));
 var longStackTraces = !!(util.env("BLUEBIRD_LONG_STACK_TRACES") != 0 &&
@@ -5609,8 +5610,8 @@ Promise.prototype._isRejectionUnhandled = function () {
     return (this._bitField & 1048576) > 0;
 };
 
-Promise.prototype._warn = function(message, shouldUseOwnTrace) {
-    return warn(message, shouldUseOwnTrace, this);
+Promise.prototype._warn = function(message, shouldUseOwnTrace, promise) {
+    return warn(message, shouldUseOwnTrace, promise || this);
 };
 
 Promise.onPossiblyUnhandledRejection = function (fn) {
@@ -5789,14 +5790,14 @@ function longStackTracesAttachExtraTrace(error, ignoreSelf) {
     }
 }
 
-function checkForgottenReturns(returnValue, promisesCreated, name, promise) {
+function checkForgottenReturns(returnValue, promiseCreated, name, promise) {
     if (returnValue === undefined &&
-        promisesCreated > 0 &&
+        promiseCreated !== null &&
         config.longStackTraces &&
         config.warnings) {
         var msg = "a promise was created in a " + name +
             " handler but was not returned from it";
-        promise._warn(msg);
+        promise._warn(msg, true, promiseCreated);
     }
 }
 
@@ -6285,7 +6286,7 @@ if (typeof console !== "undefined" && typeof console.warn !== "undefined") {
     if (util.isNode && process.stderr.isTTY) {
         printWarning = function(message, isSoft) {
             var color = isSoft ? "\u001b[33m" : "\u001b[31m";
-            process.stderr.write(color + message + "\u001b[0m\n");
+            console.warn(color + message + "\u001b[0m\n");
         };
     } else if (!util.isNode && typeof (new Error().stack) === "string") {
         printWarning = function(message, isSoft) {
@@ -7132,10 +7133,10 @@ MappingPromiseArray.prototype._promiseFulfilled = function (value, index) {
         var receiver = promise._boundValue();
         promise._pushContext();
         var ret = tryCatch(callback).call(receiver, value, index, length);
-        var promisesCreated = promise._popContext();
+        var promiseCreated = promise._popContext();
         debug.checkForgottenReturns(
             ret,
-            promisesCreated,
+            promiseCreated,
             preservedValues !== null ? "Promise.filter" : "Promise.map",
             promise
         );
@@ -7243,7 +7244,9 @@ Promise.method = function (fn) {
         ret._captureStackTrace();
         ret._pushContext();
         var value = tryCatch(fn).apply(this, arguments);
-        ret._popContext();
+        var promiseCreated = ret._popContext();
+        debug.checkForgottenReturns(
+            value, promiseCreated, "Promise.method", ret);
         ret._resolveFromSyncValue(value);
         return ret;
     };
@@ -7266,7 +7269,9 @@ Promise.attempt = Promise["try"] = function (fn) {
     } else {
         value = tryCatch(fn)();
     }
-    ret._popContext();
+    var promiseCreated = ret._popContext();
+    debug.checkForgottenReturns(
+        value, promiseCreated, "Promise.try", ret);
     ret._resolveFromSyncValue(value);
     return ret;
 };
@@ -7834,10 +7839,11 @@ Promise.prototype._resolveCallback = function(value, shouldBind) {
     }
 };
 
-Promise.prototype._rejectCallback = function(reason, synchronous) {
+Promise.prototype._rejectCallback =
+function(reason, synchronous, ignoreNonErrorWarnings) {
     var trace = util.ensureErrorObject(reason);
     var hasStack = trace === reason;
-    if (!hasStack && debug.warnings()) {
+    if (!hasStack && !ignoreNonErrorWarnings && debug.warnings()) {
         var message = "a promise was rejected with a non-error: " +
             util.classString(reason);
         this._warn(message, true);
@@ -7882,7 +7888,7 @@ Promise.prototype._settlePromiseFromHandler = function (
     } else {
         x = tryCatch(handler).call(receiver, value);
     }
-    var promisesCreatedDuringHandlerInvocation = promise._popContext();
+    var promiseCreated = promise._popContext();
     bitField = promise._bitField;
     if (((bitField & 65536) !== 0)) return;
 
@@ -7892,13 +7898,7 @@ Promise.prototype._settlePromiseFromHandler = function (
         var err = x === promise ? makeSelfResolutionError() : x.e;
         promise._rejectCallback(err, false);
     } else {
-        if (x === undefined &&
-            promisesCreatedDuringHandlerInvocation > 0 &&
-            debug.longStackTraces() &&
-            debug.warnings()) {
-            promise._warn("a promise was created in a handler but " +
-                "none were returned from it", true);
-        }
+        debug.checkForgottenReturns(x, promiseCreated, "",  promise);
         promise._resolveCallback(x);
     }
 };
@@ -8514,7 +8514,7 @@ function(callback, receiver, originalName, fn, _, multiArgs) {
                 [CodeForSwitchCase]                                          \n\
             }                                                                \n\
             if (ret === errorObj) {                                          \n\
-                promise._rejectCallback(maybeWrapAsError(ret.e), true);      \n\
+                promise._rejectCallback(maybeWrapAsError(ret.e), true, true);\n\
             }                                                                \n\
             if (!promise._isFateSealed()) promise._setAsyncGuaranteed();     \n\
             return promise;                                                  \n\
@@ -8565,7 +8565,7 @@ function makeNodePromisifiedClosure(callback, receiver, _, fn, __, multiArgs) {
         try {
             cb.apply(_receiver, withAppended(arguments, fn));
         } catch(e) {
-            promise._rejectCallback(maybeWrapAsError(e), true);
+            promise._rejectCallback(maybeWrapAsError(e), true, true);
         }
         if (!promise._isFateSealed()) promise._setAsyncGuaranteed();
         return promise;
@@ -9072,10 +9072,10 @@ function gotValue(value) {
     if (ret instanceof Promise) {
         array._currentCancellable = ret;
     }
-    var promisesCreated = promise._popContext();
+    var promiseCreated = promise._popContext();
     debug.checkForgottenReturns(
         ret,
-        promisesCreated,
+        promiseCreated,
         array._eachValues !== undefined ? "Promise.each" : "Promise.reduce",
         promise
     );
@@ -9476,7 +9476,7 @@ function doThenable(x, then, context) {
     synchronous = false;
 
     if (promise && result === errorObj) {
-        promise._rejectCallback(result.e, true);
+        promise._rejectCallback(result.e, true, true);
         promise = null;
     }
 
@@ -9488,7 +9488,7 @@ function doThenable(x, then, context) {
 
     function reject(reason) {
         if (!promise) return;
-        promise._rejectCallback(reason, synchronous);
+        promise._rejectCallback(reason, synchronous, true);
         promise = null;
     }
     return ret;
@@ -9748,9 +9748,9 @@ module.exports = function (Promise, apiRejection, tryConvertToPromise,
                 fn = tryCatch(fn);
                 var ret = spreadArgs
                     ? fn.apply(undefined, inspections) : fn(inspections);
-                var promisesCreated = promise._popContext();
+                var promiseCreated = promise._popContext();
                 debug.checkForgottenReturns(
-                    ret, promisesCreated, "Promise.using", promise);
+                    ret, promiseCreated, "Promise.using", promise);
                 return ret;
             });
 
