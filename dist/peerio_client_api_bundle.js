@@ -5958,7 +5958,7 @@ Peerio.SqlMigrations = Peerio.SqlMigrations || [];
             ') WITHOUT ROWID');
 
             tx.executeSql('CREATE INDEX msg_seq_index ON messages (seqID)');
-            tx.executeSql('CREATE INDEX msg_ts_index ON messages (createdTimestamp)');
+            tx.executeSql('CREATE INDEX msg_ts_index ON messages (timestamp)');
             tx.executeSql('CREATE INDEX msg_conv_id_index ON messages (conversationID)');
         },
 
