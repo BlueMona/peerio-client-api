@@ -179,11 +179,12 @@ var Peerio = this.Peerio || {};
                     nacl.util.decodeBase64(encryptedPassphrase.nonce), PINkey);
             })
             .then(passphrase => {
+                if(passphrase === '') return Promise.reject();
                 L.info('Passphrase decrypted.');
                 return passphrase;
             })
             .catch(function (e) {
-                L.error('Failed to decrypt passphrase.', e);
+                L.error('Failed to decrypt passphrase. {0}', e);
                 return Promise.reject();
             });
     }

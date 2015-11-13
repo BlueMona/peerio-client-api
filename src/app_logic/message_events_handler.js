@@ -29,11 +29,11 @@ var Peerio = this.Peerio || {};
         delete this.init;
         queue = Queue();
         var net = Peerio.Net;
-        net.subscribe('conversationModified', queue.add.bind(queue, onConversationModified));
-        net.subscribe('conversationRemoved', queue.add.bind(queue, onConversationRemoved));
-
-        net.subscribe('messageAdded', queue.add.bind(queue, onMessageAdded));
-        net.subscribe('messageRead', queue.add.bind(queue, onMessageRead));
+        //net.subscribe('conversationModified', queue.add.bind(queue, onConversationModified));
+        //net.subscribe('conversationRemoved', queue.add.bind(queue, onConversationRemoved));
+        //
+        //net.subscribe('messageAdded', queue.add.bind(queue, onMessageAdded));
+        //net.subscribe('messageRead', queue.add.bind(queue, onMessageRead));
 
     }
 

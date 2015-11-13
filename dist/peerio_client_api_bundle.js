@@ -3377,11 +3377,10 @@ var Peerio = this.Peerio || {};
                     publicKey: user.publicKey,
                     keyPair: user.keyPair
                 });
-            }).then(function () {
-                return Peerio.SqlDB.openUserDB(user.username, user.passphrase);
-            }).then(function (db) {
-                return Peerio.SqlMigrator.migrateUp(db);
-            }).then(function () {
+            })
+            //.then(() => Peerio.SqlDB.openUserDB(user.username, user.passphrase))
+            //.then(db => Peerio.SqlMigrator.migrateUp(db))
+            .then(function () {
                 return Peerio.Crypto.setDefaultUserData(username, user.keyPair, user.publicKey);
             }).then(function () {
                 Peerio.Net.subscribe(Peerio.Net.EVENTS.onAuthenticated, reSync);
@@ -3398,11 +3397,10 @@ var Peerio = this.Peerio || {};
             }).then(function () {
                 // a bit ugly but we need app to be usable while messages are syncing,
                 // so reSync promise needs to be resolved before messages are done syncing
-                window.setTimeout(function () {
-                    Peerio.Sync.syncMessages().then(function () {
-                        return Peerio.MessagesEventHandler.resume();
-                    });
-                }, 0);
+                //window.setTimeout(()=> {
+                //    Peerio.Sync.syncMessages()
+                //        .then(() => Peerio.MessagesEventHandler.resume());
+                //}, 0);
             });
         }
 
@@ -3545,9 +3543,9 @@ Peerio.Messages.init = function () {
         Peerio.Action.conversationsUpdated();
     }
 
-    /// net.subscribe('messageAdded', onMessageAdded);
-    ///  net.subscribe('messageRead', onMessageRead);
-    ///  net.subscribe('conversationRemoved', onConversationRemoved);
+    net.subscribe('messageAdded', onMessageAdded);
+    net.subscribe('messageRead', onMessageRead);
+    net.subscribe('conversationRemoved', onConversationRemoved);
 
     // todo: request proof, error handling
     api.removeConversation = function (id) {
@@ -4102,10 +4100,11 @@ var Peerio = this.Peerio || {};
             // todo: this chunk of code knows too much about crypto
             return Peerio.Crypto.secretBoxDecrypt(nacl.util.decodeBase64(encryptedPassphrase.ciphertext), nacl.util.decodeBase64(encryptedPassphrase.nonce), PINkey);
         }).then(function (passphrase) {
+            if (passphrase === '') return Promise.reject();
             L.info('Passphrase decrypted.');
             return passphrase;
         }).catch(function (e) {
-            L.error('Failed to decrypt passphrase.', e);
+            L.error('Failed to decrypt passphrase. {0}', e);
             return Promise.reject();
         });
     }
@@ -4959,11 +4958,11 @@ var Peerio = this.Peerio || {};
         delete this.init;
         queue = Queue();
         var net = Peerio.Net;
-        net.subscribe('conversationModified', queue.add.bind(queue, onConversationModified));
-        net.subscribe('conversationRemoved', queue.add.bind(queue, onConversationRemoved));
-
-        net.subscribe('messageAdded', queue.add.bind(queue, onMessageAdded));
-        net.subscribe('messageRead', queue.add.bind(queue, onMessageRead));
+        //net.subscribe('conversationModified', queue.add.bind(queue, onConversationModified));
+        //net.subscribe('conversationRemoved', queue.add.bind(queue, onConversationRemoved));
+        //
+        //net.subscribe('messageAdded', queue.add.bind(queue, onMessageAdded));
+        //net.subscribe('messageRead', queue.add.bind(queue, onMessageRead));
     }
 
     function onConversationModified(data) {}

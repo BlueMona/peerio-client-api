@@ -70,9 +70,9 @@ Peerio.Messages.init = function () {
         Peerio.Action.conversationsUpdated();
     }
 
-   /// net.subscribe('messageAdded', onMessageAdded);
-  ///  net.subscribe('messageRead', onMessageRead);
-  ///  net.subscribe('conversationRemoved', onConversationRemoved);
+    net.subscribe('messageAdded', onMessageAdded);
+    net.subscribe('messageRead', onMessageRead);
+    net.subscribe('conversationRemoved', onConversationRemoved);
 
     // todo: request proof, error handling
     api.removeConversation = function (id) {
