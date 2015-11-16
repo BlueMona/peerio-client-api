@@ -2731,9 +2731,9 @@ Peerio.PhraseGenerator.init = function () {
     if (!loadedDictionary) return null;
 
     var phrase = '';
-    for (var i = 0; i < wordsCount; i++) phrase += getRandomWord() + ' ';
-
-    return phrase.trim().toLowerCase();
+    for (var i = 0; i < wordsCount; i++) {
+      phrase += getRandomWord() + ' ';
+    }return phrase.trim().toLowerCase();
   }
 
   // asynchronously builds dictionary cache for specified language
@@ -2897,9 +2897,11 @@ Peerio.Crypto.init = function () {
   ['setDefaultUserData', 'setDefaultContacts'].forEach(function (fnName) {
     Peerio.Crypto[fnName] = function () {
       var args = [];
-      for (var a = 0; a < arguments.length; a++) args[a] = arguments[a];
-
-      for (var w = 0; w < workers.length; w++) workers[w].postMessage({ fnName: fnName, args: args });
+      for (var a = 0; a < arguments.length; a++) {
+        args[a] = arguments[a];
+      }for (var w = 0; w < workers.length; w++) {
+        workers[w].postMessage({ fnName: fnName, args: args });
+      }
     };
   });
 
@@ -2916,9 +2918,9 @@ Peerio.Crypto.init = function () {
       // we copy arguments object data into array, because that's what worker is expecting to use it with apply()
       // don't change this to Array.slice() because it will prevent runtime optimisation
       var args = [];
-      for (var i = 0; i < arguments.length; i++) args[i] = arguments[i];
-
-      var ret = new Promise(function (resolve, reject) {
+      for (var i = 0; i < arguments.length; i++) {
+        args[i] = arguments[i];
+      }var ret = new Promise(function (resolve, reject) {
         callbacks[id] = {
           resolve: resolve,
           reject: reject
@@ -5801,6 +5803,10 @@ Peerio.Net.init = function () {
     api.getCollectionsVersion = function () {
         return sendToSocket('getCollectionsVersion');
     };
+
+    api.registerMobileDevice = function (data) {
+        return sendToSocket('registerMobileDevice', data);
+    };
 };
 /**
  *  Portion of web socket handling code that runs in UI thread.
@@ -6308,9 +6314,9 @@ Peerio.TinyDB.init = function () {
     var secretKey = (function () {
         var strKey = '';
 
-        while (strKey.length < keySize) strKey += Peerio.Config.lowImportanceDeviceKey;
-
-        var ret = nacl.util.decodeUTF8(strKey);
+        while (strKey.length < keySize) {
+            strKey += Peerio.Config.lowImportanceDeviceKey;
+        }var ret = nacl.util.decodeUTF8(strKey);
 
         return ret.subarray(0, keySize);
     })();

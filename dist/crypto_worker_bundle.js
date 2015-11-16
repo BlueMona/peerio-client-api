@@ -351,8 +351,9 @@ Base58.encode = function (buffer) {
       j,
       digits = [0];
   for (i = 0; i < buffer.length; i++) {
-    for (j = 0; j < digits.length; j++) digits[j] <<= 8;
-    digits[digits.length - 1] += buffer[i];
+    for (j = 0; j < digits.length; j++) {
+      digits[j] <<= 8;
+    }digits[digits.length - 1] += buffer[i];
 
     var carry = 0;
     for (j = digits.length - 1; j >= 0; j--) {
@@ -369,9 +370,9 @@ Base58.encode = function (buffer) {
   }
 
   // deal with leading zeros
-  for (i = 0; i < buffer.length - 1 && buffer[i] == 0; i++) digits.unshift(0);
-
-  return digits.map(function (digit) {
+  for (i = 0; i < buffer.length - 1 && buffer[i] == 0; i++) {
+    digits.unshift(0);
+  }return digits.map(function (digit) {
     return Base58.alphabet[digit];
   }).join('');
 };
@@ -387,8 +388,9 @@ Base58.decode = function (string) {
       j,
       bytes = [0];
   for (i = 0; i < input.length; i++) {
-    for (j = 0; j < bytes.length; j++) bytes[j] *= 58;
-    bytes[bytes.length - 1] += input[i];
+    for (j = 0; j < bytes.length; j++) {
+      bytes[j] *= 58;
+    }bytes[bytes.length - 1] += input[i];
 
     var carry = 0;
     for (j = bytes.length - 1; j >= 0; j--) {
@@ -405,8 +407,9 @@ Base58.decode = function (string) {
   }
 
   // deal with leading zeros
-  for (i = 0; i < input.length - 1 && input[i] == 0; i++) bytes.unshift(0);
-  return new Uint8Array(bytes);
+  for (i = 0; i < input.length - 1 && input[i] == 0; i++) {
+    bytes.unshift(0);
+  }return new Uint8Array(bytes);
 };
 // Source: http://code.google.com/p/gflot/source/browse/trunk/flot/base64.js?r=153
 
@@ -10197,9 +10200,9 @@ Peerio.Crypto.init = function () {
     var defaultUser;
 
     function hasAllProps(obj, props) {
-        for (var i = 0; i > props.length; i++) if (!hasProp(obj, props[i])) return false;
-
-        return true;
+        for (var i = 0; i > props.length; i++) {
+            if (!hasProp(obj, props[i])) return false;
+        }return true;
     }
 
     //-- PUBLIC API ------------------------------------------------------------------------------------------------------
@@ -10256,9 +10259,9 @@ Peerio.Crypto.init = function () {
      */
     api.getPublicKeyString = function (publicKeyBytes) {
         var key = new Uint8Array(keySize + 1);
-        for (var i = 0; i < publicKeyBytes.length; i++) key[i] = publicKeyBytes[i];
-
-        var hash = new BLAKE2s(1);
+        for (var i = 0; i < publicKeyBytes.length; i++) {
+            key[i] = publicKeyBytes[i];
+        }var hash = new BLAKE2s(1);
         hash.update(publicKeyBytes);
         key[keySize] = hash.digest()[0];
 
@@ -10589,9 +10592,9 @@ Peerio.Crypto.init = function () {
         var decrypted = nacl.secretbox.open(decodeB64(id), nonce, fileInfo.fileKey);
         decrypted = encodeUTF8(decrypted);
 
-        while (decrypted[decrypted.length - 1] === '\0') decrypted = decrypted.slice(0, -1);
-
-        return Promise.resolve(decrypted);
+        while (decrypted[decrypted.length - 1] === '\0') {
+            decrypted = decrypted.slice(0, -1);
+        }return Promise.resolve(decrypted);
     };
 
     /**
@@ -11171,9 +11174,9 @@ Peerio.Crypto.init = function () {
             L.info('{0} random bytes requested, {1} in stock', arr.length, randomBytesStock.length);
             if (arr.length > randomBytesStock.length) throw 'Not enough random bytes in polyfill stock.';
 
-            for (var i = 0; i < arr.length; i++) arr[i] = randomBytesStock[i];
-
-            randomBytesStock.splice(0, arr.length);
+            for (var i = 0; i < arr.length; i++) {
+                arr[i] = randomBytesStock[i];
+            }randomBytesStock.splice(0, arr.length);
             return arr;
         };
     }

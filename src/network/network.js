@@ -660,7 +660,10 @@ Peerio.Net.init = function () {
 
     api.getCollectionsVersion = function () {
         return sendToSocket('getCollectionsVersion');
-    }
+    };
 
+    api.registerMobileDevice = function (data) {
+        return sendToSocket('registerMobileDevice', data);
+    }
 
 };
