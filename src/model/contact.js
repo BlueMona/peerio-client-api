@@ -25,7 +25,6 @@ var Peerio = this.Peerio || {};
         this.address = data.primaryAddress;
         // this.addresses = data.addresses;
         this.isDeleted = data.isDeleted;
-        if (data.isMe) this.isMe = true; //todo change after server supports adding self to contact list
 
         return this;
     }

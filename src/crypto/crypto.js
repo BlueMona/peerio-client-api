@@ -30,8 +30,13 @@ Peerio.Crypto.init = function () {
 
     var base58Match = new RegExp('^[1-9ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]+$');
     var base64Match = new RegExp('^(?:[A-Za-z0-9+\/]{4})*(?:[A-Za-z0-9+\/]{2}==|[A-Za-z0-9+\/]{3}=)?$');
-    // shortcuts
-    var decodeB64 = nacl.util.decodeBase64;
+    // shortcuts/ safety wrappers
+    var decodeB64 = function (encoded) {
+        if (typeof(encoded) === 'string' && base64Match.test(encoded))
+            return nacl.util.decodeBase64(encode);
+
+        return null;
+    };
     var encodeB64 = nacl.util.encodeBase64;
     var decodeUTF8 = nacl.util.decodeUTF8;
     var encodeUTF8 = nacl.util.encodeUTF8;
@@ -107,8 +112,8 @@ Peerio.Crypto.init = function () {
             scrypt(keyHash.digest(), username, scryptResourceCost, scryptBlockSize, keySize, scryptStepDuration, resolve);
 
         }).then(function (keyBytes) {
-                return nacl.box.keyPair.fromSecretKey(new Uint8Array(keyBytes));
-            });
+            return nacl.box.keyPair.fromSecretKey(new Uint8Array(keyBytes));
+        });
     };
 
     /**
@@ -188,8 +193,8 @@ Peerio.Crypto.init = function () {
             scrypt(hash.hexDigest(), decodeUTF8(username), scryptResourceCost, scryptBlockSize,
                 keySize, scryptStepDuration, resolve);
         }).then(function (keyBytes) {
-                return new Uint8Array(keyBytes);
-            });
+            return new Uint8Array(keyBytes);
+        });
     };
 
     /**
@@ -386,11 +391,17 @@ Peerio.Crypto.init = function () {
 
             var header = JSON.stringify(encMessage.header);
 
+            var decodedBody = decodeB64(encMessage.body);
+            if (decodedBody === null) {
+                reject('Failed to decode message body.');
+                return;
+            }
+
             var messageBlob = new Blob([
                 signature,
                 numberToByteArray(header.length),
                 header,
-                decodeB64(encMessage.body)
+                decodedBody
             ]);
 
             decryptBlob(messageBlob, user,
@@ -462,12 +473,19 @@ Peerio.Crypto.init = function () {
 
             var headerString = JSON.stringify(fileInfo.header);
             var headerStringLength = decodeUTF8(headerString).length;
+
+            var decodedId = decodeB64(id);
+            if (decodedId === null) {
+                reject('Failed to decode file id.');
+                return;
+            }
+
             var peerioBlob = new Blob([
                 signature,
                 numberToByteArray(headerStringLength),
                 headerString,
                 numberToByteArray(fileNameSize),
-                decodeB64(id),
+                decodedId,
                 blob
             ]);
 
@@ -506,6 +524,9 @@ Peerio.Crypto.init = function () {
         fileInfo.fileNonce = decodeB64(fileInfo.fileNonce);
         fileInfo.fileKey = decodeB64(fileInfo.fileKey);
 
+        if (fileInfo.fileNonce === null || fileInfo.fileKey === null)
+            return Promise.reject('Failed to decode fileInfo.');
+
         var nonce = new Uint8Array(decryptInfoNonceSize);
         nonce.set(fileInfo.fileNonce);
 
@@ -532,7 +553,7 @@ Peerio.Crypto.init = function () {
         if (!recipient) return Promise.reject('recipient ' + recipientUsername + ' not found');
 
         var nonce = nacl.randomBytes(decryptInfoNonceSize);
-        var nonce = nacl.randomBytes(decryptInfoNonceSize);
+
         var encReceipt = nacl.box(
             decodeUTF8(receipt),
             nonce,
@@ -658,10 +679,9 @@ Peerio.Crypto.init = function () {
         if (nonce.length > 40 || nonce.length < 10)
             return false;
 
-        if (base64Match.test(nonce))
-            return decodeB64(nonce).length === expectedLength;
+        var decoded = decodeB64(nonce);
 
-        return false;
+        return decoded && (decoded.length === expectedLength);
     }
 
     /**
@@ -673,10 +693,9 @@ Peerio.Crypto.init = function () {
         if (key.length > 50 || key.length < 40)
             return false;
 
-        if (base64Match.test(key))
-            return decodeB64(key).length === keySize;
+        var decoded = decodeB64(key);
 
-        return false;
+        return decoded && (decoded.length === keySize);
     }
 
     /**
