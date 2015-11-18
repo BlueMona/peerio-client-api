@@ -356,6 +356,9 @@ Peerio.Messages.init = function () {
                         conv.messages.push(message);
                         conv.messages[message.id] = message;
 
+                        // security measure, conversation metadata is not encrypted
+                        conv.participants = message.participants;
+
                         conv.lastTimestamp = +conv.lastTimestamp;
                         conv.lastMoment = moment(conv.lastTimestamp);
                         conv.formerParticipants = [];

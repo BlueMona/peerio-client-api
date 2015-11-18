@@ -23,7 +23,7 @@ var Peerio = this.Peerio || {};
         this.originalMsgID = data.original;
         this.lastTimestamp = data.last;
         this.fileCount = data.fileCount; // todo: probably should not rely on server
-        this.participants = data.participants;
+        this.participants = data.participants; //todo: CHECK FOR MATCH when original message arrives
         this.events = data.events;
 
         return this;
