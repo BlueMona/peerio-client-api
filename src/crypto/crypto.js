@@ -40,6 +40,15 @@ Peerio.Crypto.init = function () {
     var encodeB64 = nacl.util.encodeBase64;
     var decodeUTF8 = nacl.util.decodeUTF8;
     var encodeUTF8 = nacl.util.encodeUTF8;
+    var parseJSON = function (json) {
+        if (typeof(json) !== 'string') return null;
+        try {
+            return JSON.parse(json);
+        } catch (ex) {
+            L.error('Failed to parse json. {0}', ex);
+            return null;
+        }
+    };
 
     var keySize = 32;
     var decryptInfoNonceSize = 24;
@@ -424,7 +433,11 @@ Peerio.Crypto.init = function () {
                             new Uint8Array(readerEvent.target.result)
                         );
 
-                        var message = JSON.parse(decryptedBuffer);
+                        var message = parseJSON(decryptedBuffer);
+                        if (message === null) {
+                            reject('Failed to decode message JSON.');
+                            return;
+                        }
 
                         resolve(message);
                     };
@@ -809,7 +822,7 @@ Peerio.Crypto.init = function () {
                 );
 
                 if (actualDecryptInfo) {
-                    actualDecryptInfo = JSON.parse(encodeUTF8(actualDecryptInfo));
+                    actualDecryptInfo = parseJSON(encodeUTF8(actualDecryptInfo));
                     actualDecryptInfoNonce = decodeB64(i);
                     break;
                 }
@@ -830,9 +843,12 @@ Peerio.Crypto.init = function () {
                 Base58.decode(actualDecryptInfo.senderID).subarray(0, keySize),
                 user.keyPair.secretKey
             );
-            actualFileInfo = JSON.parse(encodeUTF8(actualFileInfo));
+            actualFileInfo = parseJSON(encodeUTF8(actualFileInfo));
+            if (actualFileInfo === null)
+                return false;
         }
         catch (err) {
+            L.error('Failed to decrypt header. {0}', err);
             return false;
         }
         actualDecryptInfo.fileInfo = actualFileInfo;
@@ -920,7 +936,11 @@ Peerio.Crypto.init = function () {
             readBlob(blob, 12, headerLength + 12, function (header) {
                 try {
                     header = encodeUTF8(header.data);
-                    header = JSON.parse(header);
+                    header = parseJSON(header);
+                    if(header === null){
+                        callback(false);
+                        return false;
+                    }
                 }
                 catch (error) {
                     callback(false);

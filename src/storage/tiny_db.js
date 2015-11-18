@@ -39,8 +39,12 @@ Peerio.TinyDB.init = function () {
 
     function decrypt(str) {
         if (str === null) return Promise.resolve(null);
-
-        var decInfo = JSON.parse(str);
+        try {
+            var decInfo = JSON.parse(str);
+        } catch (ex) {
+            L.error('TinyDB: failed to decode. ', str);
+            Promise.reject();
+        }
         decInfo.ciphertext = nacl.util.decodeBase64(decInfo.ciphertext);
         decInfo.nonce = nacl.util.decodeBase64(decInfo.nonce);
 
