@@ -3360,7 +3360,8 @@ var Peerio = this.Peerio || {};
             login: login,
             PINIsSet: false,
             setPIN: setPIN,
-            removePIN: removePIN
+            removePIN: removePIN,
+            loadAddresses: loadAddresses
         };
         //------------------------------------------------------------------------------------------------------------------
 
@@ -3473,6 +3474,11 @@ var Peerio = this.Peerio || {};
         function loadFiles() {
             //todo cache
             return Peerio.Files.getAllFiles();
+        }
+
+        function loadAddresses() {
+            var addresses = [{ value: 'test 1 address', isPrimary: true }, { value: 'test 2 address', isPrimary: false }];
+            return addresses;
         }
 
         return user;

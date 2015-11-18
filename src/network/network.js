@@ -664,6 +664,5 @@ Peerio.Net.init = function () {
 
     api.registerMobileDevice = function (data) {
         return sendToSocket('registerMobileDevice', data);
-    }
-
+    };
 };
