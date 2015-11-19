@@ -3361,7 +3361,8 @@ var Peerio = this.Peerio || {};
             PINIsSet: false,
             setPIN: setPIN,
             removePIN: removePIN,
-            loadAddresses: loadAddresses
+            getAddresses: getAddresses,
+            setName: setName
         };
         //------------------------------------------------------------------------------------------------------------------
 
@@ -3476,9 +3477,49 @@ var Peerio = this.Peerio || {};
             return Peerio.Files.getAllFiles();
         }
 
-        function loadAddresses() {
-            var addresses = [{ value: 'test 1 address', isPrimary: true }, { value: 'test 2 address', isPrimary: false }];
+        function getAddresses() {
+            var addresses = [];
+
+            if (user.settings.addresses) {
+                var _iteratorNormalCompletion = true;
+                var _didIteratorError = false;
+                var _iteratorError = undefined;
+
+                try {
+                    for (var _iterator = user.settings.addresses[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
+                        i = _step.value;
+
+                        if (i) {
+                            addresses.push(i);
+                        }
+                    }
+                } catch (err) {
+                    _didIteratorError = true;
+                    _iteratorError = err;
+                } finally {
+                    try {
+                        if (!_iteratorNormalCompletion && _iterator.return) {
+                            _iterator.return();
+                        }
+                    } finally {
+                        if (_didIteratorError) {
+                            throw _iteratorError;
+                        }
+                    }
+                }
+            }
             return addresses;
+        }
+
+        function setName(firstName, lastName) {
+            // only invoke updates if there are differences
+            if (user.settings.firstName != firstName || user.settings.lastName != lastName) {
+                user.settings.firstName = firstName;
+                user.settings.lastName = lastName;
+                return Peerio.Net.updateSettings({ firstName: firstName, lastName: lastName });
+            }
+
+            return false;
         }
 
         return user;

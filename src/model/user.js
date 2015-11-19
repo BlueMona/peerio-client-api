@@ -24,7 +24,8 @@ var Peerio = this.Peerio || {};
             PINIsSet: false,
             setPIN: setPIN,
             removePIN: removePIN,
-            loadAddresses: loadAddresses
+            getAddresses: getAddresses,
+            setName: setName
         };
         //------------------------------------------------------------------------------------------------------------------
 
@@ -138,12 +139,31 @@ var Peerio = this.Peerio || {};
             return Peerio.Files.getAllFiles();
         }
 
-        function loadAddresses() {
-            var addresses = [
-                { value: 'test 1 address', isPrimary: true },
-                { value: 'test 2 address', isPrimary: false } 
-            ];
+        function getAddresses() {
+            var addresses = [];
+
+            if(user.settings.addresses) {
+                for (i of user.settings.addresses) {
+                    if(i) {
+                        addresses.push(i);
+                    }
+                }
+            }
             return addresses;
+        }
+
+        function setName(firstName, lastName) {
+            // only invoke updates if there are differences
+            if( (user.settings.firstName != firstName)
+                || (user.settings.lastName != lastName) ) {
+                user.settings.firstName = firstName;
+                user.settings.lastName = lastName;
+                return Peerio.Net.updateSettings(
+                    {firstName: firstName, lastName: lastName}
+                );
+            }
+
+            return false;
         }
 
         return user;
