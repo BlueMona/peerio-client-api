@@ -279,8 +279,8 @@ Peerio.Net.init = function () {
      * @param {number} confirmationCode - 8 digit number.
      * @promise {Boolean}
      */
-    api.confirmAddress = function (username, confirmationCode) {
-        return sendToSocket('confirmAddress', {username: username, confirmationCode: confirmationCode})
+    api.confirmAddress = function (address, confirmationCode) {
+        return sendToSocket('confirmAddress', {address: {value : address}, confirmationCode: confirmationCode})
             .return(true);
     };
 
@@ -311,13 +311,14 @@ Peerio.Net.init = function () {
     };
 
     /**
+     * OBSOLETE!!!
      * Confirms an address using confirmation code.
      * @param {string} code
      * @promise
      */
-    api.confirmAddress = function (code) {
+    /* api.confirmAddress = function (code) {
         return sendToSocket('confirmAddress', {confirmationCode: code});
-    };
+    }; */
 
     /**
      * Sets an address as the primary address.

@@ -3362,7 +3362,12 @@ var Peerio = this.Peerio || {};
             setPIN: setPIN,
             removePIN: removePIN,
             getAddresses: getAddresses,
-            setName: setName
+            setName: setName,
+            validateAddress: validateAddress,
+            addAddress: addAddress,
+            confirmAddress: confirmAddress,
+            removeAddress: removeAddress,
+            setPrimaryAddress: setPrimaryAddress
         };
         //------------------------------------------------------------------------------------------------------------------
 
@@ -3520,6 +3525,29 @@ var Peerio = this.Peerio || {};
             }
 
             return false;
+        }
+
+        function validateAddress(address) {
+            return Peerio.Net.validateAddress(address);
+        }
+
+        function addAddress(address) {
+            address = Peerio.Util.parseAddress(address);
+            return Peerio.Net.addAddress({
+                address: { type: address.type, value: address.value }
+            });
+        }
+
+        function confirmAddress(address, code) {
+            return Peerio.Net.confirmAddress(address, code);
+        }
+
+        function removeAddress(address) {
+            return Peerio.Net.removeAddress(address);
+        }
+
+        function setPrimaryAddress(address) {
+            return Peerio.Net.setPrimaryAddress(address);
         }
 
         return user;
@@ -5469,8 +5497,8 @@ Peerio.Net.init = function () {
      * @param {number} confirmationCode - 8 digit number.
      * @promise {Boolean}
      */
-    api.confirmAddress = function (username, confirmationCode) {
-        return sendToSocket('confirmAddress', { username: username, confirmationCode: confirmationCode }).return(true);
+    api.confirmAddress = function (address, confirmationCode) {
+        return sendToSocket('confirmAddress', { address: { value: address }, confirmationCode: confirmationCode }).return(true);
     };
 
     /**
@@ -5500,13 +5528,14 @@ Peerio.Net.init = function () {
     };
 
     /**
+     * OBSOLETE!!!
      * Confirms an address using confirmation code.
      * @param {string} code
      * @promise
      */
-    api.confirmAddress = function (code) {
-        return sendToSocket('confirmAddress', { confirmationCode: code });
-    };
+    /* api.confirmAddress = function (code) {
+        return sendToSocket('confirmAddress', {confirmationCode: code});
+    }; */
 
     /**
      * Sets an address as the primary address.
