@@ -3495,7 +3495,7 @@ var Peerio = this.Peerio || {};
                         i = _step.value;
 
                         if (i) {
-                            addresses.push(i);
+                            i.isPrimary ? addresses.unshift(i) : addresses.push(i);
                         }
                     }
                 } catch (err) {
@@ -3535,19 +3535,19 @@ var Peerio = this.Peerio || {};
             address = Peerio.Util.parseAddress(address);
             return Peerio.Net.addAddress({
                 address: { type: address.type, value: address.value }
-            });
+            }).then(loadSettings);
         }
 
         function confirmAddress(address, code) {
-            return Peerio.Net.confirmAddress(address, code);
+            return Peerio.Net.confirmAddress(address, code).then(loadSettings);
         }
 
         function removeAddress(address) {
-            return Peerio.Net.removeAddress(address);
+            return Peerio.Net.removeAddress(address).then(loadSettings);
         }
 
         function setPrimaryAddress(address) {
-            return Peerio.Net.setPrimaryAddress(address);
+            return Peerio.Net.setPrimaryAddress(address).then(loadSettings);;
         }
 
         return user;
@@ -5543,7 +5543,7 @@ Peerio.Net.init = function () {
      * @promise
      */
     api.setPrimaryAddress = function (address) {
-        return sendToSocket('setPrimaryAddress', { address: address });
+        return sendToSocket('setPrimaryAddress', { address: { value: address } });
     };
 
     /**
@@ -5552,7 +5552,7 @@ Peerio.Net.init = function () {
      * @promise
      */
     api.removeAddress = function (address) {
-        return sendToSocket('removeAddress', { address: address });
+        return sendToSocket('removeAddress', { address: { value: address } });
     };
 
     /**

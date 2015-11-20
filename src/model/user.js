@@ -150,7 +150,7 @@ var Peerio = this.Peerio || {};
             if(user.settings.addresses) {
                 for (i of user.settings.addresses) {
                     if(i) {
-                        addresses.push(i);
+                        i.isPrimary ? addresses.unshift(i) : addresses.push(i);
                     }
                 }
             }
@@ -180,19 +180,21 @@ var Peerio = this.Peerio || {};
             return Peerio.Net.addAddress(
                 {
                     address: { type: address.type, value: address.value }
-                });
+                }).then(loadSettings);
         }
 
         function confirmAddress(address, code) {
-            return Peerio.Net.confirmAddress(address, code);
+            return Peerio.Net.confirmAddress(address, code).then(loadSettings);
         }
 
         function removeAddress(address) {
-            return Peerio.Net.removeAddress(address);
+            return Peerio.Net.removeAddress(address).
+                then(loadSettings);
+
         }
 
         function setPrimaryAddress(address) {
-            return Peerio.Net.setPrimaryAddress(address);
+            return Peerio.Net.setPrimaryAddress(address).then(loadSettings);;
         }
 
 

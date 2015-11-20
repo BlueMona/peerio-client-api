@@ -326,7 +326,7 @@ Peerio.Net.init = function () {
      * @promise
      */
     api.setPrimaryAddress = function (address) {
-        return sendToSocket('setPrimaryAddress', {address: address});
+        return sendToSocket('setPrimaryAddress', {address: {value: address}});
     };
 
     /**
@@ -335,7 +335,7 @@ Peerio.Net.init = function () {
      * @promise
      */
     api.removeAddress = function (address) {
-        return sendToSocket('removeAddress', {address: address});
+        return sendToSocket('removeAddress', {address: {value: address} });
     };
 
     /**
