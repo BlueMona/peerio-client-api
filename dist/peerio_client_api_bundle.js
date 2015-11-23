@@ -3367,7 +3367,8 @@ var Peerio = this.Peerio || {};
             addAddress: addAddress,
             confirmAddress: confirmAddress,
             removeAddress: removeAddress,
-            setPrimaryAddress: setPrimaryAddress
+            setPrimaryAddress: setPrimaryAddress,
+            closeAccount: closeAccount
         };
         //------------------------------------------------------------------------------------------------------------------
 
@@ -3548,6 +3549,10 @@ var Peerio = this.Peerio || {};
 
         function setPrimaryAddress(address) {
             return Peerio.Net.setPrimaryAddress(address).then(loadSettings);;
+        }
+
+        function closeAccount() {
+            return Peerio.Net.closeAccount();
         }
 
         return user;

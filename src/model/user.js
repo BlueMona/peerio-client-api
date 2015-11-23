@@ -31,6 +31,7 @@ var Peerio = this.Peerio || {};
             confirmAddress: confirmAddress,
             removeAddress: removeAddress,
             setPrimaryAddress: setPrimaryAddress,
+            closeAccount: closeAccount
         };
         //------------------------------------------------------------------------------------------------------------------
 
@@ -197,6 +198,9 @@ var Peerio = this.Peerio || {};
             return Peerio.Net.setPrimaryAddress(address).then(loadSettings);;
         }
 
+        function closeAccount() {
+            return Peerio.Net.closeAccount();
+        }
 
         return user;
     };
