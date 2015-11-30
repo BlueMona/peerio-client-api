@@ -774,17 +774,19 @@ Peerio.Crypto.init = function () {
                 }
             };
 
+            var pkey = Base58.decode(publicKeys[i]).subarray(0, keySize);
+
             decryptInfo.fileInfo = encodeB64(nacl.box(
                 decodeUTF8(JSON.stringify(decryptInfo.fileInfo)),
                 decryptInfoNonces[i],
-                Base58.decode(publicKeys[i]).subarray(0, keySize),
+                pkey,
                 sender.keyPair.secretKey
             ));
 
             decryptInfo = encodeB64(nacl.box(
                 decodeUTF8(JSON.stringify(decryptInfo)),
                 decryptInfoNonces[i],
-                Base58.decode(publicKeys[i]).subarray(0, keySize),
+                pkey,
                 ephemeral.secretKey
             ));
 
