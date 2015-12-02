@@ -73,6 +73,13 @@ isModified: {bool} deprecated
 ```
 
 
+## V2.0.0
+
+**Type changed**
+header: {
+    version: "semver string"
+}
+
 ## V1.1.0
 
 **Added** to the conversation
@@ -113,7 +120,7 @@ recipients: [{
                          }
              }],
 header: {
-    version: 0,
+    version: 1,
     ephemeral: '',
     decryptInfo: { 'nonce': 'ciphertext' }
 },
