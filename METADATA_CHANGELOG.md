@@ -5,6 +5,7 @@
 ## current (update every time it evolves)
 
 **Conversation object metadata**
+
 ```
  id: {string} unique conversation id string,
  
@@ -36,6 +37,7 @@
 ```
 
 **Message object metadata**
+
 ```
 id: "{string} message id",
 sender: "username",
@@ -82,11 +84,15 @@ header: {
 
 ## V1.1.0
 
-**Added** to the conversation
-version: "string" // metadata structure version
+**Added** separate independent fields to conversation and message object
+conversation version is being set by server according to highest message version in it 
+
+version: "string"
 
 **Added** to the message
+
 outerIndex: 0 // message index (unencrypted part)
+timestamp: 0
 
 ## V1.0.0 (initial)
 
