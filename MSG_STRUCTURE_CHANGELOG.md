@@ -4,6 +4,7 @@
 ## current (update every time it evolves)
 
 ```
+varsion: "1.1.0",
 secretConversationID: "string",
 innerIndex: 0,
 timestamp: 0,
@@ -16,12 +17,18 @@ sequence: 0 // deprecated, remove in next version
 ```
 
 
+## V2.0.0
+
+**Removed**
+sequence: 0 // removal of this field breaks compatibility with older Peerio versions 
+
 ## V1.1.0
 This version improves conversation security.
 
 **Added**
 ```
-secretConversationID: "string" //conversation id encrypted in every message
+varsion: "string"
+secretConversationID: "string" //random conversation id encrypted in every message
 innerIndex: 0 // message index in conversation
 timestamp: 0  // encrypted timestamp
 ```

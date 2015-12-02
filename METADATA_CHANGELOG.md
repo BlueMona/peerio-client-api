@@ -72,6 +72,7 @@ isDraft: {bool} unused,
 isModified: {bool} deprecated
 ```
 
+
 ## V1.1.0
 
 **Added** to the conversation
