@@ -4,7 +4,8 @@
 ## current (update every time it evolves)
 
 ```
-varsion: "1.1.0",
+version: "1.1.0",
+metadataVersion: "1.1.0"
 secretConversationID: "string",
 innerIndex: 0,
 timestamp: 0,
@@ -27,7 +28,8 @@ This version improves conversation security.
 
 **Added**
 ```
-varsion: "string"
+version: "string"
+metadataVersion: "string" // metadata version this conversation was created with
 secretConversationID: "string" //random conversation id encrypted in every message
 innerIndex: 0 // message index in conversation
 timestamp: 0  // encrypted timestamp

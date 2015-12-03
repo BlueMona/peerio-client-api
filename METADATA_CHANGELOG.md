@@ -84,13 +84,14 @@ header: {
 
 ## V1.1.0
 
-**Added** separate independent fields to conversation and message object
+**Added** to conversation  object
 conversation version is being set by server according to highest message version in it 
 
 version: "string"
 
 **Added** to the message
 
+version: "string"
 outerIndex: 0 // message index (unencrypted part)
 timestamp: 0
 
