@@ -23,7 +23,17 @@ var Peerio = this.Peerio || {};
             login: login,
             PINIsSet: false,
             setPIN: setPIN,
-            removePIN: removePIN
+            removePIN: removePIN,
+            getAddresses: getAddresses,
+            setName: setName,
+            validateAddress: validateAddress,
+            addAddress: addAddress,
+            confirmAddress: confirmAddress,
+            removeAddress: removeAddress,
+            setPrimaryAddress: setPrimaryAddress,
+            closeAccount: closeAccount,
+            loadContacts: loadContacts,
+            setNotifications: setNotifications
         };
         //------------------------------------------------------------------------------------------------------------------
 
@@ -135,6 +145,71 @@ var Peerio = this.Peerio || {};
         function loadFiles() {
             //todo cache
             return Peerio.Files.getAllFiles();
+        }
+
+        function getAddresses() {
+            var addresses = [];
+
+            if(user.settings.addresses) {
+                for (i of user.settings.addresses) {
+                    if(i) {
+                        i.isPrimary ? addresses.unshift(i) : addresses.push(i);
+                    }
+                }
+            }
+            return addresses;
+        }
+
+        function setName(firstName, lastName) {
+            // only invoke updates if there are differences
+            if( (user.settings.firstName != firstName)
+                || (user.settings.lastName != lastName) ) {
+                user.settings.firstName = firstName;
+                user.settings.lastName = lastName;
+                return Peerio.Net.updateSettings(
+                    {firstName: firstName, lastName: lastName}
+                );
+            }
+
+            return false;
+        }
+
+        function validateAddress(address) {
+            return Peerio.Net.validateAddress(address);
+        }
+
+        function addAddress(address) {
+            address = Peerio.Util.parseAddress(address);
+            return Peerio.Net.addAddress(
+                {
+                    address: { type: address.type, value: address.value }
+                }).then(loadSettings);
+        }
+
+        function confirmAddress(address, code) {
+            return Peerio.Net.confirmAddress(address, code).then(loadSettings);
+        }
+
+        function removeAddress(address) {
+            return Peerio.Net.removeAddress(address).
+                then(loadSettings);
+
+        }
+
+        function setPrimaryAddress(address) {
+            return Peerio.Net.setPrimaryAddress(address).then(loadSettings);;
+        }
+
+        function closeAccount() {
+            return Peerio.Net.closeAccount();
+        }
+
+        function setNotifications(receiveMessageNotifications, receiveContactNotifications, receiveContactRequestNotifications) {
+            return Peerio.Net.updateSettings({
+                receiveMessageNotifications: receiveMessageNotifications,
+                receiveContactNotifications: receiveContactNotifications,
+                receiveContactRequestNotifications: receiveContactRequestNotifications
+            });
         }
 
         return user;

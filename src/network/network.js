@@ -279,8 +279,8 @@ Peerio.Net.init = function () {
      * @param {number} confirmationCode - 8 digit number.
      * @promise {Boolean}
      */
-    api.confirmAddress = function (username, confirmationCode) {
-        return sendToSocket('confirmAddress', {username: username, confirmationCode: confirmationCode})
+    api.confirmAddress = function (address, confirmationCode) {
+        return sendToSocket('confirmAddress', {address: {value : address}, confirmationCode: confirmationCode})
             .return(true);
     };
 
@@ -311,13 +311,14 @@ Peerio.Net.init = function () {
     };
 
     /**
+     * OBSOLETE!!!
      * Confirms an address using confirmation code.
      * @param {string} code
      * @promise
      */
-    api.confirmAddress = function (code) {
+    /* api.confirmAddress = function (code) {
         return sendToSocket('confirmAddress', {confirmationCode: code});
-    };
+    }; */
 
     /**
      * Sets an address as the primary address.
@@ -325,7 +326,7 @@ Peerio.Net.init = function () {
      * @promise
      */
     api.setPrimaryAddress = function (address) {
-        return sendToSocket('setPrimaryAddress', {address: address});
+        return sendToSocket('setPrimaryAddress', {address: {value: address}});
     };
 
     /**
@@ -334,7 +335,7 @@ Peerio.Net.init = function () {
      * @promise
      */
     api.removeAddress = function (address) {
-        return sendToSocket('removeAddress', {address: address});
+        return sendToSocket('removeAddress', {address: {value: address} });
     };
 
     /**
@@ -664,6 +665,5 @@ Peerio.Net.init = function () {
 
     api.registerMobileDevice = function (data) {
         return sendToSocket('registerMobileDevice', data);
-    }
-
+    };
 };
