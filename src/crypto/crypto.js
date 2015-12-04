@@ -33,7 +33,7 @@ Peerio.Crypto.init = function () {
     // shortcuts/ safety wrappers
     var decodeB64 = function (encoded) {
         if (typeof(encoded) === 'string' && base64Match.test(encoded))
-            return nacl.util.decodeBase64(encode);
+            return nacl.util.decodeBase64(encoded);
 
         return null;
     };
