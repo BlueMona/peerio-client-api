@@ -31,7 +31,9 @@ var Peerio = this.Peerio || {};
             confirmAddress: confirmAddress,
             removeAddress: removeAddress,
             setPrimaryAddress: setPrimaryAddress,
-            closeAccount: closeAccount
+            closeAccount: closeAccount,
+            loadContacts: loadContacts,
+            setNotifications: setNotifications
         };
         //------------------------------------------------------------------------------------------------------------------
 
@@ -200,6 +202,14 @@ var Peerio = this.Peerio || {};
 
         function closeAccount() {
             return Peerio.Net.closeAccount();
+        }
+
+        function setNotifications(receiveMessageNotifications, receiveContactNotifications, receiveContactRequestNotifications) {
+            return Peerio.Net.updateSettings({
+                receiveMessageNotifications: receiveMessageNotifications,
+                receiveContactNotifications: receiveContactNotifications,
+                receiveContactRequestNotifications: receiveContactRequestNotifications
+            });
         }
 
         return user;
