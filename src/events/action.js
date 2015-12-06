@@ -108,4 +108,7 @@ Peerio.Action.init = function () {
  * @name Peerio.Action.loginFail
  * @function
  */
-
+/**
+ * @name Peerio.Action.settingsUpdated
+ * @function
+ */

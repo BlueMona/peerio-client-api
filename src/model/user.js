@@ -2,10 +2,6 @@
  * Peerio User object holds authenticated user data
  * and orchestrates application on the top level
  *
- * Depends on:
- * -----------
- * Peerio.Auth
- *
  */
 
 var Peerio = this.Peerio || {};
@@ -15,60 +11,27 @@ var Peerio = this.Peerio || {};
 
     // Module pattern without cached functions is optimal for User class
 
-    Peerio.User = function (username) {
+    Peerio.User = Peerio.User || {};
 
-        //-- PUBLIC API ----------------------------------------------------------------------------------------------------
+    /**
+     * @param {string} username
+     * @returns {object}
+     */
+    Peerio.User.create = function (username) {
+
         var user = {
             username: username,
-            login: login,
-            PINIsSet: false,
-            setPIN: setPIN,
-            removePIN: removePIN,
-            getAddresses: getAddresses,
-            setName: setName,
-            validateAddress: validateAddress,
-            addAddress: addAddress,
-            confirmAddress: confirmAddress,
-            removeAddress: removeAddress,
-            setPrimaryAddress: setPrimaryAddress,
-            closeAccount: closeAccount,
-            loadContacts: loadContacts,
-            setNotifications: setNotifications
+            PINIsSet: false
         };
-        //------------------------------------------------------------------------------------------------------------------
 
-        function login(passphraseOrPIN) {
-            return Peerio.Auth.resolvePassphrase(user.username, passphraseOrPIN)
-                .spread((passphrase, PINIsSet) => {
-                    user.passphrase = passphrase;
-                    user.PINIsSet = PINIsSet;
-                })
-                .then(() => Peerio.Auth.generateKeys(user.username, user.passphrase))
-                .then((keys) => {
-                    user.publicKey = keys.publicKey;
-                    user.keyPair = keys.keyPair;
-                })
-                .then(() => Peerio.Net.login({
-                    username: user.username,
-                    publicKey: user.publicKey,
-                    keyPair: user.keyPair
-                }))
-                //.then(() => Peerio.SqlDB.openUserDB(user.username, user.passphrase))
-                //.then(db => Peerio.SqlMigrator.migrateUp(db))
-                .then(() => Peerio.Crypto.setDefaultUserData(username, user.keyPair, user.publicKey))
-                .then(() => {
-                    Peerio.Net.subscribe(Peerio.Net.EVENTS.onAuthenticated, reSync);
-                    Peerio.Net.subscribe(Peerio.Net.EVENTS.onDisconnect, stopAllServerEvents);
-                    return reSync();
-                });
+        Peerio.User.addAuthModule(user);
+        Peerio.User.addSettingsModule(user);
 
-        }
-
-        function reSync() {
-            return loadSettings()
-                .then(loadContacts)
+        user.reSync = function () {
+            return user.loadSettings()
+                .then(user.loadContacts)
                 .then(() => Peerio.ContactsEventHandler.resume())
-                .then(loadFiles)
+                .then(user.loadFiles)
                 .then(() => Peerio.FilesEventHandler.resume())
                 .then(() => {
                     // a bit ugly but we need app to be usable while messages are syncing,
@@ -78,38 +41,17 @@ var Peerio = this.Peerio || {};
                     //        .then(() => Peerio.MessagesEventHandler.resume());
                     //}, 0);
                 });
-        }
+        }.bind(user);
 
-        function stopAllServerEvents() {
+        user.stopAllServerEvents = function () {
             Peerio.Sync.interrupt();
             Peerio.MessagesEventHandler.pause();
             Peerio.FilesEventHandler.pause();
             Peerio.ContactsEventHandler.pause();
-        }
+        }.bind(user);
 
-        function setPIN(pin) {
-            Peerio.Auth.setPIN(pin, user.username, user.passphrase)
-                .then(() => user.PINIsSet = true)
-                .then(()=>Peerio.Action.settingsUpdated);
-        }
 
-        function removePIN() {
-            if (Peerio.Auth.removePIN(user.username)) {
-                user.PINIsSet = false;
-                Peerio.Action.settingsUpdated();
-            }
-        }
-
-        function loadSettings() {
-            //todo attempt cache first and then call for net update
-            return Peerio.Net.getSettings()
-                .then(settings => {
-                    user.settings = settings;
-                    Peerio.Action.settingsUpdated();
-                });
-        }
-
-        function loadContacts() {
+        user.loadContacts = function () {
             // todo cache first
             var p1 = Peerio.Contacts.getContacts(user.username)
                 .then(contacts => {
@@ -140,77 +82,13 @@ var Peerio = this.Peerio || {};
                 });
 
             return Promise.all([p1, p2, p3]);
-        }
+        }.bind(this);
 
-        function loadFiles() {
+        user.loadFiles = function () {
             //todo cache
             return Peerio.Files.getAllFiles();
-        }
+        }.bind(user);
 
-        function getAddresses() {
-            var addresses = [];
-
-            if(user.settings.addresses) {
-                for (i of user.settings.addresses) {
-                    if(i) {
-                        i.isPrimary ? addresses.unshift(i) : addresses.push(i);
-                    }
-                }
-            }
-            return addresses;
-        }
-
-        function setName(firstName, lastName) {
-            // only invoke updates if there are differences
-            if( (user.settings.firstName != firstName)
-                || (user.settings.lastName != lastName) ) {
-                user.settings.firstName = firstName;
-                user.settings.lastName = lastName;
-                return Peerio.Net.updateSettings(
-                    {firstName: firstName, lastName: lastName}
-                );
-            }
-
-            return false;
-        }
-
-        function validateAddress(address) {
-            return Peerio.Net.validateAddress(address);
-        }
-
-        function addAddress(address) {
-            address = Peerio.Util.parseAddress(address);
-            return Peerio.Net.addAddress(
-                {
-                    address: { type: address.type, value: address.value }
-                }).then(loadSettings);
-        }
-
-        function confirmAddress(address, code) {
-            return Peerio.Net.confirmAddress(address, code).then(loadSettings);
-        }
-
-        function removeAddress(address) {
-            return Peerio.Net.removeAddress(address).
-                then(loadSettings);
-
-        }
-
-        function setPrimaryAddress(address) {
-            return Peerio.Net.setPrimaryAddress(address).then(loadSettings);;
-        }
-
-        function closeAccount() {
-            return Peerio.Net.closeAccount();
-        }
-
-        function setNotifications(receiveMessageNotifications, receiveContactNotifications, receiveContactRequestNotifications) {
-            return Peerio.Net.updateSettings({
-                receiveMessageNotifications: receiveMessageNotifications,
-                receiveContactNotifications: receiveContactNotifications,
-                receiveContactRequestNotifications: receiveContactRequestNotifications
-            });
-        }
 
         return user;
     };
