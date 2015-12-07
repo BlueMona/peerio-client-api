@@ -4,6 +4,8 @@
 
 var Peerio = this.Peerio || {};
 
+window.hasProp = Function.call.bind(Object.prototype.hasOwnProperty);
+
 /**
  * Initializes all API modules.
  * This should be called whenever DOM/Device is ready.

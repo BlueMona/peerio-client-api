@@ -26,6 +26,9 @@ var Peerio = this.Peerio || {};
 
         Peerio.User.addAuthModule(user);
         Peerio.User.addSettingsModule(user);
+        Peerio.User.addContactsModule(user);
+        Peerio.User.addFilesModule(user);
+        Peerio.User.addMessagesModule(user);
 
         user.reSync = function () {
             return user.loadSettings()
@@ -48,45 +51,6 @@ var Peerio = this.Peerio || {};
             Peerio.MessagesEventHandler.pause();
             Peerio.FilesEventHandler.pause();
             Peerio.ContactsEventHandler.pause();
-        }.bind(user);
-
-
-        user.loadContacts = function () {
-            // todo cache first
-            var p1 = Peerio.Contacts.getContacts(user.username)
-                .then(contacts => {
-                    user.contacts = contacts;
-
-                    var cryptoContacts = {};
-                    contacts.arr.forEach(item => {
-                        cryptoContacts[item.username] = {
-                            username: item.username,
-                            publicKey: item.publicKey
-                        }
-                    });
-
-                    Peerio.Crypto.setDefaultContacts(cryptoContacts);
-                });
-
-            var p2 = Peerio.Contacts.getReceivedRequests()
-                .then(received => {
-                    //todo: old code compatibility flags, refactor and remove
-                    received.arr.forEach(item =>  item.isRequest = item.isReceivedRequest = true);
-                    return user.receivedContactRequests = received;
-                });
-
-            var p3 = Peerio.Contacts.getSentRequests()
-                .then(sent => {
-                    sent.arr.forEach(item => item.isRequest = true);
-                    return user.sentContactRequests = sent;
-                });
-
-            return Promise.all([p1, p2, p3]);
-        }.bind(this);
-
-        user.loadFiles = function () {
-            //todo cache
-            return Peerio.Files.getAllFiles();
         }.bind(user);
 
 

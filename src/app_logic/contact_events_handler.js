@@ -41,47 +41,35 @@ var Peerio = this.Peerio || {};
 
     function onAdded(data) {
         Peerio.Contact.create(data)
-            .then(contact => Peerio.user.contacts.addOrReplace(contact))
-            .then(()=>{
-                Peerio.user.sentContactRequests.removeByKey(data.username);
-                Peerio.user.receivedContactRequests.removeByKey(data.username);
-                Peerio.Action.contactsUpdated();
+            .then(contact => {
+                Peerio.user.onContactAdded(contact, data.collectionVersion);
             });
     }
 
     function onRemoved(data) {
-        Peerio.user.contacts.removeByKey(data.username);
-        Peerio.Action.contactsUpdated();
+        Peerio.user.onContactRemoved(data.username, data.collectionVersion);
     }
 
     function onRequestSent(data) {
         Peerio.Contact.create(data)
             .then(contact => {
-                // todo: legacy flags, refactor and remove
-                contact.isRequest = true;
-                Peerio.user.sentContactRequests.addOrReplace(contact);
-            })
-            .then(Peerio.Action.contactsUpdated);
+                Peerio.user.onContactRequestSent(contact, data.collectionVersion);
+            });
     }
 
     function onSentRequestRemoved(data) {
-        Peerio.user.sentContactRequests.removeByKey(data.username);
-        Peerio.Action.contactsUpdated();
+        Peerio.user.onSentContactRequestRemoved(data.username, data.collectionVersion);
     }
 
     function onRequestReceived(data) {
         Peerio.Contact.create(data)
             .then(contact => {
-                //todo: refactor and remove legacy flags
-                contact.isRequest = contact.isReceivedRequest = true;
-                Peerio.user.receivedContactRequests.addOrReplace(contact);
-            })
-            .then(Peerio.Action.contactsUpdated);
+                Peerio.user.onContactRequestReceived(contact, data.collectionVersion);
+            });
     }
 
     function onReceivedRequestRemoved(data) {
-        Peerio.user.receivedContactRequests.removeByKey(data.username);
-        Peerio.Action.contactsUpdated();
+        Peerio.user.onReceivedContactRequestRemoved(data.username, data.collectionVersion);
     }
 
 })();
