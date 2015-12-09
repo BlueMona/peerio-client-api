@@ -190,7 +190,7 @@ var Peerio = this.Peerio || {};
             var xhr = new XMLHttpRequest();
 
             xhr.onprogress = function (progress) {
-                setDownloadState(DL_STATE.DOWNLOADING, progress.loaded, progress.total);
+                setDownloadState.call(this, DL_STATE.DOWNLOADING, progress.loaded, progress.total);
             };
 
             xhr.onreadystatechange = function () {
