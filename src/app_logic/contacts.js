@@ -36,7 +36,7 @@ var Peerio = this.Peerio || {};
                     contacts.add(contact, true);
                 });
         }).then(function () {
-            contacts.defaultSort();
+            contacts.sort();
             return contacts;
         });
     }

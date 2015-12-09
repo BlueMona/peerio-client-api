@@ -35,7 +35,7 @@
             this.arr.push(item);
             this.dict[item[this.prop]] = item;
             if (this.prop2) this.dict[item[this.prop2]] = item;
-            if (!dontSort) this.defaultSort();
+            if (!dontSort) this.sort();
         }
 
         /**
@@ -88,7 +88,7 @@
             prop: indexPropName,
             prop2: indexPropName2,
             sortProp: defaultSortProp || indexPropName,
-            defaultSort: defaultSortAsc === false ? sortDesc : sortAsc,
+            sort: defaultSortAsc === false ? sortDesc : sortAsc,
             arr: [],
             dict: {},
             clear: clear,

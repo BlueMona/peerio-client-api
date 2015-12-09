@@ -10,19 +10,35 @@ var Peerio = this.Peerio || {};
 
     Peerio.User.addFilesModule = function (user) {
 
+        user.uploads = [];
+
+        /**
+         * Reloads and rebuilds file collection from server, unless already up to date
+         * @returns Peerio.user
+         */
         user.loadFiles = function () {
-            //todo model
             return Peerio.Net.getCollectionsVersion()
                 .then(response => {
                     // files are up to date
                     if (user.filesVersion === response.versions.files)
-                        return;
+                        return user;
 
-                    return Peerio.Files.getAllFiles().then(() => user.filesVersion = response.versions.files);
+                    return Peerio.Files.getFiles()
+                        .then(files => {
+                            user.filesVersion = response.versions.files;
+                            user.files = files;
+                            return user;
+                        });
                 });
 
         }.bind(user);
 
+
+        user.uploadFile = function (fileUrl) {
+            var file = Peerio.File();
+            Peerio.user.uploads.push(file);
+            return file.upload(fileUrl);
+        }.bind(user);
 
     }
 })();

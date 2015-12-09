@@ -9,6 +9,7 @@ var Peerio = this.Peerio || {};
     Peerio.User = Peerio.User || {};
 
     Peerio.User.addContactsModule = function (user) {
+        // todo: db cache
 
         function updateCollectionVersion(version) {
             user.contactsVersion = Math.max(user.contactsVersion, version);
@@ -16,8 +17,10 @@ var Peerio = this.Peerio || {};
         }
 
         /**
-         *
+         * Adds/replaces a new contact to local contact list cache.
+         * Normally as a result of server event.
          * @param {Peerio.Contact} contact
+         * @param {number} version - collection version associated with this update
          */
         user.onContactAdded = function (contact, version) {
             user.contacts.addOrReplace(contact);
@@ -26,11 +29,23 @@ var Peerio = this.Peerio || {};
             updateCollectionVersion(version);
         }.bind(user);
 
+        /**
+         * Removes a contact from local contact list cache.
+         * Normally as a result of server event.
+         * @param {string} username - removed contact username
+         * @param {number} version - collection version associated with this update
+         */
         user.onContactRemoved = function (username, version) {
             user.contacts.removeByKey(username);
             updateCollectionVersion(version);
         }.bind(user);
 
+        /**
+         * Adds/replaces a new contact request to local contact list cache.
+         * Normally as a result of server event.
+         * @param {Peerio.Contact} contact
+         * @param {number} version - collection version associated with this update
+         */
         user.onContactRequestSent = function (contact, version) {
             // todo: legacy flags, refactor and remove
             contact.isRequest = true;
@@ -38,11 +53,23 @@ var Peerio = this.Peerio || {};
             updateCollectionVersion(version);
         }.bind(user);
 
+        /**
+         * Removes a contact request from local contact list cache.
+         * Normally as a result of server event.
+         * @param {string} username - removed contact username
+         * @param {number} version - collection version associated with this update
+         */
         user.onSentContactRequestRemoved = function (username, version) {
             Peerio.user.sentContactRequests.removeByKey(username);
             updateCollectionVersion(version);
         }.bind(user);
 
+        /**
+         * Adds/replaces a new received contact request to local contact list cache.
+         * Normally as a result of server event.
+         * @param {Peerio.Contact} contact
+         * @param {number} version - collection version associated with this update
+         */
         user.onContactRequestReceived = function (contact, version) {
             // todo: legacy flags, refactor and remove
             contact.isRequest = contact.isReceivedRequest = true;
@@ -50,6 +77,12 @@ var Peerio = this.Peerio || {};
             updateCollectionVersion(version);
         }.bind(user);
 
+        /**
+         * Removes a received request from local contact list cache.
+         * Normally as a result of server event.
+         * @param {string} username - removed contact username
+         * @param {number} version - collection version associated with this update
+         */
         user.onReceivedContactRequestRemoved = function (username, version) {
             Peerio.user.receivedContactRequests.removeByKey(username);
             updateCollectionVersion(version);

@@ -577,7 +577,7 @@ Peerio.Net.init = function () {
      * @param {string} id
      * @promise
      */
-    api.downloadFile = function (id) {
+    api.getDownloadUrl = function (id) {
         return sendToSocket('downloadFile', {id: id});
     };
 
