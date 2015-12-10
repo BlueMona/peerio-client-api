@@ -149,21 +149,16 @@ var Peerio = this.Peerio || {};
             .catch(function (e) {
                 L.error('Upload failed. {0}', e);
                 return Promise.reject();
-            })
-            .finally(() =>setState(null));
+            });
 
     }
 
     function setUploadState(state, currentChunk, totalChunks) {
-        if (state === null) {
-            delete this.uploadState;
-        } else {
-            this.uploadState = this.uploadState || {};
-            this.uploadState.state = state;
-            this.uploadState.stateName = ULStateNames[state];
-            this.uploadState.currentChunk = currentChunk || this.uploadState.currentChunk;
-            this.uploadState.totalChunks = totalChunks || this.uploadState.totalChunks;
-        }
+        this.uploadState = this.uploadState || {};
+        this.uploadState.state = state;
+        this.uploadState.stateName = ULStateNames[state];
+        this.uploadState.currentChunk = currentChunk || this.uploadState.currentChunk;
+        this.uploadState.totalChunks = totalChunks || this.uploadState.totalChunks;
         Peerio.Action.filesUpdated();
     }
 

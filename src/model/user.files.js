@@ -37,7 +37,11 @@ var Peerio = this.Peerio || {};
         user.uploadFile = function (fileUrl) {
             var file = Peerio.File();
             Peerio.user.uploads.push(file);
-            return file.upload(fileUrl);
+            return file.upload(fileUrl)
+                .then(function(){
+                    Peerio.user.uploads.splice(Peerio.user.uploads.indexOf(Peerio.user.uploads),1);
+                    Peerio.Action.filesUpdated();
+                });
         }.bind(user);
 
     }
