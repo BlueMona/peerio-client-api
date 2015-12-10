@@ -226,9 +226,12 @@ Peerio.Net.init = function () {
      * Will retry a cached 2fa request, if possible
      */
     api.retryCached2FARequest = function() {
-        sendToSocket(cached2FARequest.name, cached2FARequest.data,
+        if(cached2FARequest) {
+            sendToSocket(cached2FARequest.name, cached2FARequest.data,
                      cached2FARequest.ignoreConnectionState,
                      cached2FARequest.transfer);
+                     cached2FARequest = null;
+        }
     };
     /**
      * Subscribes a handler to network event
