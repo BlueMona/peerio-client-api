@@ -10,12 +10,25 @@ var Peerio = this.Peerio || {};
 
     Peerio.User.addSettingsModule = function (user) {
 
+        Peerio.Net.subscribe('settingsUpdated', (settings) => {
+            L.info('incoming settings update');
+            L.info(settings);
+            user.processSettings(settings);
+        });
+
+        user.processSettings = function(settings) {
+            L.info('sending notification about settings across all who wants to listen!');
+            user.settings = settings;
+            Peerio.Action.settingsUpdated();
+        };
+
         user.loadSettings = function () {
             //todo attempt cache first and then call for net update
             return Peerio.Net.getSettings()
                 .then(settings => {
-                    user.settings = settings;
-                    Peerio.Action.settingsUpdated();
+                    L.info('get settings in');
+                    L.info(settings);
+                    user.processSettings(settings);
                 });
         }.bind(user);
 
