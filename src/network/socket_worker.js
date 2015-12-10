@@ -114,7 +114,9 @@ function initialize(cfg) {
         'fileAdded',
         'fileRemoved',
 
-        'settingsUpdated'
+        'settingsUpdated',
+
+        'twoFactorAuthRequested'
     ].forEach(function (eventName) {
         self.peerioSocket.on(eventName,
             function (data) {
