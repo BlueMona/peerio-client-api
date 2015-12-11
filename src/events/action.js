@@ -62,7 +62,10 @@ Peerio.Action.init = function () {
         'ConversationsUpdated',
         'ContactsUpdated',
         'FilesUpdated',
-        'FileUpdated'          // ({file})
+        'FileUpdated',         // ({file})
+        'SyncStarted',
+        'SyncProgress',
+        'SyncEnded'
     ].forEach(function (action) {
         Peerio.Action.add(action);
     });

@@ -141,6 +141,15 @@ Peerio.Net.init = function () {
             });
     };
 
+    api.signOut = function () {
+        socketEventHandlers = {
+            connect: onConnect,
+            disconnect: onDisconnect
+        };
+        user = null;
+        Peerio.Socket.reconnect();
+    };
+
     //-- PROMISE MANAGEMENT ----------------------------------------------------------------------------------------------
     // here we store all pending promises by unique id
     var pending = {};
@@ -280,7 +289,7 @@ Peerio.Net.init = function () {
      * @promise {Boolean}
      */
     api.confirmAddress = function (address, confirmationCode) {
-        return sendToSocket('confirmAddress', {address: {value : address}, confirmationCode: confirmationCode})
+        return sendToSocket('confirmAddress', {address: {value: address}, confirmationCode: confirmationCode})
             .return(true);
     };
 
@@ -317,8 +326,8 @@ Peerio.Net.init = function () {
      * @promise
      */
     /* api.confirmAddress = function (code) {
-        return sendToSocket('confirmAddress', {confirmationCode: code});
-    }; */
+     return sendToSocket('confirmAddress', {confirmationCode: code});
+     }; */
 
     /**
      * Sets an address as the primary address.
@@ -335,7 +344,7 @@ Peerio.Net.init = function () {
      * @promise
      */
     api.removeAddress = function (address) {
-        return sendToSocket('removeAddress', {address: {value: address} });
+        return sendToSocket('removeAddress', {address: {value: address}});
     };
 
     /**

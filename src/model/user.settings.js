@@ -8,15 +8,20 @@ var Peerio = this.Peerio || {};
     'use strict';
     Peerio.User = Peerio.User || {};
 
+    var subscribed = false;
+
     Peerio.User.addSettingsModule = function (user) {
 
-        Peerio.Net.subscribe('settingsUpdated', (settings) => {
-            L.info('incoming settings update');
-            L.info(settings);
-            user.processSettings(settings);
-        });
+        if (!subscribed) {
+            subscribed = true;
+            Peerio.Net.subscribe('settingsUpdated', (settings) => {
+                L.info('incoming settings update');
+                L.info(settings);
+                user.processSettings(settings);
+            });
+        }
 
-        user.processSettings = function(settings) {
+        user.processSettings = function (settings) {
             L.info('sending notification about settings across all who wants to listen!');
             user.settings = settings;
             Peerio.Action.settingsUpdated();

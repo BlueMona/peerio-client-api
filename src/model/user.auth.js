@@ -26,13 +26,17 @@ var Peerio = this.Peerio || {};
                     publicKey: user.publicKey,
                     keyPair: user.keyPair
                 }))
-                //.then(() => Peerio.SqlDB.openselfDB(user.username, user.passphrase))
-                //.then(db => Peerio.SqlMigrator.migrateUp(db))
+                .then(() => Peerio.SqlDB.openUserDB(user.username, user.passphrase))
+                .then(db => Peerio.SqlMigrator.migrateUp(db))
                 .then(() => Peerio.Crypto.setDefaultUserData(user.username, user.keyPair, user.publicKey))
-                .then(() => {
+                .then(() => user.reSync())
+                .then(()=> {
                     Peerio.Net.subscribe(Peerio.Net.EVENTS.onAuthenticated, user.reSync);
                     Peerio.Net.subscribe(Peerio.Net.EVENTS.onDisconnect, user.stopAllServerEvents);
-                    return user.reSync();
+                })
+                .catch((e)=> {
+                    Peerio.Net.signOut();
+                    return Promise.reject(e);
                 });
 
         }.bind(user);

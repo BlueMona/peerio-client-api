@@ -18,33 +18,23 @@ var Peerio = this.Peerio || {};
         message_read: processMessageReadEntry
     };
 
-    // indicator that sync is currently running
-    var running = false;
-    var runningPromise = null;
-    // if another call to sync will be made while one is still running - this will be true
-    var resyncRequested = false;
+
     // index entries will be loaded and processed in batches
-    var batch = 10;
+    var batch = 20;
 
     function syncMessages() {
-        if (running) {
-            resyncRequested = true;
-            return runningPromise;
-        }
-
-        running = true;
-
-        runningPromise = Promise.all([Peerio.SqlQueries.getMaxSeqID(), Peerio.Net.getMaxMessageIndexId()])
+        return Promise.all([Peerio.SqlQueries.getMaxSeqID(), Peerio.Net.getMaxMessageIndexId()])
             .spread((localMax, serverMax)=> {
                 // building a promise that we'll settle manually
                 // we don't want to use chain here, because it might get really long, consuming ram and cpu
                 return new Promise((resolve, reject) => {
                     // asyc recursive function that executes processing of one page at a time
                     var callProcess = () => {
-                        return processPage(localMax, Math.min(serverMax, localMax + 10))
+                        Peerio.Action.syncProgress(localMax, serverMax, 'downloading messages');
+                        return processPage(localMax, Math.min(serverMax, localMax + batch))
                             .then(()=> {
                                 // moving to next page
-                                localMax += 11;
+                                localMax += batch + 1;
                                 // if all range was processed
                                 if (localMax > serverMax) {
                                     resolve();
@@ -58,17 +48,7 @@ var Peerio = this.Peerio || {};
                     // starting the chain
                     callProcess();
                 });
-            })
-            .finally(()=> {
-                running = false;
-                runningPromise = null;
-                if (resyncRequested) {
-                    resyncRequested = false;
-                    syncMessages();
-                }
             });
-
-        return runningPromise;
     }
 
     // just to avoid generating 100500 log messages about unknown types in index
@@ -98,34 +78,40 @@ var Peerio = this.Peerio || {};
     }
 
     function processConversationEntry(entry) {
+        return;
         return Peerio.SqlQueries.conversationExists(entry.id)
             .then(exists => {
                 if (exists) return;
 
-                var c = Peerio.Conversation.create(entry)
-                    .then(c.save);
+                var c = Peerio.Conversation.create(entry).save();
             });
     }
 
     function processConversationParticipantsEntry(entry) {
+        return;
         console.log(entry);
 
     }
 
     function processConversationDeletedEntry(entry) {
+        return;
         console.log(entry);
 
     }
 
     function processMessageEntry(entry) {
+        return;
+        console.log(entry)
     }
 
     function processMessageReadEntry(entry) {
-
+        return;
+        console.log(entry)
     }
 
     function interrupt() {
-
+        return;
+        console.log('interrupt')
     }
 
 

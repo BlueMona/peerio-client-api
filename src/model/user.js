@@ -30,20 +30,38 @@ var Peerio = this.Peerio || {};
         Peerio.User.addFilesModule(user);
         Peerio.User.addMessagesModule(user);
 
+        // indicator that sync is currently running
+        var running = false;
+        var runningPromise = null;
+        // if another call to sync will be made while one is still running - this will be true
+        var resyncRequested = false;
+
         user.reSync = function () {
-            return user.loadSettings()
+            if (running) {
+                resyncRequested = true;
+                return runningPromise;
+            }
+            running = true;
+            Peerio.Action.syncStarted();
+
+            runningPromise = user.loadSettings()
                 .then(user.loadContacts)
                 .then(() => Peerio.ContactsEventHandler.resume())
                 .then(user.loadFiles)
                 .then(() => Peerio.FilesEventHandler.resume())
-                .then(() => {
-                    // a bit ugly but we need app to be usable while messages are syncing,
-                    // so reSync promise needs to be resolved before messages are done syncing
-                    //window.setTimeout(()=> {
-                    //    Peerio.Sync.syncMessages()
-                    //        .then(() => Peerio.MessagesEventHandler.resume());
-                    //}, 0);
+                .then(() => Peerio.Sync.syncMessages())
+                .then(() => Peerio.MessagesEventHandler.resume())
+                .finally(()=> {
+                    Peerio.Action.syncEnded();
+                    running = false;
+                    runningPromise = null;
+                    if (resyncRequested) {
+                        resyncRequested = false;
+                        user.reSync();
+                    }
                 });
+
+            return runningPromise;
         }.bind(user);
 
         user.stopAllServerEvents = function () {

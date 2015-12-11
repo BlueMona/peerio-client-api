@@ -28,10 +28,11 @@ var Peerio = this.Peerio || {};
         L.info('Processing {0} server contacts data', data.length);
 
         var contacts = Collection('username', null, 'fullNameAndUsername');
-
+        var counter = 0;
         return Promise.map(data, function (contactData) {
             return Peerio.Contact.create(contactData)
                 .then(function (contact) {
+                    Peerio.Action.syncProgress(counter++, data.length, 'synchronizing contacts');
                     if (contact.username === username) contact.isMe = true;
                     contacts.add(contact, true);
                 });

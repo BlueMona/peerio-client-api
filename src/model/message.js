@@ -29,7 +29,7 @@ var Peerio = this.Peerio || {};
                 this.body = decrypted.message;
                 this.receiptSecret = decrypted.receipt;
                 this.receipts = decrypted.receipts;
-                this.subject = subject; // todo copy to conversation
+                this.subject = decrypted.subject; // todo copy to conversation
                 return this;
         });
 
@@ -54,8 +54,8 @@ var Peerio = this.Peerio || {};
         return this;
     }
 
-    function insertIntoDB(){
-        return Peerio.SqlQueries.createConversation(
+    function save(){
+        return Peerio.SqlQueries.createMessage(
             this.id,
             this.seqID,
             this.originalMsgID,
@@ -82,10 +82,10 @@ var Peerio = this.Peerio || {};
      */
     Peerio.Message = function () {
         var obj = {
+            loadServerData: loadServerData,
+            buildProperties: buildProperties,
+            save: save
         };
-
-        obj.self = obj;
-
 
         return obj;
     };
@@ -97,7 +97,7 @@ var Peerio = this.Peerio || {};
     Peerio.Message.create = function (data) {
         return Peerio.Message()
             .loadServerData(data)
-            .buildProperties();
+            .then(msg => msg.buildProperties());
     };
 
 })();

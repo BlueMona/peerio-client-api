@@ -40,13 +40,13 @@ var Peerio = this.Peerio || {};
                 this.exParticipants.push(event.participant);
             });
         }
-        return Promise.resolve();
+        return this;
     }
 
     /**
      * Saves object to database (Insert only, will fail if already exists)
      */
-    function insertIntoDB(){
+    function save(){
         return Peerio.SqlQueries.createConversation(
             this.id,
             this.seqID,
@@ -88,6 +88,9 @@ var Peerio = this.Peerio || {};
      */
     Peerio.Conversation = function (id) {
         var obj = {
+            loadServerData: loadServerData,
+            save: save,
+            buildProperties: buildProperties
         };
         if(id) obj.id = id;
         obj.self = obj;

@@ -94,7 +94,9 @@ var Peerio = this.Peerio || {};
          * Skips reload if cached collection version is the same as on server.
          */
         user.loadContacts = function () {
+            var msg = 'synchronizing contacts';
             // todo cache to db
+            Peerio.Action.syncProgress(0, 0, msg);
 
             return Peerio.Net.getCollectionsVersion()
                 .then(response => {
@@ -139,7 +141,8 @@ var Peerio = this.Peerio || {};
                             // in case it got updated from other events already
                             updateCollectionVersion(response.versions.contacts);
                         });
-                });
+                })
+                .finally(()=>Peerio.Action.syncProgress(100, 100, msg));
 
 
         }.bind(this);

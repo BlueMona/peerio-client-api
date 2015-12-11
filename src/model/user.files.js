@@ -17,6 +17,8 @@ var Peerio = this.Peerio || {};
          * @returns Peerio.user
          */
         user.loadFiles = function () {
+            Peerio.Action.syncProgress(0, 0, 'synchronizing files');
+
             return Peerio.Net.getCollectionsVersion()
                 .then(response => {
                     // files are up to date
@@ -38,8 +40,8 @@ var Peerio = this.Peerio || {};
             var file = Peerio.File();
             Peerio.user.uploads.push(file);
             return file.upload(fileUrl)
-                .then(function(){
-                    Peerio.user.uploads.splice(Peerio.user.uploads.indexOf(Peerio.user.uploads),1);
+                .finally(function(){
+                    _.pull(Peerio.user.uploads, file);
                     Peerio.Action.filesUpdated();
                 });
         }.bind(user);

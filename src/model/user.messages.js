@@ -10,8 +10,17 @@ var Peerio = this.Peerio || {};
 
     Peerio.User.addMessagesModule = function (user) {
 
-        //user. = function () {
-        //}.bind(user);
+        user.startConversation = function () {
+
+        }.bind(user);
+
+        user.sendMessage = function () {
+
+        }.bind(user);
+
+        user.deleteConversation = function () {
+        }.bind(user);
+
 
     }
 })();
