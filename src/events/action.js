@@ -57,6 +57,7 @@ Peerio.Action.init = function () {
         'LoginSuccess',        // login attempt succeeded
         'LoginFail',           // login attempt failed
         'SettingsUpdated',
+        'TwoFactorAuthRequested',
         'MessageAdded',
         'ReceiptAdded',
         'ConversationsUpdated',
@@ -113,5 +114,9 @@ Peerio.Action.init = function () {
  */
 /**
  * @name Peerio.Action.settingsUpdated
+ * @function
+ */
+/**
+ * @name Peerio.Action.twoFactorAuthRequested
  * @function
  */

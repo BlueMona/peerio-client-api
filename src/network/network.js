@@ -156,6 +156,7 @@ Peerio.Net.init = function () {
     // safe max promise id under 32-bit integer. Once we reach maximum, id resets to 0.
     var maxId = 4000000000;
     var currentId = 0;
+    var cached2FARequest = null;
 
     // registers new promise reject function and returns a unique id for it
     function addPendingPromise(rejectFn) {
@@ -207,6 +208,19 @@ Peerio.Net.init = function () {
                 if (hasProp(response, 'error')) {
                     var err = new PeerioServerError(response.error);
                     L.error(err);
+                    // 2fa requested
+                    // TODO: add constraints, for which functions
+                    // is 2fa 424 error enabled
+                    if(response.error == 424) {
+                        cached2FARequest = {
+                            name: name,
+                            data: data,
+                            ignoreConnectionState: ignoreConnectionState,
+                            transfer: transfer
+                        };
+
+                        Peerio.Action.twoFactorAuthRequested(cached2FARequest);
+                    }
                     return Promise.reject(err);
                 } else {
                     return Promise.resolve(response);
@@ -216,7 +230,18 @@ Peerio.Net.init = function () {
     }
 
     //-- PUBLIC API ------------------------------------------------------------------------------------------------------
-
+    
+    /**
+     * Will retry a cached 2fa request, if possible
+     */
+    api.retryCached2FARequest = function() {
+        if(cached2FARequest) {
+            sendToSocket(cached2FARequest.name, cached2FARequest.data,
+                     cached2FARequest.ignoreConnectionState,
+                     cached2FARequest.transfer);
+                     cached2FARequest = null;
+        }
+    };
     /**
      * Subscribes a handler to network event
      * @param {string} eventName - one of the Peerio.Net.EVENTS values
