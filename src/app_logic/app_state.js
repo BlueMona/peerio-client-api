@@ -11,16 +11,6 @@ Peerio.AppState.init = function () {
 
   L.verbose('Peerio.AppState.init() start');
 
-  var net = Peerio.Net;
-
-  // TODO: find a better place for this subscriptions?
-  // Peerio.Net is a low-level service and it does not know about event system, so we bridge events.
-  net.addEventListener(net.EVENTS.onConnect, Peerio.Action.socketConnect);
-  net.addEventListener(net.EVENTS.onDisconnect, Peerio.Action.socketDisconnect);
-  // this events will be fired on automatic re-login attempts only
-  net.addEventListener(net.EVENTS.onAuthenticated, Peerio.Action.loginSuccess);
-  net.addEventListener(net.EVENTS.onAuthFail, Peerio.Action.loginFail);
-
   var api = Peerio.AppState;
   delete Peerio.AppState.init;
   var d = Peerio.Dispatcher;
@@ -67,8 +57,8 @@ Peerio.AppState.init = function () {
   d.onLoading(setState.bind(api, 'loading', true));
   d.onLoadingDone(setState.bind(api, 'loading', false));
 
-  d.onSocketConnect(setState.bind(api, 'connected', true));
-  d.onSocketDisconnect(function () {
+  d.onConnected(setState.bind(api, 'connected', true));
+  d.onDisconnected(function () {
     setState('connected', false);
     setState('authenticated', false);
   });

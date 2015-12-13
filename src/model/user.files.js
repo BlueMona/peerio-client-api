@@ -11,7 +11,8 @@ var Peerio = this.Peerio || {};
     Peerio.User.addFilesModule = function (user) {
 
         user.uploads = [];
-
+        // todo from base
+        user.filesVersion = -1;
         /**
          * Reloads and rebuilds file collection from server, unless already up to date
          * @returns Peerio.user
@@ -31,7 +32,7 @@ var Peerio = this.Peerio || {};
                             user.files = files;
                             return user;
                         });
-                });
+                }).finally(()=>Peerio.Action.syncProgress(1, 1, 'synchronizing files'));
 
         }.bind(user);
 
@@ -40,7 +41,7 @@ var Peerio = this.Peerio || {};
             var file = Peerio.File();
             Peerio.user.uploads.push(file);
             return file.upload(fileUrl)
-                .finally(function(){
+                .finally(function () {
                     _.pull(Peerio.user.uploads, file);
                     Peerio.Action.filesUpdated();
                 });

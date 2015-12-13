@@ -30,7 +30,7 @@ var Peerio = this.Peerio || {};
     }
 
     /**
-     * Builds computed properties
+     * Builds computed properties that exist only in runtime
      */
     function buildProperties() {
         // full name is both first and last names, or one of them if another is not available,
@@ -170,7 +170,7 @@ var Peerio = this.Peerio || {};
      * @param {Object} data
      * @returns {Promise<Contact>}
      */
-    Peerio.Contact.create = function (data) {
+    Peerio.Contact.fromServerData = function (data) {
         return Peerio.Contact()
             .loadServerData(data)
             .buildProperties()

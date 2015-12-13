@@ -46,11 +46,11 @@ var Peerio = this.Peerio || {};
 
             runningPromise = user.loadSettings()
                 .then(user.loadContacts)
-                .then(() => Peerio.ContactsEventHandler.resume())
+                .then(Peerio.ContactsEventHandler.resume)
                 .then(user.loadFiles)
-                .then(() => Peerio.FilesEventHandler.resume())
-                .then(() => Peerio.Sync.syncMessages())
-                .then(() => Peerio.MessagesEventHandler.resume())
+                .then(Peerio.FilesEventHandler.resume)
+                .then(Peerio.Sync.syncMessages)
+                .then(Peerio.MessagesEventHandler.resume)
                 .finally(()=> {
                     Peerio.Action.syncEnded();
                     running = false;

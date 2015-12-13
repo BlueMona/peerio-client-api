@@ -9,8 +9,8 @@ describe('Events', function () {
     // This test is pretty dumb, and requires maintenance on every action list change.
     // But it prevents accidental action removal, which happens sometimes.
     var actions = [
-      'SocketConnect',       // WebSocket reported successful connect
-      'SocketDisconnect',    // WebSocket reported disconnected(and reconnecting) state
+      'Connect',       // WebSocket reported successful connect
+      'Disconnected',    // WebSocket reported disconnected(and reconnecting) state
       'Authenticated',       // WebSocket connection was authenticated
       'Loading',             // Data transfer is in process
       'LoadingDone',         // Data transfer ended

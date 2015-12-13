@@ -30,7 +30,7 @@ var Peerio = this.Peerio || {};
         var contacts = Collection('username', null, 'fullNameAndUsername');
         var counter = 0;
         return Promise.map(data, function (contactData) {
-            return Peerio.Contact.create(contactData)
+            return Peerio.Contact.fromServerData(contactData)
                 .then(function (contact) {
                     Peerio.Action.syncProgress(counter++, data.length, 'synchronizing contacts');
                     if (contact.username === username) contact.isMe = true;

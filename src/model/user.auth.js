@@ -31,8 +31,14 @@ var Peerio = this.Peerio || {};
                 .then(() => Peerio.Crypto.setDefaultUserData(user.username, user.keyPair, user.publicKey))
                 .then(() => user.reSync())
                 .then(()=> {
-                    Peerio.Net.subscribe(Peerio.Net.EVENTS.onAuthenticated, user.reSync);
-                    Peerio.Net.subscribe(Peerio.Net.EVENTS.onDisconnect, user.stopAllServerEvents);
+                    Peerio.Dispatcher.onAuthenticated(function(){
+                        user.reSync()
+                            .catch(err => {
+                                L.error('Synchronization failed. {0}.', err);
+                                Peerio.Action.showAlert({text: err});
+                            });
+                    });
+                    Peerio.Dispatcher.onDisconnected(user.stopAllServerEvents);
                 })
                 .catch((e)=> {
                     Peerio.Net.signOut();

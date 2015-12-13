@@ -136,18 +136,21 @@ function initialize(cfg) {
             return;
         }
 
-        if (message.name === 'reconnectSocket') {
-            console.log('Application logic requested connection reset.');
-            resetConnection();
-            return;
+        switch (message.name) {
+            case 'reconnectSocket':
+                console.log('Application logic requested connection reset.');
+                resetConnection();
+                return;
+            case 'pauseConnection':
+                console.log('WORKER PAUSE');
+                self.peerioSocket.disconnect();
+                return;
+            case 'resumeConnection':
+                console.log('WORKER RESUME');
+                self.peerioSocket.connect();
+                return;
         }
 
-        if (message.name === 'pauseConnection') {
-            stopPingChecks();
-        } else if (message.name === 'resumeConnection') {
-            startPingChecks();
-            resetConnection();
-        }
 
         self.peerioSocket.emit(message.name, message.data, function (response) {
             self.setLastPing();
