@@ -40,6 +40,9 @@ var Peerio = this.Peerio || {};
 
         if (this.fullName !== this.username)
             this.fullNameAndUsername = this.fullName + ' (' + this.username + ')';
+        else
+            this.fullNameAndUsername = this.username;
+
 
         return this;
     }

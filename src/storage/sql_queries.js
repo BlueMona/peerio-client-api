@@ -20,7 +20,9 @@ var Peerio = this.Peerio || {};
         updateConversationsUnreadCount: updateConversationsUnreadCount,
         updateConversationsHasFiles: updateConversationsHasFiles,
         setConversationsCreatedTimestamp: setConversationsCreatedTimestamp,
-        getAllConversations: getAllConversations
+        getAllConversations: getAllConversations,
+        getConversation: getConversation,
+        getMessages: getMessages
 
     };
 
@@ -105,9 +107,17 @@ var Peerio = this.Peerio || {};
         return Peerio.SqlDB.user.executeSql('SELECT * FROM conversations ORDER BY lastTimestamp DESC');
     }
 
+    function getConversation(id) {
+        return Peerio.SqlDB.user.executeSql('SELECT * FROM conversations WHERE id=? LIMIT 1', [id]);
+    }
+
+    function getMessages(conversationId) {
+        return Peerio.SqlDB.user.executeSql('SELECT * FROM messages WHERE conversationID=? ORDER BY timestamp ASC', [conversationId]);
+    }
+
     //-- Utilities
     function serializeArray(arr) {
-        return JSON.stringify(arr && arr.length ? arr : null);
+        return arr && arr.length ? JSON.stringify(arr) : null;
     }
 
 

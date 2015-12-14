@@ -67,6 +67,14 @@ var Peerio = this.Peerio || {};
             .return(this);
     }
 
+    function loadLocalData(data) {
+        _.assign(this, data);
+        this.files = JSON.parse(this.files) || [];
+        this.receipts = JSON.parse(this.receipts) || [];
+        return this;
+    }
+
+
     /**
      * Builds computed properties
      */
@@ -100,6 +108,7 @@ var Peerio = this.Peerio || {};
     Peerio.Message = function () {
         var obj = {
             loadServerData: loadServerData,
+            loadLocalData: loadLocalData,
             buildProperties: buildProperties,
             insert: insert
         };
@@ -111,10 +120,15 @@ var Peerio = this.Peerio || {};
      * @param {Object} data
      * @returns {Promise<Message>}
      */
-    Peerio.Message.create = function (data) {
+    Peerio.Message.fromServerData = function (data) {
         return Peerio.Message()
-            .loadServerData(data)
-            .then(msg => msg.buildProperties());
+            .loadServerData(data);
+    };
+
+    Peerio.Message.fromLocalData = function (data) {
+        return Peerio.Message()
+            .loadLocalData(data)
+            .buildProperties();
     };
 
     Peerio.Message.addReceipt = function (receiptData) {
