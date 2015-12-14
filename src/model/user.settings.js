@@ -21,9 +21,14 @@ var Peerio = this.Peerio || {};
             user.processSettings(settings);
         })];
 
-        user.processSettings = function(settings) {
+        user.processSettings = function (settings) {
             L.info('sending notification about settings across all who wants to listen!');
-            user.settings = settings;
+            user.settings = settings.settings;
+            user.addresses = settings.addresses;
+            user.firstName = settings.firstName;
+            user.lastName = settings.lastName;
+            user.paymentPlan = settings.paymentPlan;
+            user.quota = settings.quota;
             Peerio.Action.settingsUpdated();
         };
 
@@ -39,14 +44,12 @@ var Peerio = this.Peerio || {};
 
         user.setName = function (firstName, lastName) {
             // only invoke updates if there are differences
-            if (user.settings.firstName != firstName
-                || user.settings.lastName != lastName) {
-                user.settings.firstName = firstName;
-                user.settings.lastName = lastName;
-                return Peerio.Net.updateSettings({firstName: firstName, lastName: lastName});
-            }
+            if (user.firstName === firstName && user.lastName === lastName) return Promise.resolve();
 
-            return Promise.resolve();
+            user.firstName = firstName;
+            user.lastName = lastName;
+            return Peerio.Net.updateSettings({firstName: firstName, lastName: lastName});
+
         }.bind(user);
 
         user.validateAddress = function (address) {

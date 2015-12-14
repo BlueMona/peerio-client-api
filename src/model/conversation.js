@@ -21,64 +21,62 @@ var Peerio = this.Peerio || {};
         this.seqID = data.seqID;
         this.id = data.id;
         this.originalMsgID = data.original;
-        this.lastTimestamp = data.last;
-        this.fileCount = data.fileCount; // todo: probably should not rely on server
+        this.lastTimestamp = data.lastTimestamp;
         this.participants = data.participants; //todo: CHECK FOR MATCH when original message arrives
-        this.events = data.events;
+        if (data.events) {
+            this.exParticipants = [];
+            data.events.forEach(event => {
+                if (event.type !== 'remove') return;
+                this.exParticipants.push({u: event.participant, t: event.timestamp});
+            });
+        }
 
         return this;
     }
 
-    /**
-     * Builds computed properties
-     */
-    function buildProperties() {
-        if(this.events){
-            this.exParticipants=[];
-            this.events.forEach(event => {
-                if (event.type !== 'remove') return;
-                this.exParticipants.push(event.participant);
-            });
-        }
-        return Promise.resolve();
+    function loadLocalData(data){
+        this.id = data.id;
+        this.lastTimestamp = data.lastTimestamp;
+        this.participants = JSON.parse(data.participants);
+        this.exParticipants = JSON.parse(data.exParticipants);
+        this.subject = data.subject;
+        this.unreadCount = data.unreadCount;
+        return this;
     }
 
     /**
-     * Saves object to database (Insert only, will fail if already exists)
+     * Builds computed properties that exist only in runtime
      */
-    function insertIntoDB(){
+    function buildProperties() {
+        this.lastMoment = moment(this.lastTimestamp);
+        this.exParticipants.forEach((p)=> {
+            p.moment = moment(p.t);
+        });
+        return this;
+    }
+
+    /**
+     * Saves object to database(ignores if exists)
+     */
+    function insert() {
         return Peerio.SqlQueries.createConversation(
             this.id,
             this.seqID,
             this.originalMsgID,
-            this.subject,
-            this.createdTimestamp,
-            JSON.stringify(this.participants),
-            JSON.stringify(this.exParticipants),
-            JSON.stringify(this.events),
-            this.lastTimestamp,
-            this.fileCount,
-            this.msgCount,
-            this.unread);
+            this.participants,
+            this.exParticipants,
+            this.lastTimestamp);
     }
 
-    function loadFromDB(){
-
+    function updateParticipants() {
+        return Peerio.SqlQueries.updateConversationParticipants(
+            this.id,
+            this.seqID,
+            this.participants,
+            this.exParticipants,
+            this.lastTimestamp
+        );
     }
-/*
- 'id TEXT PRIMARY KEY,' + // conversationID
- 'seqID INTEGER,' +       // last sequence id for this conversation
- 'originalMsgID TEXT, ' +    // messageID this conversation started with
- 'subject TEXT,' +        // subject from original message
- 'created INTEGER,' +     // original message timestamp
- 'participants TEXT,' +   // current participants array ['username','username'] excluding current user
- 'exParticipants TEXT,' + // same but for the ones who left
- 'events TEXT,' +         // events object for conversation
- 'lastTimestamp INTEGER,' + // timestamp of last time this conversation or messages inside it got updated
- 'fileCount INTEGER,' +
- 'msgCount INTEGER,' +
- 'unread BOOLEAN' +
- */
 
 
     //-- PUBLIC API ------------------------------------------------------------------------------------------------------
@@ -88,8 +86,13 @@ var Peerio = this.Peerio || {};
      */
     Peerio.Conversation = function (id) {
         var obj = {
+            loadServerData: loadServerData,
+            loadLocalData: loadLocalData,
+            buildProperties: buildProperties,
+            insert: insert,
+            updateParticipants: updateParticipants
         };
-        if(id) obj.id = id;
+        if (id) obj.id = id;
         obj.self = obj;
 
         return obj;
@@ -99,10 +102,18 @@ var Peerio = this.Peerio || {};
      * @param {Object} data
      * @returns {Promise<Conversation>}
      */
-    Peerio.Conversation.create = function (data) {
+    Peerio.Conversation.fromServerData = function (data) {
         return Peerio.Conversation()
-            .loadServerData(data)
-            .buildProperties();
+            .loadServerData(data);
     };
+
+    Peerio.Conversation.fromLocalData = function (data) {
+        return Peerio.Conversation()
+            .loadLocalData(data);
+    };
+
+    Peerio.Conversation.deleteFromCache = function (id) {
+        return Peerio.SqlQueries.deleteConversation(id);
+    }
 
 })();

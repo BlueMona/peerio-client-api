@@ -32,13 +32,28 @@ var Peerio = this.Peerio || {};
                         return Promise.reject(error);
                     }
                 })
-                //.then(() => Peerio.SqlDB.openselfDB(user.username, user.passphrase))
-                //.then(db => Peerio.SqlMigrator.migrateUp(db))
+                .then(() => Peerio.SqlDB.openUserDB(user.username, user.passphrase))
+                .then(db => Peerio.SqlMigrator.migrateUp(db))
                 .then(() => Peerio.Crypto.setDefaultUserData(user.username, user.keyPair, user.publicKey))
-                .then(() => {
-                    Peerio.Net.subscribe(Peerio.Net.EVENTS.onAuthenticated, user.reSync);
-                    Peerio.Net.subscribe(Peerio.Net.EVENTS.onDisconnect, user.stopAllServerEvents);
-                    return user.reSync();
+                .then(() => user.reSync())
+                .then(()=> {
+                    Peerio.Dispatcher.onAuthenticated(function () {
+                        user.reSync()
+                            .catch(err => {
+                                L.error('Synchronization failed. {0}.', err);
+                                Peerio.Action.showAlert({text: err});
+                            });
+                    });
+                    Peerio.Dispatcher.onDisconnected(user.stopAllServerEvents);
+                })
+                .catch((e)=> {
+                    // ! This is an important piece.
+                    // Usually, to perform 'sign out' we reload app to clean all states and open resources.
+                    // But here(initial login) we don't want to do that, because it will create an unpleasant UX.
+                    // So we clean resources manually.
+                    Peerio.Net.signOut();
+                    Peerio.SqlDB.closeAll();
+                    return Promise.reject(e);
                 });
 
         }.bind(user);

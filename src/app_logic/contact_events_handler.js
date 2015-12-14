@@ -40,7 +40,7 @@ var Peerio = this.Peerio || {};
     }
 
     function onAdded(data) {
-        Peerio.Contact.create(data)
+        Peerio.Contact.fromServerData(data)
             .then(contact => {
                 Peerio.user.onContactAdded(contact, data.collectionVersion);
             });
@@ -51,7 +51,7 @@ var Peerio = this.Peerio || {};
     }
 
     function onRequestSent(data) {
-        Peerio.Contact.create(data)
+        Peerio.Contact.fromServerData(data)
             .then(contact => {
                 Peerio.user.onContactRequestSent(contact, data.collectionVersion);
             });
@@ -62,7 +62,7 @@ var Peerio = this.Peerio || {};
     }
 
     function onRequestReceived(data) {
-        Peerio.Contact.create(data)
+        Peerio.Contact.fromServerData(data)
             .then(contact => {
                 Peerio.user.onContactRequestReceived(contact, data.collectionVersion);
             });

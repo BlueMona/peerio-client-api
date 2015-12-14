@@ -54,12 +54,13 @@
             return runQueue.length + waitQueue.length;
         }
 
-        return {
-            add: add,
-            pause: pause,
-            resume: resume,
-            getQueueLength: getQueueLength
-        };
+        var ret = {};
+        ret.add = add.bind(ret);
+        ret.pause = pause.bind(ret);
+        ret.resume = resume.bind(ret);
+        ret.getQueueLength = getQueueLength.bind(ret);
+
+        return ret;
     };
 
 })(this);

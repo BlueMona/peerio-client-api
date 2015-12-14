@@ -87,14 +87,16 @@ var Peerio = this.Peerio || {};
             Peerio.user.receivedContactRequests.removeByKey(username);
             updateCollectionVersion(version);
         }.bind(user);
-
-
+        // todo from base
+        user.contactsVersion = -1;
         /**
          * Reloads contact collection from server.
          * Skips reload if cached collection version is the same as on server.
          */
         user.loadContacts = function () {
+            var msg = 'synchronizing contacts';
             // todo cache to db
+            Peerio.Action.syncProgress(0, 0, msg);
 
             return Peerio.Net.getCollectionsVersion()
                 .then(response => {
@@ -133,13 +135,18 @@ var Peerio = this.Peerio || {};
                             return user.sentContactRequests = sent;
                         });
 
+                    // we don't care if it was increased since we requested getCollectionVersions,
+                    // because contact event handler got this data anyway
+                    updateCollectionVersion(response.versions.contacts);
+
                     // after all promises are done, setting collection version
                     return Promise.all([p1, p2, p3])
                         .then(function () {
                             // in case it got updated from other events already
                             updateCollectionVersion(response.versions.contacts);
                         });
-                });
+                })
+                .finally(()=>Peerio.Action.syncProgress(1, 1, msg));
 
 
         }.bind(this);

@@ -3,9 +3,9 @@
  */
 
 var Peerio = this.Peerio || {};
-Peerio.Messages = {};
+Peerio._Messages = {};
 
-Peerio.Messages.init = function () {
+Peerio._Messages.init = function () {
     'use strict';
 
     L.verbose('Peerio.Messages.init() start');

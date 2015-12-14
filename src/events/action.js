@@ -49,22 +49,33 @@ Peerio.Action.init = function () {
     //      Peerio.Action.myAction(...params)
     [
         //------- ACTIONS EMITTED BY CORE -------
-        'SocketConnect',       // WebSocket reported successful connect
-        'SocketDisconnect',    // WebSocket reported disconnected(and reconnecting) state
+        'Connected',       // WebSocket reported successful connect
+        'Disconnected',    // WebSocket reported disconnected(and reconnecting) state
+
         'Authenticated',       // WebSocket connection was authenticated
+        'AuthFail',            // WebSocket connection failed to authenticate
+
         'Loading',             // Data transfer is in process
         'LoadingDone',         // Data transfer ended
-        'LoginSuccess',        // login attempt succeeded
-        'LoginFail',           // login attempt failed
+
         'SettingsUpdated',
+
         'TwoFactorAuthRequested',
         'TwoFactorAuthResend',
+
         'MessageAdded',
         'ReceiptAdded',
+
         'ConversationsUpdated',
+
         'ContactsUpdated',
+
         'FilesUpdated',
-        'FileUpdated'          // ({file})
+        'FileUpdated',         // ({file})
+
+        'SyncStarted',
+        'SyncProgress',
+        'SyncEnded'
     ].forEach(function (action) {
         Peerio.Action.add(action);
     });
@@ -83,11 +94,11 @@ Peerio.Action.init = function () {
  * @function
  */
 /**
- * @name Peerio.Action.socketConnect
+ * @name Peerio.Action.connected
  * @function
  */
 /**
- * @name Peerio.Action.socketDisconnect
+ * @name Peerio.Action.disconnected
  * @function
  */
 /**

@@ -15,7 +15,10 @@ var Peerio = this.Peerio || {};
 
     function createFilesFromServerData(data) {
         var files = Collection('id', 'shortId', 'timestamp', false);
-        return Promise.map(Object.keys(data), function (fileId) {
+        var keys = Object.keys(data);
+        var counter = 0, max = keys.length;
+        return Promise.map(keys, function (fileId) {
+                Peerio.Action.syncProgress(counter++, max, 'synchronizing files');
                 return Peerio.File.create(data[fileId])
                     .then(file => files.add(file, true))
                     .catch(function (e) {
@@ -28,14 +31,14 @@ var Peerio = this.Peerio || {};
             });
     }
 
-     var loadingPromise  = null;
+    var loadingPromise = null;
 
     /**
      * Retrieves and build file list from server
      * @return {Promise<Collection<File>>}
      */
     function getFiles() {
-        if(loadingPromise) return loadingPromise;
+        if (loadingPromise) return loadingPromise;
         var ret;
         loadingPromise = Peerio.Net.getFiles()
             .then(function (response) {

@@ -20,34 +20,6 @@ Peerio.Net.init = function () {
     var authenticated = false;
     var user = null;
 
-    // some events, Peerio.Net consumer might be interested in
-    api.EVENTS = {
-        onConnect: 'onConnect',
-        onDisconnect: 'onDisconnect',
-        onAuthenticated: 'onAuthenticated',
-        onAuthFail: 'onAuthFail'
-    };
-
-    // Peerio.Net.EVENT handlers grouped by event types
-    // - subscription is available through public api
-    // - there is no way to unsubscribe atm, it's not needed
-    var netEventHandlers = {};
-    _.forOwn(api.EVENTS, function (val) {
-        netEventHandlers[val] = [];
-    });
-
-    // calls Peerio.Net.EVENTS handlers
-    function fireEvent(name) {
-        netEventHandlers[name].forEach(function (handler) {
-            window.setTimeout(function () {
-                try {
-                    handler();
-                } catch (e) {
-                    console.error(e);
-                }
-            }, 0);
-        });
-    }
 
     var socketEventHandlers = {
         connect: onConnect,
@@ -55,7 +27,7 @@ Peerio.Net.init = function () {
     };
 
     /**
-     * Injects Peerio socket event handlers (app events, not connection events).
+     * Injects Peerio socket server event handlers (app events, not connection events).
      * App logic is supposed to handle those events, but Net has nothing to do over this data,
      * so we make a simple way for Net to transfer events to App Logic
      * @param {string} eventName
@@ -80,7 +52,7 @@ Peerio.Net.init = function () {
     };
     
 
-    // this listens to socket.io events
+    // this starts listening to socket.io events
     Peerio.Socket.injectEventHandler(function (eventName, data) {
         var handler = socketEventHandlers[eventName];
         if (handler) {
@@ -94,9 +66,8 @@ Peerio.Net.init = function () {
     function onConnect() {
         sendToSocket('setApiVersion', {version: API_VERSION}, true)
             .then(function () {
-                Peerio.Action.socketConnect();
                 connected = true;
-                fireEvent(api.EVENTS.onConnect);
+                Peerio.Action.connected();
                 if (user)
                     api.login(user, true)
                         .catch(function (err) {
@@ -115,11 +86,10 @@ Peerio.Net.init = function () {
         // in case of errors disconnect events might be fired without 'connect' event between them
         // so we make sure we handle first event only
         if (!connected) return;
-        Peerio.Action.socketDisconnect();
         rejectAllPromises('Disconnected');
         connected = false;
         authenticated = false;
-        fireEvent(api.EVENTS.onDisconnect);
+        Peerio.Action.disconnected();
     }
 
     /**
@@ -148,16 +118,25 @@ Peerio.Net.init = function () {
                 authenticated = true;
                 L.info('connection authenticated');
                 if (isThisAutoLogin)
-                    fireEvent(api.EVENTS.onAuthenticated);
+                    Peerio.Action.authenticated();
             })
             .timeout(60000) // magic number based on common sense
             .catch(function (err) {
                 // if it was a call from login page, we don't want to use wrong credentials upon reconnect
                 console.log('authentication failed.', err);
                 if (!isThisAutoLogin) user = null;
-                else fireEvent(api.EVENTS.onAuthFail);
+                else Peerio.Action.authFail();
                 return Promise.reject(err);
             });
+    };
+
+    api.signOut = function () {
+        socketEventHandlers = {
+            connect: onConnect,
+            disconnect: onDisconnect
+        };
+        user = null;
+        Peerio.Socket.reconnect();
     };
 
     //-- PROMISE MANAGEMENT ----------------------------------------------------------------------------------------------
@@ -221,7 +200,7 @@ Peerio.Net.init = function () {
                     // 2fa requested
                     // TODO: add constraints, for which functions
                     // is 2fa 424 error enabled
-                    if(response.error == 424) {
+                    if (response.error == 424) {
                         cached2FARequest = {
                             name: name,
                             data: data,
@@ -240,26 +219,19 @@ Peerio.Net.init = function () {
     }
 
     //-- PUBLIC API ------------------------------------------------------------------------------------------------------
-    
+
     /**
      * Will retry a cached 2fa request, if possible
      */
-    api.retryCached2FARequest = function() {
-        if(cached2FARequest) {
+    api.retryCached2FARequest = function () {
+        if (cached2FARequest) {
             sendToSocket(cached2FARequest.name, cached2FARequest.data,
-                     cached2FARequest.ignoreConnectionState,
-                     cached2FARequest.transfer);
-                     cached2FARequest = null;
+                cached2FARequest.ignoreConnectionState,
+                cached2FARequest.transfer);
+            cached2FARequest = null;
         }
     };
-    /**
-     * Subscribes a handler to network event
-     * @param {string} eventName - one of the Peerio.Net.EVENTS values
-     * @param {function} handler - event handler, no arguments will be passed
-     */
-    api.addEventListener = function (eventName, handler) {
-        netEventHandlers[eventName].push(handler);
-    };
+
 
     /**
      * Asks the server to validate a username.
@@ -324,7 +296,7 @@ Peerio.Net.init = function () {
      * @promise {Boolean}
      */
     api.confirmAddress = function (address, confirmationCode) {
-        return sendToSocket('confirmAddress', {address: {value : address}, confirmationCode: confirmationCode})
+        return sendToSocket('confirmAddress', {address: {value: address}, confirmationCode: confirmationCode})
             .return(true);
     };
 
@@ -361,8 +333,8 @@ Peerio.Net.init = function () {
      * @promise
      */
     /* api.confirmAddress = function (code) {
-        return sendToSocket('confirmAddress', {confirmationCode: code});
-    }; */
+     return sendToSocket('confirmAddress', {confirmationCode: code});
+     }; */
 
     /**
      * Sets an address as the primary address.
@@ -379,7 +351,7 @@ Peerio.Net.init = function () {
      * @promise
      */
     api.removeAddress = function (address) {
-        return sendToSocket('removeAddress', {address: {value: address} });
+        return sendToSocket('removeAddress', {address: {value: address}});
     };
 
     /**
@@ -684,11 +656,11 @@ Peerio.Net.init = function () {
     };
 
     api.pauseConnection = function () {
-        return sendToSocket('pauseConnection');
+        return sendToSocket('pauseConnection', null, true);
     };
 
     api.resumeConnection = function () {
-        return sendToSocket('resumeConnection');
+        return sendToSocket('resumeConnection', null, true);
     };
 
     /**
