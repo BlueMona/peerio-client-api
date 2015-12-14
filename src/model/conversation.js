@@ -22,7 +22,6 @@ var Peerio = this.Peerio || {};
         this.id = data.id;
         this.originalMsgID = data.original;
         this.lastTimestamp = data.lastTimestamp;
-        this.fileCount = data.fileCount; // todo: probably should not rely on server
         this.participants = data.participants; //todo: CHECK FOR MATCH when original message arrives
         if (data.events) {
             this.exParticipants = [];
@@ -32,6 +31,16 @@ var Peerio = this.Peerio || {};
             });
         }
 
+        return this;
+    }
+
+    function loadLocalData(data){
+        this.id = data.id;
+        this.lastTimestamp = data.lastTimestamp;
+        this.participants = JSON.parse(data.participants);
+        this.exParticipants = JSON.parse(data.exParticipants);
+        this.subject = data.subject;
+        this.unreadCount = data.unreadCount;
         return this;
     }
 
@@ -78,6 +87,7 @@ var Peerio = this.Peerio || {};
     Peerio.Conversation = function (id) {
         var obj = {
             loadServerData: loadServerData,
+            loadLocalData: loadLocalData,
             buildProperties: buildProperties,
             insert: insert,
             updateParticipants: updateParticipants
@@ -95,6 +105,11 @@ var Peerio = this.Peerio || {};
     Peerio.Conversation.fromServerData = function (data) {
         return Peerio.Conversation()
             .loadServerData(data);
+    };
+
+    Peerio.Conversation.fromLocalData = function (data) {
+        return Peerio.Conversation()
+            .loadLocalData(data);
     };
 
     Peerio.Conversation.deleteFromCache = function (id) {
