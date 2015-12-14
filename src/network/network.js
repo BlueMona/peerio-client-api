@@ -60,11 +60,25 @@ Peerio.Net.init = function () {
      * so we make a simple way for Net to transfer events to App Logic
      * @param {string} eventName
      * @param {function} handler
+     * @returns {string} registered event name
      */
     api.subscribe = function (eventName, handler) {
         if (socketEventHandlers[eventName]) throw eventName + ' handler already subscribed.';
         socketEventHandlers[eventName] = handler;
+        return eventName;
     };
+
+    /** 
+     * Remove subscription to an event
+     * @param {string} eventName
+     */
+    api.unsubscribe = function (events) {
+        events.forEach(function(event) {
+            socketEventHandlers[event] = null;
+        });
+        return [];
+    };
+    
 
     // this listens to socket.io events
     Peerio.Socket.injectEventHandler(function (eventName, data) {

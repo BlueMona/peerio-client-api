@@ -10,11 +10,14 @@ var Peerio = this.Peerio || {};
 
     Peerio.User.addSettingsModule = function (user) {
 
-        Peerio.Net.subscribe('settingsUpdated', (settings) => {
+        if(Peerio.User.subscriptions) 
+            Peerio.User.subscriptions = Peerio.Net.unsubscribe(Peerio.User.subscriptions);
+
+        Peerio.User.subscriptions = [Peerio.Net.subscribe('settingsUpdated', (settings) => {
             L.info('incoming settings update');
             L.info(settings);
             user.processSettings(settings);
-        });
+        })];
 
         user.processSettings = function(settings) {
             L.info('sending notification about settings across all who wants to listen!');
