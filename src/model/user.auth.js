@@ -27,6 +27,11 @@ var Peerio = this.Peerio || {};
                     keyPair: user.keyPair
                 }))
                 .catch( (error) => {
+                    // TODO: this error handling seems a bit excessive
+                    // bad credentials
+                    if( error.error && error.error == 411 ) {
+                        return Promise.reject('Bad credentials');
+                    }
                     // 2fa requested
                     if( error.error && error.error == 424 ) {
                         return Promise.reject(error);
