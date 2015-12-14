@@ -126,7 +126,8 @@ var Peerio = this.Peerio || {};
         return Promise.all([
             Peerio.SqlQueries.setConversationsCreatedTimestamp(),
             Peerio.SqlQueries.updateConversationsLastTimestamp(),
-            Peerio.SqlQueries.updateConversationsUnreadCount()
+            Peerio.SqlQueries.updateConversationsUnreadCount(),
+            Peerio.SqlQueries.updateConversationsHasFiles()
         ]);
 
     }

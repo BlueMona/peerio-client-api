@@ -28,7 +28,7 @@ var Peerio = this.Peerio || {};
 
         return Peerio.Crypto.decryptMessage(data)
             .then(decrypted => {
-                this.attachments = decrypted.fileIDs;
+                this.files = decrypted.fileIDs;
                 this.body = decrypted.message;
                 this.receiptSecret = decrypted.receipt.substring(0, 44);
                 this.subject = decrypted.subject; // todo copy to conversation
@@ -83,7 +83,7 @@ var Peerio = this.Peerio || {};
             this.sender,
             this.timestamp,
             this.body,
-            this.attachments,
+            this.files,
             this.receiptSecret,
             this.receipts,
             this.receiptSent,

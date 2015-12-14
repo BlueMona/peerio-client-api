@@ -30,6 +30,10 @@ var Peerio = this.Peerio || {};
         Peerio.User.addFilesModule(user);
         Peerio.User.addMessagesModule(user);
 
+
+        user.buildProperties = Peerio.Contact.buildProperties.bind(user);
+        user.buildIdenticon = Peerio.Contact.buildIdenticon.bind(user);
+
         // indicator that sync is currently running
         var running = false;
         var runningPromise = null;
@@ -45,6 +49,8 @@ var Peerio = this.Peerio || {};
             Peerio.Action.syncStarted();
 
             runningPromise = user.loadSettings()
+                .then(user.buildProperties)
+                .then(user.buildIdenticon)
                 .then(user.loadContacts)
                 .then(Peerio.ContactsEventHandler.resume)
                 .then(user.loadFiles)

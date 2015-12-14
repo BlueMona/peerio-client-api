@@ -177,4 +177,9 @@ var Peerio = this.Peerio || {};
             .buildIdenticon();
     };
 
+    // Exposing functions for User object,
+    // probably better to extract concern and inject in both modules
+    Peerio.Contact.buildProperties = buildProperties;
+    Peerio.Contact.buildIdenticon = buildIdenticon;
+
 })();

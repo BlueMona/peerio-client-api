@@ -18,6 +18,7 @@ var Peerio = this.Peerio || {};
         updateReceipts: updateReceipts,
         updateConversationsLastTimestamp: updateConversationsLastTimestamp,
         updateConversationsUnreadCount: updateConversationsUnreadCount,
+        updateConversationsHasFiles: updateConversationsHasFiles,
         setConversationsCreatedTimestamp: setConversationsCreatedTimestamp,
         getAllConversations: getAllConversations
 
@@ -39,16 +40,16 @@ var Peerio = this.Peerio || {};
                                 exParticipants, lastTimestamp) {
 
         return Peerio.SqlDB.user.executeSql(
-            'INSERT OR IGNORE INTO conversations VALUES(?,?,?,?,?,?,?,?,?)',
-            [id, seqID, originalMsgID, null, null, JSON.stringify(participants || []),
-                JSON.stringify(exParticipants || []), lastTimestamp, 0]
+            'INSERT OR IGNORE INTO conversations VALUES(?,?,?,?,?,?,?,?,?,?)',
+            [id, seqID, originalMsgID, null, null, serializeArray(participants),
+                serializeArray(exParticipants), lastTimestamp, 0, null]
         );
     }
 
     function updateConversationParticipants(id, seqID, participants, exParticipants, lastTimestamp) {
         return Peerio.SqlDB.user.executeSql(
             'UPDATE conversations  SET  seqID=?, participants=?, exParticipants=?, lastTimestamp=? WHERE id=?',
-            [seqID, JSON.stringify(participants || []), JSON.stringify(exParticipants || []), lastTimestamp, id]
+            [seqID, serializeArray(participants), serializeArray(exParticipants), lastTimestamp, id]
         );
     }
 
@@ -64,12 +65,12 @@ var Peerio = this.Peerio || {};
     }
 
 
-    function createMessage(id, seqID, conversationID, sender, timestamp, body, attachments,
+    function createMessage(id, seqID, conversationID, sender, timestamp, body, files,
                            receiptSecret, receipts, receiptSent, unread) {
         return Peerio.SqlDB.user.executeSql(
             'INSERT OR IGNORE INTO messages VALUES(?,?,?,?,?,?,?,?,?,?,?)',
-            [id, seqID, conversationID, sender, timestamp, body || '', JSON.stringify(attachments || []),
-                receiptSecret || null, JSON.stringify(receipts || []), receiptSent ? 1 : 0, unread ? 1 : 0]
+            [id, seqID, conversationID, sender, timestamp, body || '', serializeArray(files),
+                receiptSecret || null, serializeArray(receipts), receiptSent ? 1 : 0, unread ? 1 : 0]
         );
     }
 
@@ -80,7 +81,7 @@ var Peerio = this.Peerio || {};
     function updateReceipts(seqID, receipts, messageId, receipt) {
         return Peerio.SqlDB.user.executeSql(
             'UPDATE messages SET seqID=?, receipts=? WHERE messageID=? and receiptSecret = ?',
-            [seqID, JSON.stringify(receipts || []), messageId, receipt || null]
+            [seqID, serializeArray(receipts), messageId, receipt || null]
         );
     }
 
@@ -96,8 +97,17 @@ var Peerio = this.Peerio || {};
         return Peerio.SqlDB.user.executeSql('UPDATE conversations SET unreadCount = (SELECT count(*) FROM messages WHERE conversationID=conversations.id AND unread=1)');
     }
 
+    function updateConversationsHasFiles() {
+        return Peerio.SqlDB.user.executeSql('UPDATE conversations SET hasFiles = EXISTS (SELECT * FROM messages WHERE conversationID=conversations.id AND files IS NOT NULL LIMIT 1) WHERE hasFiles IS NULL ');
+    }
+
     function getAllConversations() {
         return Peerio.SqlDB.user.executeSql('SELECT * FROM conversations ORDER BY lastTimestamp DESC');
+    }
+
+    //-- Utilities
+    function serializeArray(arr) {
+        return JSON.stringify(arr && arr.length ? arr : null);
     }
 
 
