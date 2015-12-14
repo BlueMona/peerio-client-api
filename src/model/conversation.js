@@ -35,12 +35,9 @@ var Peerio = this.Peerio || {};
     }
 
     function loadLocalData(data){
-        this.id = data.id;
-        this.lastTimestamp = data.lastTimestamp;
-        this.participants = JSON.parse(data.participants);
-        this.exParticipants = JSON.parse(data.exParticipants);
-        this.subject = data.subject;
-        this.unreadCount = data.unreadCount;
+        _.assign(this, data);
+        this.participants = JSON.parse(this.participants)||[];
+        this.exParticipants = JSON.parse(this.exParticipants) ||[];
         return this;
     }
 
@@ -109,7 +106,8 @@ var Peerio = this.Peerio || {};
 
     Peerio.Conversation.fromLocalData = function (data) {
         return Peerio.Conversation()
-            .loadLocalData(data);
+            .loadLocalData(data)
+            .buildProperties();
     };
 
     Peerio.Conversation.deleteFromCache = function (id) {
