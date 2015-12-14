@@ -8,6 +8,8 @@ var Peerio = this.Peerio || {};
     'use strict';
     Peerio.User = Peerio.User || {};
 
+    Peerio.User.subscriptions = [];
+
     Peerio.User.addSettingsModule = function (user) {
 
         if(Peerio.User.subscriptions) 
