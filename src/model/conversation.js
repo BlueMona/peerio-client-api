@@ -54,12 +54,9 @@ var Peerio = this.Peerio || {};
             this.id,
             this.seqID,
             this.originalMsgID,
-            this.subject,
-            this.createdTimestamp,
             this.participants,
             this.exParticipants,
-            this.lastTimestamp,
-            this.unread);
+            this.lastTimestamp);
     }
 
     function updateParticipants() {

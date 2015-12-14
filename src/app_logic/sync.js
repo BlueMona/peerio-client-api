@@ -47,13 +47,13 @@ var Peerio = this.Peerio || {};
                             reject('Sync interrupted.');
                             return;
                         }
-                        return processPage(localMax, Math.min(serverMax, localMax + batch))
+                        return processPage(localMax, Math.min(serverMax, localMax + batch - 1))
                             .then(()=> {
                                 // moving to next page
-                                localMax += batch + 1;
+                                localMax += batch;
                                 // if all range was processed
                                 if (localMax > serverMax) {
-                                    resolve();
+                                    updateConversations().then(resolve).catch(reject);
                                     return;
                                 }
                                 // if not, doing this again (but with lower edge raised)
@@ -112,14 +112,23 @@ var Peerio = this.Peerio || {};
 
     function processMessageEntry(entry) {
         return Peerio.Message.create(entry.entity)
-            .then(msg => {
-                //todo update conversation subject and timestamp
-                return msg.insert();
-            });
+            .then(msg => msg.insert()
+                .then(() => {
+                    if (msg.subject != null && msg.subject != '') return Peerio.SqlQueries.updateConversationSubject(msg.subject, msg.id);
+                }));
     }
 
     function processMessageReadEntry(entry) {
         return Peerio.Message.addReceipt(entry.entity);
+    }
+
+    function updateConversations() {
+        return Promise.all([
+            Peerio.SqlQueries.setConversationsCreatedTimestamp(),
+            Peerio.SqlQueries.updateConversationsLastTimestamp(),
+            Peerio.SqlQueries.updateConversationsUnreadCount()
+        ]);
+
     }
 
     function interrupt() {
