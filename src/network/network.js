@@ -32,11 +32,25 @@ Peerio.Net.init = function () {
      * so we make a simple way for Net to transfer events to App Logic
      * @param {string} eventName
      * @param {function} handler
+     * @returns {string} registered event name
      */
     api.subscribe = function (eventName, handler) {
         if (socketEventHandlers[eventName]) throw eventName + ' handler already subscribed.';
         socketEventHandlers[eventName] = handler;
+        return eventName;
     };
+
+    /** 
+     * Remove subscription to an event
+     * @param {string} eventName
+     */
+    api.unsubscribe = function (events) {
+        events.forEach(function(event) {
+            socketEventHandlers[event] = null;
+        });
+        return [];
+    };
+    
 
     // this starts listening to socket.io events
     Peerio.Socket.injectEventHandler(function (eventName, data) {
@@ -93,6 +107,11 @@ Peerio.Net.init = function () {
             username: user.username,
             publicKeyString: user.publicKey
         }, null, null, true)
+            .catch( (error) => {
+                // notify 
+                Peerio.Action.twoFactorAuthRequested(cached2FARequest);
+                return Promise.reject({error: 424, userData: userData});
+            })
             .then(encryptedAuthToken => Peerio.Crypto.decryptAuthToken(encryptedAuthToken, user.keyPair))
             .then(authToken => sendToSocket('login', {authToken: authToken}))
             .then(() => {
