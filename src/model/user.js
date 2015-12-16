@@ -41,6 +41,7 @@ var Peerio = this.Peerio || {};
         var resyncRequested = false;
 
         user.reSync = function () {
+            L.info('Sync started');
             if (running) {
                 resyncRequested = true;
                 return runningPromise;

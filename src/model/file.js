@@ -37,6 +37,7 @@ var Peerio = this.Peerio || {};
      */
     function buildProperties() {
         this.shortId = Peerio.Util.sha256(this.id);
+        this.moment = moment(this.timestamp);
         return this;
     }
 

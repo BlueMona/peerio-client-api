@@ -40,17 +40,17 @@ Peerio.Net.init = function () {
         return eventName;
     };
 
-    /** 
+    /**
      * Remove subscription to an event
      * @param {string} eventName
      */
     api.unsubscribe = function (events) {
-        events.forEach(function(event) {
+        events.forEach(function (event) {
             socketEventHandlers[event] = null;
         });
         return [];
     };
-    
+
 
     // this starts listening to socket.io events
     Peerio.Socket.injectEventHandler(function (eventName, data) {
@@ -107,16 +107,15 @@ Peerio.Net.init = function () {
             username: user.username,
             publicKeyString: user.publicKey
         }, null, null, true)
-            .catch( (error) => {
+            .catch((error) => {
                 // notify 
-                if( error ) {
-                    if( error.code && error.code == 411 ) {
-                        return Promise.reject({error: 411});
-                    }
-                    if( error.error && error.error == 424 ) {
-                        Peerio.Action.twoFactorAuthRequested(cached2FARequest);
-                        return Promise.reject({error: 424, userData: userData});
-                    }
+                if (!error) return Promise.reject();
+
+                if (error.code && error.code == 411) return Promise.reject({error: 411});
+
+                if (error.error && error.error == 424) {
+                    Peerio.Action.twoFactorAuthRequested(cached2FARequest);
+                    return Promise.reject({error: 424, userData: userData});
                 }
             })
             .then(encryptedAuthToken => Peerio.Crypto.decryptAuthToken(encryptedAuthToken, user.keyPair))

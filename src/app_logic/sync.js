@@ -112,10 +112,16 @@ var Peerio = this.Peerio || {};
 
     function processMessageEntry(entry) {
         return Peerio.Message.fromServerData(entry.entity)
-            .then(msg => msg.insert()
-                .then(() => {
-                    if (msg.subject != null && msg.subject != '') return Peerio.SqlQueries.updateConversationSubject(msg.subject, msg.id);
-                }));
+            .then(msg => msg.insert())
+            .then(() => {
+                if (msg.subject != null && msg.subject != '')
+                    return Peerio.SqlQueries.updateConversationSubject(msg.subject, msg.id);
+            })
+            .catch(err=>{
+                //todo: separate error processing
+                //todo: detect orphaned conversations
+                L.error(err);
+            });
     }
 
     function processMessageReadEntry(entry) {

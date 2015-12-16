@@ -46,6 +46,7 @@ var Peerio = this.Peerio || {};
      */
     function buildProperties() {
         this.lastMoment = moment(this.lastTimestamp);
+        this.createdMoment = moment(this.createdTimestamp);
         this.exParticipants.forEach((p)=> {
             p.moment = moment(p.t);
         });

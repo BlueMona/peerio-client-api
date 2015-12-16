@@ -22,7 +22,9 @@ var Peerio = this.Peerio || {};
         setConversationsCreatedTimestamp: setConversationsCreatedTimestamp,
         getAllConversations: getAllConversations,
         getConversation: getConversation,
-        getMessages: getMessages
+        getMessages: getMessages,
+        getConversationFiles: getConversationFiles,
+        getConversationMessageCount:getConversationMessageCount
 
     };
 
@@ -111,8 +113,16 @@ var Peerio = this.Peerio || {};
         return Peerio.SqlDB.user.executeSql('SELECT * FROM conversations WHERE id=? LIMIT 1', [id]);
     }
 
+    function getConversationFiles(id) {
+        return Peerio.SqlDB.user.executeSql('SELECT files FROM messages WHERE files IS NOT NULL AND conversationID=?', [id]);
+    }
+
     function getMessages(conversationId) {
         return Peerio.SqlDB.user.executeSql('SELECT * FROM messages WHERE conversationID=? ORDER BY timestamp ASC', [conversationId]);
+    }
+
+    function getConversationMessageCount(conversationId){
+        return Peerio.SqlDB.user.executeSql('SELECT count(*) AS msgCount FROM messages WHERE conversationID=?', [conversationId]);
     }
 
     //-- Utilities

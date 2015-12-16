@@ -10,7 +10,9 @@ var Peerio = this.Peerio || {};
     //-- PUBLIC API ------------------------------------------------------------------------------------------------------
     Peerio.Messages = {
         getAllConversations: getAllConversations,
-        getConversation: getConversation
+        getConversation: getConversation,
+        getConversationFileIds: getConversationFileIds,
+        getConversationMessageCount:getConversationMessageCount
     };
     //--------------------------------------------------------------------------------------------------------------------
 
@@ -26,10 +28,10 @@ var Peerio = this.Peerio || {};
             });
     }
 
-    function getConversation(id) {
+    function getConversation(id, withoutMessages) {
         return Promise.all([
                 Peerio.SqlQueries.getConversation(id).then(res => Peerio.Conversation.fromLocalData(res.rows.item(0))),
-                Peerio.SqlQueries.getMessages(id).then(res => {
+                withoutMessages ? null : Peerio.SqlQueries.getMessages(id).then(res => {
                     res = res.rows;
                     var ret = [];
                     for (var i = 0; i < res.length; i++) {
@@ -42,6 +44,27 @@ var Peerio = this.Peerio || {};
                 conversation.messages = messages;
                 return conversation;
             })
+    }
+
+    var emptyArr = [];
+
+    function getConversationFileIds(id) {
+
+        return Peerio.SqlQueries.getConversationFiles(id)
+            .then(res=> {
+                res = res.rows;
+                var ids = [];
+               // var push = ids.push.bind(ids);
+                for (var i = 0; i < res.length; i++) {
+                    (JSON.parse(res.item(i).files) || emptyArr).forEach(ids.push);
+                }
+                return _.uniq(ids);
+            });
+    }
+
+    function getConversationMessageCount(id) {
+        return Peerio.SqlQueries.getConversationMessageCount(id)
+            .then(res=> res.rows.item(0).msgCount);
     }
 
 
