@@ -109,14 +109,16 @@ Peerio.Net.init = function () {
         }, null, null, true)
             .catch((error) => {
                 // notify 
-                if (!error) return Promise.reject();
 
-                if (error.code && error.code == 411) return Promise.reject({error: 411});
+                if (error && error.code === 411)
+                    return Promise.reject({error: 411});
 
-                if (error.error && error.error == 424) {
+                if (error && error.error === 424) {
                     Peerio.Action.twoFactorAuthRequested(cached2FARequest);
-                    return Promise.reject({error: 424, userData: userData});
+                    return Promise.reject({error: 424});
                 }
+                
+                return Promise.reject(error);
             })
             .then(encryptedAuthToken => Peerio.Crypto.decryptAuthToken(encryptedAuthToken, user.keyPair))
             .then(authToken => sendToSocket('login', {authToken: authToken}))

@@ -54,9 +54,9 @@ var Peerio = this.Peerio || {};
             .then(res=> {
                 res = res.rows;
                 var ids = [];
-               // var push = ids.push.bind(ids);
+               
                 for (var i = 0; i < res.length; i++) {
-                    (JSON.parse(res.item(i).files) || emptyArr).forEach(ids.push);
+                    (JSON.parse(res.item(i).files) || emptyArr).forEach(id => ids.push(id));
                 }
                 return _.uniq(ids);
             });
