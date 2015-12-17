@@ -183,47 +183,56 @@ Peerio.Net.init = function () {
      *  @param {Object} [data] - object to send
      *  @param {boolean} [ignoreConnectionState] - only setApiVersion needs it, couldn't find more elegant way
      *  @param {Array} [transfer] - array of objects to transfer to worker (object won't be available on this thread anymore)
+     *  @param {boolean} ignoreTimeout - tells our function to ignore timeout completely. useful for file uploads
      *  @promise
      */
-    function sendToSocket(name, data, ignoreConnectionState, transfer) {
+    function sendToSocket(name, data, ignoreConnectionState, transfer, ignoreTimeout) {
         if (!connected && !ignoreConnectionState) return Promise.reject('Not connected.');
         // unique (within reasonable time frame) promise id
         var id = null;
-
-        return new Promise(function (resolve, reject) {
+        var timeout = 
+            Peerio.Config.networkTimeout ? Peerio.Config.networkTimeout : 10000;
+        var promise = new Promise(function (resolve, reject) {
             Peerio.Action.loading();
             id = addPendingPromise(reject);
             Peerio.Socket.send(name, data, resolve, transfer);
-        })
+        });
+        // set the timeout to 10 seconds
+        // TODO: move response timeout to config
+        if(!ignoreTimeout) { 
+            promise = promise.timeout(timeout);
+        }
+        
+        return promise
         // we want to catch all exceptions, log them and reject promise
-            .catch(function (error) {
-                L.error(error);
-                return Promise.reject(error);
-            })
-            // if we got response, let's check it for 'error' property and reject promise if it exists
-            .then(function (response) {
-                if (hasProp(response, 'error')) {
-                    var err = new PeerioServerError(response.error);
-                    L.error(err);
-                    // 2fa requested
-                    // TODO: add constraints, for which functions
-                    // is 2fa 424 error enabled
-                    if (response.error == 424) {
-                        cached2FARequest = {
-                            name: name,
-                            data: data,
-                            ignoreConnectionState: ignoreConnectionState,
-                            transfer: transfer
-                        };
+        .catch(function (error) {
+            L.error(error);
+            return Promise.reject(error);
+        })
+        // if we got response, let's check it for 'error' property and reject promise if it exists
+        .then(function (response) {
+            if (hasProp(response, 'error')) {
+                var err = new PeerioServerError(response.error);
+                L.error(err);
+                // 2fa requested
+                // TODO: add constraints, for which functions
+                // is 2fa 424 error enabled
+                if (response.error == 424) {
+                    cached2FARequest = {
+                        name: name,
+                        data: data,
+                        ignoreConnectionState: ignoreConnectionState,
+                        transfer: transfer
+                    };
 
-                        Peerio.Action.twoFactorAuthRequested(cached2FARequest);
-                    }
-                    return Promise.reject(err);
-                } else {
-                    return Promise.resolve(response);
+                    Peerio.Action.twoFactorAuthRequested(cached2FARequest);
                 }
-            })
-            .finally(removePendingPromise.bind(this, id));
+                return Promise.reject(err);
+            } else {
+                return Promise.resolve(response);
+            }
+        })
+        .finally(removePendingPromise.bind(this, id));
     }
 
     //-- PUBLIC API ------------------------------------------------------------------------------------------------------
