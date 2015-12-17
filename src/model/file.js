@@ -44,13 +44,13 @@ var Peerio = this.Peerio || {};
     function remove() {
         // todo state
         Peerio.FileSystem.removeCachedFile(this);
-        return net.removeFile(this.id);
+        return Peerio.Net.removeFile(this.id);
     }
 
     function nuke() {
         // todo state
         Peerio.FileSystem.removeCachedFile(this);
-        return net.nukeFile(this.id);
+        return Peerio.Net.nukeFile(this.id);
     }
 
     function deleteFromCache() {
