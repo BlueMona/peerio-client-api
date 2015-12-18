@@ -99,26 +99,28 @@ var Peerio = this.Peerio || {};
     }
 
     function processConversationEntry(entry) {
-        return Peerio.Conversation.fromServerData(entry.entity).insert();
+        return Peerio.Conversation().applyServerData(entry.entity).insert();
     }
 
     function processConversationParticipantsEntry(entry) {
-        return Peerio.Conversation.fromServerData(entry.entity).updateParticipants();
+        return Peerio.Conversation().applyServerData(entry.entity).updateParticipants();
     }
 
     function processConversationDeletedEntry(entry) {
         return Peerio.Conversation.deleteFromCache(entry.entity.id);
     }
 
+
     function processMessageEntry(entry) {
-        return Peerio.Message.fromServerData(entry.entity)
-            .then(msg => msg.insert())
+        var msg = Peerio.Message();
+        return msg.applyServerData(entry.entity)
+            .then(() => msg.insert())
             .then(() => {
                 if (msg.subject != null && msg.subject != '')
                     return Peerio.SqlQueries.updateConversationSubject(msg.subject, msg.id);
             })
-            .catch(err=>{
-                //todo: separate error processing
+            .catch(err=> {
+                //todo: separate different error processing
                 //todo: detect orphaned conversations
                 L.error(err);
             });

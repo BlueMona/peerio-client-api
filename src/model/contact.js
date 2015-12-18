@@ -12,7 +12,7 @@ var Peerio = this.Peerio || {};
      * @param data - contact data in server format
      * @returns {Object} - this
      */
-    function loadServerData(data) {
+    function applyServerData(data) {
         if (!data) {
             L.error('loadServerData: can\'t load from undefined object');
             return this;
@@ -149,7 +149,7 @@ var Peerio = this.Peerio || {};
      */
     Peerio.Contact = function (username) {
         var obj = {
-            loadServerData: loadServerData,
+            applyServerData: applyServerData,
             buildProperties: buildProperties,
             buildIdenticon: buildIdenticon,
             add: add,
@@ -175,7 +175,7 @@ var Peerio = this.Peerio || {};
      */
     Peerio.Contact.fromServerData = function (data) {
         return Peerio.Contact()
-            .loadServerData(data)
+            .applyServerData(data)
             .buildProperties()
             .buildIdenticon();
     };

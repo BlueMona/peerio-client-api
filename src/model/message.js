@@ -12,7 +12,7 @@ var Peerio = this.Peerio || {};
      * @param data - message data in server format
      * @returns {Object} - this
      */
-    function loadServerData(data) {
+    function applyServerData(data) {
         if (!data) {
             L.error('loadServerData: can\'t load from undefined object');
             return this;
@@ -44,36 +44,39 @@ var Peerio = this.Peerio || {};
                 }
 
                 // I'm not the sender, which means it's incoming message and it might have my receipt
-                return Promise.map(data.recipients, recipient => {
-                    if (recipient.username !== Peerio.user.username || !recipient.receipt || !recipient.receipt.encryptedReturnReceipt) return;
-                    return Peerio.Crypto.decryptReceipt(this.sender, recipient.receipt.encryptedReturnReceipt)
-                        .then(decryptedReceipt=> {
-                            if (decryptedReceipt.indexOf(this.receiptSecret) === 0) {
-                                this.unread = false;
-                                this.receiptSent = true;
-                            }
-                        })
-                        .catch(err => {
-                            L.error("Failed to decrypt receipt. {0}, {1}", recipient, err);
-                            //todo remove this after client is changed to have all the public keys from deleted contacts
-                            //because ignoring decrypt errors leaves a possibility to fake read status for malicious server
-                            this.unread = false;
-                            this.receiptSent = true;
-                        });
-
-                });
+                return this.decryptReceipts(data.recipients);
 
             })
             .return(this);
     }
 
-    function loadLocalData(data) {
+    function decryptReceipts(recipients){
+        return Promise.map(recipients, recipient => {
+            if (recipient.username !== Peerio.user.username || !recipient.receipt || !recipient.receipt.encryptedReturnReceipt) return;
+            return Peerio.Crypto.decryptReceipt(this.sender, recipient.receipt.encryptedReturnReceipt)
+                .then(decryptedReceipt=> {
+                    if (decryptedReceipt.indexOf(this.receiptSecret) === 0) {
+                        this.unread = false;
+                        this.receiptSent = true;
+                    }
+                })
+                .catch(err => {
+                    L.error("Failed to decrypt receipt. {0}, {1}", recipient, err);
+                    //todo remove this after client is changed to have all the public keys from deleted contacts
+                    //because ignoring decrypt errors leaves a possibility to fake read status for malicious server
+                    this.unread = false;
+                    this.receiptSent = true;
+                });
+        });
+    }
+
+    function applyLocalData(data) {
         _.assign(this, data);
         this.files = JSON.parse(this.files) || [];
         this.receipts = JSON.parse(this.receipts) || [];
+        this.buildProperties();
         return this;
     }
-
 
     /**
      * Builds computed properties
@@ -99,7 +102,6 @@ var Peerio = this.Peerio || {};
         );
     }
 
-
     //-- PUBLIC API ------------------------------------------------------------------------------------------------------
     /**
      * Call Peerio.Message() to create empty message object
@@ -107,30 +109,22 @@ var Peerio = this.Peerio || {};
      */
     Peerio.Message = function () {
         var obj = {
-            loadServerData: loadServerData,
-            loadLocalData: loadLocalData,
+            applyServerData: applyServerData,
+            applyLocalData: applyLocalData,
+            insert: insert,
+            //--
             buildProperties: buildProperties,
-            insert: insert
+            decryptReceipts: decryptReceipts
+
         };
 
         return obj;
     };
+
     /**
-     * Call to create and fully build Message instance from server data
-     * @param {Object} data
-     * @returns {Promise<Message>}
+     * Parses server 'message_read' object data and adds receipt to existing message
+     * @param receiptData
      */
-    Peerio.Message.fromServerData = function (data) {
-        return Peerio.Message()
-            .loadServerData(data);
-    };
-
-    Peerio.Message.fromLocalData = function (data) {
-        return Peerio.Message()
-            .loadLocalData(data)
-            .buildProperties();
-    };
-
     Peerio.Message.addReceipt = function (receiptData) {
         var receipts;
 

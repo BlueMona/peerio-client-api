@@ -24,7 +24,8 @@ var Peerio = this.Peerio || {};
         getConversation: getConversation,
         getMessages: getMessages,
         getConversationFiles: getConversationFiles,
-        getConversationMessageCount:getConversationMessageCount
+        getConversationMessageCount:getConversationMessageCount,
+        getConversationsPage:getConversationsPage
 
     };
 
@@ -107,6 +108,14 @@ var Peerio = this.Peerio || {};
 
     function getAllConversations() {
         return Peerio.SqlDB.user.executeSql('SELECT * FROM conversations ORDER BY lastTimestamp DESC');
+    }
+
+    function getNextConversationsPage(lastTimestamp, pageSize) {
+        return Peerio.SqlDB.user.executeSql('SELECT * FROM conversations WHERE lastTimestamp<=? ORDER BY lastTimestamp DESC LIMIT ?',[lastTimestamp, pageSize]);
+    }
+
+    function getPrevConversationsPage(lastTimestamp, pageSize) {
+        return Peerio.SqlDB.user.executeSql('SELECT * FROM conversations WHERE lastTimestamp>=? ORDER BY lastTimestamp DESC LIMIT ?',[lastTimestamp, pageSize]);
     }
 
     function getConversation(id) {

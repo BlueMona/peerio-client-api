@@ -13,7 +13,7 @@ var Peerio = this.Peerio || {};
      * @param data - file data in server format
      * @returns {Promise} resolves with 'this'
      */
-    function loadServerData(data) {
+    function applyServerData(data) {
         if (!data) {
             L.error('loadServerData: can\'t load from undefined object');
             return Promise.reject();
@@ -217,7 +217,7 @@ var Peerio = this.Peerio || {};
      */
     Peerio.File = function () {
         var obj = {
-            loadServerData: loadServerData,
+            applyServerData: applyServerData,
             buildProperties: buildProperties,
             remove: remove,
             nuke: nuke,
@@ -240,7 +240,7 @@ var Peerio = this.Peerio || {};
      */
     Peerio.File.create = function (data) {
         return Peerio.File()
-            .loadServerData(data)
+            .applyServerData(data)
             .then(file => file.buildProperties());
     };
 
