@@ -25,8 +25,8 @@ var Peerio = this.Peerio || {};
         getMessages: getMessages,
         getConversationFiles: getConversationFiles,
         getConversationMessageCount:getConversationMessageCount,
-        getConversationsPage:getConversationsPage
-
+        getNextConversationsPage:getNextConversationsPage,
+        getPrevConversationsPage:getPrevConversationsPage
     };
 
     /**

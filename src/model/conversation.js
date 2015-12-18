@@ -200,7 +200,7 @@ var Peerio = this.Peerio || {};
 
     Peerio.Conversation.getNextPage = function (lastTimestamp) {
 
-        return Peerio.SqlQueries.getConversationsPage(lastTimestamp, 10)
+        return Peerio.SqlQueries.getNextConversationsPage(lastTimestamp, 10)
             .then(materialize);
     };
 
