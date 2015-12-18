@@ -56,6 +56,7 @@ var Peerio = this.Peerio || {};
         this.exParticipants.forEach((p)=> {
             p.moment = moment(p.t);
         });
+
         return this;
     }
 
@@ -198,9 +199,9 @@ var Peerio = this.Peerio || {};
             .then(materialize);
     };
 
-    Peerio.Conversation.getNextPage = function (lastTimestamp) {
+    Peerio.Conversation.getNextPage = function (lastTimestamp, pageSize) {
 
-        return Peerio.SqlQueries.getNextConversationsPage(lastTimestamp, 10)
+        return Peerio.SqlQueries.getNextConversationsPage(lastTimestamp, pageSize || 10)
             .then(materialize);
     };
 
@@ -208,7 +209,11 @@ var Peerio = this.Peerio || {};
         res = res.rows;
         var ret = [];
         for (var i = 0; i < res.length; i++) {
-            ret.push(Peerio.Conversation().applyLocalData(res.item(i)));
+            ret.push(
+                Peerio.Conversation()
+                    .applyLocalData(res.item(i))
+                    .buildProperties()
+            );
         }
         return ret;
     }
