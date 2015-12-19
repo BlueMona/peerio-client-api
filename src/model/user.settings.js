@@ -8,21 +8,14 @@ var Peerio = this.Peerio || {};
     'use strict';
     Peerio.User = Peerio.User || {};
 
-    Peerio.User.subscriptions = [];
-
     Peerio.User.addSettingsModule = function (user) {
 
-        if(Peerio.User.subscriptions) 
-            Peerio.User.subscriptions = Peerio.Net.unsubscribe(Peerio.User.subscriptions);
-
-        Peerio.User.subscriptions = [Peerio.Net.subscribe('settingsUpdated', (settings) => {
-            L.info('incoming settings update');
-            L.info(settings);
+        Peerio.Net.subscribe('settingsUpdated', (settings) => {
+            L.info('settingsUpdated socket event received, {0}', settings);
             user.processSettings(settings);
-        })];
+        });
 
         user.processSettings = function (settings) {
-            L.info('sending notification about settings across all who wants to listen!');
             user.settings = settings.settings;
             user.addresses = settings.addresses;
             user.firstName = settings.firstName;

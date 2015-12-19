@@ -40,18 +40,6 @@ Peerio.Net.init = function () {
         return eventName;
     };
 
-    /**
-     * Remove subscription to an event
-     * @param {string} eventName
-     */
-    api.unsubscribe = function (events) {
-        events.forEach(function (event) {
-            socketEventHandlers[event] = null;
-        });
-        return [];
-    };
-
-
     // this starts listening to socket.io events
     Peerio.Socket.injectEventHandler(function (eventName, data) {
         var handler = socketEventHandlers[eventName];
