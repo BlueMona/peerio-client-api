@@ -104,21 +104,20 @@ Peerio.Net.init = function () {
                     Peerio.Action.authenticated();
             })
             .timeout(60000) // magic number based on common sense
-            .catch(function (err) {
+            .catch(function (error) {
                 // if it was a call from login page, we don't want to use wrong credentials upon reconnect
-                console.log('authentication failed.', err);
-                if (!isThisAutoLogin) user = null;
-                else Peerio.Action.authFail();
-
-                if (error && error.code === 411)
-                    return Promise.reject({error: 411});
-
-                if (error && error.error === 424) {
+                console.log('authentication failed.', error);
+                if (!isThisAutoLogin) { 
+                    user = null;
+                } else {
+                    Peerio.Action.authFail();
+                }
+                
+                if (error && error.code === 424) {
                     Peerio.Action.twoFactorAuthRequested();
-                    return Promise.reject({error: 424});
                 }
 
-                return Promise.reject(err);
+                return Promise.reject(error);
             });
     };
 

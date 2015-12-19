@@ -6,7 +6,19 @@ var Peerio = this.Peerio || {};
 
 (function () {
     'use strict';
+
+
     Peerio.User = Peerio.User || {};
+
+    var cached2FAData = null;
+
+    Peerio.User.get2FAUserData = function() {
+        return cached2FAData;
+    };
+
+    Peerio.User.set2FAUserData = function(username, publicKey) {
+        cached2FAData = { username: username, publicKey: publicKey };
+    };
 
     Peerio.User.addAuthModule = function (user) {
 
@@ -20,6 +32,7 @@ var Peerio = this.Peerio || {};
                 .then((keys) => {
                     user.publicKey = keys.publicKey;
                     user.keyPair = keys.keyPair;
+                    Peerio.User.set2FAUserData(user.username, user.publicKey);
                 })
                 .then(() => Peerio.Net.login({
                     username: user.username,
@@ -64,6 +77,5 @@ var Peerio = this.Peerio || {};
                 Peerio.Action.settingsUpdated();
             }
         }.bind(user);
-
-    }
+    };
 })();
