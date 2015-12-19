@@ -81,8 +81,11 @@ var Peerio = this.Peerio || {};
         return Peerio.Net.getMessageIndexEntries(from, to)
             .then(entries => {
                 for (var id in entries) {
+                    var mEntry = entries[id];
                     (function () { // closure to capture mutable vars
-                        var entry = entries[id];
+                        var entry = mEntry;
+                        // todo: temp hack to ignore wrong index entries
+                        if(entry.type === 'message' && entry.deleted == true) return;
                         entry.entity.seqID = id;
                         var processor = entryProcessors[entry.type];
                         if (!processor) {

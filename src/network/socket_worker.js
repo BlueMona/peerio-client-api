@@ -83,7 +83,7 @@ function initialize(cfg) {
         if (!lastPing) return;
         var timePassed = Date.now() - lastPing;
         if (timePassed > cfg.pingTimeout) {
-            console.log('Heartbeat service detected broken connection.', Math.round(timePassed / 1000), 'seconds without a ping.');
+            console.log('Heartbeat service detected broken connection. ' + Math.round(timePassed / 1000)+ ' seconds without a ping.');
             resetConnection();
         }
     }
@@ -141,12 +141,12 @@ function initialize(cfg) {
                 console.log('Application logic requested connection reset.');
                 resetConnection();
                 return;
-            case 'pauseConnection':
-                console.log('WORKER PAUSE');
+            case 'disconnectSocket':
+                console.log('Application logic requested socket disconnect.');
                 self.peerioSocket.disconnect();
                 return;
-            case 'resumeConnection':
-                console.log('WORKER RESUME');
+            case 'connectSocket':
+                console.log('Application logic requested socket dconnect.');
                 self.peerioSocket.connect();
                 return;
         }

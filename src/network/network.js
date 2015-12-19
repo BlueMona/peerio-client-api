@@ -15,7 +15,7 @@ Peerio.Net.init = function () {
     delete Peerio.Net.init;
     var hasProp = Peerio.Util.hasProp;
 
-    //-- SOCKET EVENT HANDLING, AUTH & CONNECTION STATE ------------------------------------------------------------------
+    //-- SOCKET EVENT HANDLING, AUTH & CONNECTION STATE ----------------------------------------------------------------
     var connected = false;
     var authenticated = false;
     var user = null;
@@ -62,7 +62,7 @@ Peerio.Net.init = function () {
                             console.log('Auto re-login failed. No new attempts will be made until reconnect.', err);
                         });
             })
-            .timeout(15000)// no crazy science behind this magic number, just common sense
+            .timeout(5000)// no crazy science behind this magic number, just common sense
             .catch(function (err) {
                 // This should not normally happen ever. But we must be prepared to not leave client in indeterminate state.
                 console.error('setApiVersion ' + API_VERSION + ' failed', err);
@@ -95,19 +95,6 @@ Peerio.Net.init = function () {
             username: user.username,
             publicKeyString: user.publicKey
         }, null, null, true)
-            .catch((error) => {
-                // notify 
-
-                if (error && error.code === 411)
-                    return Promise.reject({error: 411});
-
-                if (error && error.error === 424) {
-                    Peerio.Action.twoFactorAuthRequested(cached2FARequest);
-                    return Promise.reject({error: 424});
-                }
-                
-                return Promise.reject(error);
-            })
             .then(encryptedAuthToken => Peerio.Crypto.decryptAuthToken(encryptedAuthToken, user.keyPair))
             .then(authToken => sendToSocket('login', {authToken: authToken}))
             .then(() => {
@@ -122,6 +109,15 @@ Peerio.Net.init = function () {
                 console.log('authentication failed.', err);
                 if (!isThisAutoLogin) user = null;
                 else Peerio.Action.authFail();
+
+                if (error && error.code === 411)
+                    return Promise.reject({error: 411});
+
+                if (error && error.error === 424) {
+                    Peerio.Action.twoFactorAuthRequested();
+                    return Promise.reject({error: 424});
+                }
+
                 return Promise.reject(err);
             });
     };
@@ -135,7 +131,7 @@ Peerio.Net.init = function () {
         Peerio.Socket.reconnect();
     };
 
-    //-- PROMISE MANAGEMENT ----------------------------------------------------------------------------------------------
+    //-- PROMISE MANAGEMENT --------------------------------------------------------------------------------------------
     // here we store all pending promises by unique id
     var pending = {};
     // safe max promise id under 32-bit integer. Once we reach maximum, id resets to 0.
@@ -164,42 +160,41 @@ Peerio.Net.init = function () {
         currentId = 0;
     }
 
-    //-- HELPERS ---------------------------------------------------------------------------------------------------------
+    //-- HELPERS -------------------------------------------------------------------------------------------------------
     /**
      *  generalized DRY function to use from public api functions
      *  @param {string} name - message name
      *  @param {Object} [data] - object to send
      *  @param {boolean} [ignoreConnectionState] - only setApiVersion needs it, couldn't find more elegant way
      *  @param {Array} [transfer] - array of objects to transfer to worker (object won't be available on this thread anymore)
-     *  @param {boolean} ignoreTimeout - tells our function to ignore timeout completely. useful for file uploads
-     *  @promise
+     *  @param {boolean} [ignoreTimeout] - tells our function to ignore timeout completely. useful for file uploads
+     *  @returns {Promise}
      */
     function sendToSocket(name, data, ignoreConnectionState, transfer, ignoreTimeout) {
         if (!connected && !ignoreConnectionState) return Promise.reject('Not connected.');
         // unique (within reasonable time frame) promise id
         var id = null;
-        var timeout = 
-            Peerio.Config.networkTimeout ? Peerio.Config.networkTimeout : 10000;
-        var promise = new Promise(function (resolve, reject) {
-            Peerio.Action.loading();
-            id = addPendingPromise(reject);
-            Peerio.Socket.send(name, data, resolve, transfer);
-        });
-        // set the timeout to 10 seconds
-        // TODO: move response timeout to config
-        if(!ignoreTimeout) { 
-            promise = promise.timeout(timeout);
+        var promise = new Promise(
+            function (resolve, reject) {
+                Peerio.Action.loading();
+                id = addPendingPromise(reject);
+                Peerio.Socket.send(name, data, resolve, transfer);
+            });
+
+        if (!ignoreTimeout) {
+            promise = promise.timeout(Peerio.Config.networkTimeout);
         }
-        
+
         return promise
-        // we want to catch all exceptions, log them and reject promise
-        .catch(function (error) {
-            L.error(error);
-            return Promise.reject(error);
-        })
-        // if we got response, let's check it for 'error' property and reject promise if it exists
-        .then(function (response) {
-            if (hasProp(response, 'error')) {
+            .catch(function (error) {
+                //just to log all non-server-returned errors
+                L.error(error);
+                return Promise.reject(error);
+            })
+            .then(function (response) {
+                // if we got response, let's check it for 'error' property and reject promise if it exists
+                if (!hasProp(response, 'error')) return Promise.resolve(response);
+
                 var err = new PeerioServerError(response.error);
                 L.error(err);
                 // 2fa requested
@@ -210,38 +205,36 @@ Peerio.Net.init = function () {
                         name: name,
                         data: data,
                         ignoreConnectionState: ignoreConnectionState,
-                        transfer: transfer
+                        transfer: transfer,
+                        ignoreTimeout: ignoreTimeout
                     };
 
-                    Peerio.Action.twoFactorAuthRequested(cached2FARequest);
+                    Peerio.Action.twoFactorAuthRequested();
                 }
                 return Promise.reject(err);
-            } else {
-                return Promise.resolve(response);
-            }
-        })
-        .finally(removePendingPromise.bind(this, id));
+            })
+            .finally(() => removePendingPromise(id));
     }
-
-    //-- PUBLIC API ------------------------------------------------------------------------------------------------------
 
     /**
      * Will retry a cached 2fa request, if possible
      */
     api.retryCached2FARequest = function () {
         if (cached2FARequest) {
-            sendToSocket(cached2FARequest.name, cached2FARequest.data,
-                cached2FARequest.ignoreConnectionState,
-                cached2FARequest.transfer);
+            sendToSocket(cached2FARequest.name, cached2FARequest.data, cached2FARequest.ignoreConnectionState,
+                cached2FARequest.transfer, cached2FARequest.ignoreTimeout);
             cached2FARequest = null;
         }
     };
 
+    //------------------------------------------------------------------------------------------------------------------
+    //-- UTILITY API METHODS -------------------------------------------------------------------------------------------
+    //------------------------------------------------------------------------------------------------------------------
 
     /**
      * Asks the server to validate a username.
      * @param {string}  username - Username to validate.
-     * @promise {Boolean} - true if username is valid (free)
+     * @returns {Promise<Boolean>} - true if username is valid (free)
      */
     api.validateUsername = function (username) {
         if (!username) {
@@ -256,7 +249,7 @@ Peerio.Net.init = function () {
     /**
      * Asks the server to validate an address(email or phone).
      * @param {string} address  - Address to validate.
-     * @promise {Boolean} - true if address is valid and not yet registered, false otherwise
+     * @returns {Promise<Boolean>} - true if address is valid and not yet registered, false otherwise
      */
     api.validateAddress = function (address) {
         var parsed = Peerio.Util.parseAddress(address);
@@ -268,17 +261,21 @@ Peerio.Net.init = function () {
 
     };
 
+    //------------------------------------------------------------------------------------------------------------------
+    //-- SIGNUP/DELETE ACCOUNT API METHODS -----------------------------------------------------------------------------
+    //------------------------------------------------------------------------------------------------------------------
+
     /**
      * Begins an account registration challenge with the server.
      * @param {Peerio.AccountInfo} accountInfo - Contains account information.
      * @promise {{
-   *            username: 'Username this challenge is for (String)',
-   *            accountCreationToken: {
-   *              token: 'Encrypted token (Base64 String)',
-   *              nonce: 'Nonce used to encrypt the token (Base64 string)'
-   *            },
-   *            ephemeralServerPublicKey: 'server's public key (Base58 String)'
-   *          }} - server response
+     *            username: 'Username this challenge is for (String)',
+     *            accountCreationToken: {
+     *              token: 'Encrypted token (Base64 String)',
+     *              nonce: 'Nonce used to encrypt the token (Base64 string)'
+     *            },
+     *            ephemeralServerPublicKey: 'server's public key (Base58 String)'
+     *          }} - server response
      */
     api.registerAccount = function (accountInfo) {
         return sendToSocket('register', accountInfo);
@@ -287,7 +284,7 @@ Peerio.Net.init = function () {
     /**
      * Begins an account registration challenge with the server.
      * @param {string} decryptedToken - Contains account information.
-     * @promise {Boolean} - always returns true or throws a PeerioServerError
+     * @returns {Promise<Boolean>} - always returns true or throws a PeerioServerError
      */
     api.activateAccount = function (decryptedToken) {
         return sendToSocket('activateAccount', {accountCreationToken: decryptedToken})
@@ -295,10 +292,22 @@ Peerio.Net.init = function () {
     };
 
     /**
+     * Deletes user account
+     */
+    api.closeAccount = function () {
+        return sendToSocket('closeAccount');
+    };
+
+
+    //------------------------------------------------------------------------------------------------------------------
+    //-- ACCOUNT SETTINGS/PREFERENCES API METHODS ----------------------------------------------------------------------
+    //------------------------------------------------------------------------------------------------------------------
+
+    /**
      * Sends back an address confirmation code for the user's email/phone number.
-     * @param {string} username
+     * @param {string} address
      * @param {number} confirmationCode - 8 digit number.
-     * @promise {Boolean}
+     * @returns {Promise<Boolean>}
      */
     api.confirmAddress = function (address, confirmationCode) {
         return sendToSocket('confirmAddress', {address: {value: address}, confirmationCode: confirmationCode})
@@ -307,7 +316,6 @@ Peerio.Net.init = function () {
 
     /**
      * Gets user settings and some personal data
-     * @promise {{todo}}
      */
     api.getSettings = function () {
         return sendToSocket('getSettings');
@@ -316,7 +324,6 @@ Peerio.Net.init = function () {
     /**
      * Change settings.
      * @param {object} settings
-     * @promise
      */
     api.updateSettings = function (settings) {
         return sendToSocket('updateSettings', settings);
@@ -325,26 +332,14 @@ Peerio.Net.init = function () {
     /**
      * Adds a new user address. Requires confirmation to make changes permanent.
      * @param {{type: 'email'||'phone', value: address }} address
-     * @promise
      */
     api.addAddress = function (address) {
         return sendToSocket('addAddress', address);
     };
 
     /**
-     * OBSOLETE!!!
-     * Confirms an address using confirmation code.
-     * @param {string} code
-     * @promise
-     */
-    /* api.confirmAddress = function (code) {
-     return sendToSocket('confirmAddress', {confirmationCode: code});
-     }; */
-
-    /**
      * Sets an address as the primary address.
      * @param {string} address
-     * @promise
      */
     api.setPrimaryAddress = function (address) {
         return sendToSocket('setPrimaryAddress', {address: {value: address}});
@@ -353,16 +348,18 @@ Peerio.Net.init = function () {
     /**
      * Removes an address from user's account.
      * @param {string} address
-     * @promise
      */
     api.removeAddress = function (address) {
         return sendToSocket('removeAddress', {address: {value: address}});
     };
 
+    //------------------------------------------------------------------------------------------------------------------
+    //-- CONTACTS API METHODS ------------------------------------------------------------------------------------------
+    //------------------------------------------------------------------------------------------------------------------
+
     /**
      * Gets a publicKey for a user.
      * @param {string} username
-     * @promise
      */
     api.getPublicKey = function (username) {
         return sendToSocket('getUserPublicKey', {username: username});
@@ -395,7 +392,6 @@ Peerio.Net.init = function () {
     /**
      * Retrieves a Peerio username from an address.
      * @param {Object} address
-     * @promise
      */
     api.addressLookup = function (address) {
         return sendToSocket('addressLookup', address);
@@ -404,7 +400,6 @@ Peerio.Net.init = function () {
     /**
      * Sends a contact request to a username.
      * @param {string} username
-     * @promise
      */
     api.addContact = function (username) {
         return sendToSocket('addOrInviteContacts', {add: [{username: username}]});
@@ -413,7 +408,6 @@ Peerio.Net.init = function () {
     /**
      * Sends a contact or invite request to usernames and/or addresses.
      * @param {object}  contacts - {add:[{username:String}], invite:[{email:String}]}
-     * @promise
      */
     api.addOrInviteContacts = function (contacts) {
         return sendToSocket('addOrInviteContacts', contacts);
@@ -422,7 +416,6 @@ Peerio.Net.init = function () {
     /**
      * Cancel a contact request previously sent to a username.
      * @param {string} username
-     * @promise
      */
     api.cancelContactRequest = function (username) {
         return sendToSocket('cancelContactRequest', {username: username});
@@ -431,7 +424,6 @@ Peerio.Net.init = function () {
     /**
      * Accept a contact request from a username.
      * @param {string} username
-     * @promise
      */
     api.acceptContactRequest = function (username) {
         return sendToSocket('acceptContactRequest', {username: username});
@@ -440,7 +432,6 @@ Peerio.Net.init = function () {
     /**
      * Decline a contact request from a username.
      * @param {string} username
-     * @promise
      */
     api.rejectContactRequest = function (username) {
         return sendToSocket('declineContactRequest', {username: username});
@@ -449,7 +440,6 @@ Peerio.Net.init = function () {
     /**
      * Removes a username as a contact.
      * @param {string} username
-     * @promise
      */
     api.removeContact = function (username) {
         return sendToSocket('removeContact', {username: username});
@@ -458,171 +448,13 @@ Peerio.Net.init = function () {
     /**
      * Send a Peerio invitation to an address.
      * @param {Object} address
-     * @promise
      */
-    Peerio.Net.inviteUserAddress = function (address) {
+    api.inviteUserAddress = function (address) {
         return sendToSocket('inviteUserAddress', {address: address});
     };
 
     /**
-     * Send a Peerio message to contacts.
-     * @param {Object} msg
-     * @promise
-     */
-    Peerio.Net.createMessage = function (msg) {
-        return sendToSocket('createMessage', msg);
-    };
-
-    /**
-     * Retrieve a list of all user messages.
-     * @promise
-     */
-    api.getAllMessages = function () {
-        return sendToSocket('getAllMessages');
-    };
-
-    /**
-     * Retrieve a message by its ID.
-     * @param {array} ids - Array of all message IDs.
-     * @promise
-     */
-    api.getMessages = function (ids) {
-        return sendToSocket('getMessages', {ids: ids});
-    };
-
-    /**
-     * Retrieve a list of all user message IDs.
-     * @promise
-     */
-    api.getMessageIDs = function () {
-        return sendToSocket('getMessageIDs');
-    };
-
-    /**
-     * Retrieve a list of all unopened/modified IDs.
-     * @promise
-     */
-    api.getModifiedMessageIDs = function () {
-        return sendToSocket('getModifiedMessageIDs');
-    };
-
-    /**
-     * Retrieve list of conversation IDs only.
-     * @promise
-     */
-    api.getConversationIDs = function () {
-        return sendToSocket('getConversationIDs');
-    };
-
-    /**
-     * Retrieve list of conversations.
-     * @promise
-     */
-    api.getAllConversations = function () {
-        return sendToSocket('getAllConversations', {});
-    };
-
-    /**
-     * Retrieve entire conversations.
-     * @param {[]} conversations - Contains objects in format {id, page}
-     * @promise
-     */
-    api.getConversationPages = function (conversations) {
-        return sendToSocket('getConversationPages', {conversations: conversations});
-    };
-
-    /**
-     * todo: this is needed to support old desktop client, remove when it's rewritten
-     * Mark a message as read.
-     * @param {Array} read - array containing {id, encryptedReturnReceipt} objects
-     * @promise
-     */
-    api.readMessages = function (read) {
-        return sendToSocket('readMessages', {read: read});
-    };
-
-    /**
-     * Remove a conversation and optionally also remove files.
-     * @param {array} ids
-     * @promise
-     */
-    api.removeConversation = function (ids) {
-        return sendToSocket('removeConversation', {ids: ids});
-    };
-
-    /**
-     * Initiate a file upload.
-     * @param {object} uploadFileObject - containing:
-     {object} header,
-     {string} ciphertext,
-     {number} totalChunks,
-     {string} clientFileID,
-     {string} parentFolder (optional)
-     * @promise
-     */
-    api.uploadFile = function (uploadFileObject) {
-        return sendToSocket('uploadFile', uploadFileObject);
-    };
-
-    /**
-     * Uploads a file chunk.
-     * @param {object} chunkObject - containing:
-     {string} ciphertext,
-     {number} chunkNumber,
-     {string} clientFileID,
-     * @promise
-     */
-    api.uploadFileChunk = function (chunkObject) {
-        return sendToSocket('uploadFileChunk', chunkObject, false, [chunkObject.ciphertext]);
-    };
-
-    /**
-     * Retrieve information about a single file.
-     * @param {string} id
-     * @promise
-     */
-    api.getFile = function (id) {
-        return sendToSocket('getFile', {id: id});
-    };
-
-    /**
-     * Retrieve a list of all user files.
-     * @promise
-     */
-    api.getFiles = function () {
-        return sendToSocket('getFiles');
-    };
-
-    /**
-     * Retrieve file download information.
-     * @param {string} id
-     * @promise
-     */
-    api.getDownloadUrl = function (id) {
-        return sendToSocket('downloadFile', {id: id});
-    };
-
-    /**
-     * Delete a file.
-     * @param {string} id
-     * @promise
-     */
-    api.removeFile = function (id) {
-        return sendToSocket('removeFile', {ids: [id]});
-    };
-
-    /**
-     * Nuke a file.
-     * @param {string} id
-     * @promise
-     */
-    api.nukeFile = function (id) {
-        return sendToSocket('nukeFile', {ids: [id]});
-    };
-
-    /**
      * Set up 2FA. Returns a TOTP shared secret.
-     * @promise
      */
     api.setUp2FA = function () {
         return sendToSocket('setUp2FA');
@@ -631,18 +463,16 @@ Peerio.Net.init = function () {
     /**
      * Confirm 2FA. Send a code to confirm the shared secret.
      * @param {number} code
-     * @promise
      */
     api.confirm2FA = function (code) {
         return sendToSocket('confirm2FA', {twoFACode: code});
     };
 
     /**
-     * Generic 2FA. Send a code to auth.
+     * Generic 2FA. Sends a code to authenticate.
      * @param {number} code
      * @param {string} username
      * @param {string} publicKey
-     * @promise
      */
     api.validate2FA = function (code, username, publicKey) {
         return sendToSocket('validate2FA', {
@@ -653,38 +483,183 @@ Peerio.Net.init = function () {
     };
 
     /**
-     * Delete account.
-     * @promise
+     * Registers device for push notifications
      */
-    api.closeAccount = function () {
-        return sendToSocket('closeAccount');
+    api.registerMobileDevice = function (data) {
+        return sendToSocket('registerMobileDevice', data);
     };
 
-    api.pauseConnection = function () {
-        return sendToSocket('pauseConnection', null, true);
-    };
 
-    api.resumeConnection = function () {
-        return sendToSocket('resumeConnection', null, true);
+    //------------------------------------------------------------------------------------------------------------------
+    //-- MESSAGES API METHODS ------------------------------------------------------------------------------------------
+    //------------------------------------------------------------------------------------------------------------------
+
+    /**
+     * Send a Peerio message to contacts.
+     * @param {Object} msg
+     */
+    Peerio.Net.createMessage = function (msg) {
+        return sendToSocket('createMessage', msg);
     };
 
     /**
+     * Retrieve a list of all user messages.
+     */
+    api.getAllMessages = function () {
+        return sendToSocket('getAllMessages');
+    };
+
+    /**
+     * Retrieve a message by its ID.
+     * @param {array} ids - Array of all message IDs.
+     */
+    api.getMessages = function (ids) {
+        return sendToSocket('getMessages', {ids: ids});
+    };
+
+    /**
+     * Retrieve a list of all user message IDs.
+     */
+    api.getMessageIDs = function () {
+        return sendToSocket('getMessageIDs');
+    };
+
+    /**
+     * Retrieve a list of all unopened/modified IDs.
+     */
+    api.getModifiedMessageIDs = function () {
+        return sendToSocket('getModifiedMessageIDs');
+    };
+
+    /**
+     * Retrieve list of conversation IDs only.
+     */
+    api.getConversationIDs = function () {
+        return sendToSocket('getConversationIDs');
+    };
+
+    /**
+     * Retrieve list of conversations.
+     */
+    api.getAllConversations = function () {
+        return sendToSocket('getAllConversations', {});
+    };
+
+    /**
+     * Retrieve entire conversations.
+     * @param {[]} conversations - Contains objects in format {id, page}
+     */
+    api.getConversationPages = function (conversations) {
+        return sendToSocket('getConversationPages', {conversations: conversations});
+    };
+
+    /**
+     * todo: this is needed to support old desktop client, remove when it's rewritten
+     * Mark a message as read.
+     * @param {Array} read - array containing {id, encryptedReturnReceipt} objects
+     */
+    api.readMessages = function (read) {
+        return sendToSocket('readMessages', {read: read});
+    };
+
+    /**
+     * Remove a conversation and optionally also remove files.
+     * @param {array} ids
+     */
+    api.removeConversation = function (ids) {
+        return sendToSocket('removeConversation', {ids: ids});
+    };
+
+    //------------------------------------------------------------------------------------------------------------------
+    //-- FILE API METHODS ----------------------------------------------------------------------------------------------
+    //------------------------------------------------------------------------------------------------------------------
+
+    /**
+     * Initiate a file upload.
+     * @param fileInfo
+     * @param {object} fileInfo.header
+     * @param {string} fileInfo.ciphertext
+     * @param {number} fileInfo.totalChunks
+     * @param {string} fileInfo.clientFileID
+     * @param {string} [fileInfo.parentFolder]
+     */
+    api.uploadFile = function (fileInfo) {
+        return sendToSocket('uploadFile', fileInfo);
+    };
+
+    /**
+     * Uploads a file chunk.
+     * @param chunk
+     * @param {string} chunk.ciphertext
+     * @param {number} chunk.chunkNumber
+     * @param {string} chunk.clientFileID
+     */
+    api.uploadFileChunk = function (chunk) {
+        return sendToSocket('uploadFileChunk', chunk, false, [chunk.ciphertext]);
+    };
+
+    /**
+     * Retrieve information about a single file.
+     * @param {string} id
+     */
+    api.getFile = function (id) {
+        return sendToSocket('getFile', {id: id});
+    };
+
+    /**
+     * Retrieve a list of all user files.
+     */
+    api.getFiles = function () {
+        return sendToSocket('getFiles');
+    };
+
+    /**
+     * Retrieve file download information.
+     * @param {string} id
+     */
+    api.getDownloadUrl = function (id) {
+        return sendToSocket('downloadFile', {id: id});
+    };
+
+    /**
+     * Delete a file.
+     * @param {string} id
+     */
+    api.removeFile = function (id) {
+        return sendToSocket('removeFile', {ids: [id]});
+    };
+
+    /**
+     * Nuke a file.
+     * @param {string} id
+     */
+    api.nukeFile = function (id) {
+        return sendToSocket('nukeFile', {ids: [id]});
+    };
+
+    //------------------------------------------------------------------------------------------------------------------
+    //-- MESSAGE/COLLECTION INDEX API METHODS --------------------------------------------------------------------------
+    //------------------------------------------------------------------------------------------------------------------
+
+    /**
      * Returns maximum index id that exists for messages
-     * @returns {number}
      */
     api.getMaxMessageIndexId = function () {
         return sendToSocket('indexCount');
     };
 
+    /**
+     * Retrieves message index entries
+     */
     api.getMessageIndexEntries = function (from, to) {
         return sendToSocket('indexQuery', {query: from === to ? [from] : [[from, to]]});
     };
 
+    /**
+     * Retrieves contact/file/folders collections versions
+     */
     api.getCollectionsVersion = function () {
         return sendToSocket('getCollectionsVersion');
     };
 
-    api.registerMobileDevice = function (data) {
-        return sendToSocket('registerMobileDevice', data);
-    };
 };
