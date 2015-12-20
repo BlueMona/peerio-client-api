@@ -64,9 +64,11 @@ function initialize(cfg) {
             stopPingChecks();
         });
 
+        // Peerio server ping
         self.peerioSocket.on('ping', function () {
             self.setLastPing();
         });
+
     }
 
     createSocketClient();
@@ -165,6 +167,10 @@ function initialize(cfg) {
             case 'connectSocket':
                 console.log('Application logic requested socket connect.');
                 createSocketClient();
+                return;
+            case 'pingWorker':
+                console.log('Application logic sent socket worker ping.');
+                self.postMessage({callbackID: message.callbackID, data: null});
                 return;
         }
 

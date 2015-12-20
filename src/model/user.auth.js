@@ -48,7 +48,8 @@ var Peerio = this.Peerio || {};
                         user.reSync()
                             .catch(err => {
                                 L.error('Synchronization failed. {0}.', err);
-                                Peerio.Action.showAlert({text: err});
+                                //TODO: if it fails due to disconnection - its ok
+                                //TODO: otherwise it's a problem, maybe report it on the sync view
                             });
                     });
                     Peerio.Dispatcher.onDisconnected(user.stopAllServerEvents);

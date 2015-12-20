@@ -108,14 +108,16 @@ Peerio.Socket.init = function () {
      * Restarts worker if it has hanged (happens on mobile)
      */
     Peerio.Socket.ensureWorkerAlive = function () {
-        new Promise(function(resolve){
+        L.info('Pinging socket worker');
+        new Promise(function (resolve) {
             Peerio.Socket.send('pingWorker', null, resolve);
         })
-        .timeout(2000)
-        .catch(function(){
-            L.error('Socket worker not responding. Restarting.');
-            Peerio.Socket.start();
-        });
+            .then(() =>  L.info('Socket worker is alive!'))
+            .timeout(2000)
+            .catch(function () {
+                L.error('Socket worker not responding. Restarting.');
+                Peerio.Socket.start();
+            });
     };
 
 
