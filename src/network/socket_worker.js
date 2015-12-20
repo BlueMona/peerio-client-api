@@ -29,28 +29,45 @@ self.onmessage = function (payload) {
 function initialize(cfg) {
     var lastPing = null;
     var intervalId = null;
-    // creating socket.io client instance
-    self.peerioSocket = io.connect(cfg.webSocketServer, {transports: ['websocket']});
-    // socket events should be passed to UI thread
 
-    // socket.io events
-    // 'connect' is fired on every connection (including reconnection)
-    self.peerioSocket.on('connect', function () {
-        console.log('socket.io connect event');
-        self.postMessage({socketEvent: 'connect'});
-        startPingChecks();
-    });
-
-    // 'disconnect' is fired on every disconnection
-    self.peerioSocket.on('disconnect', function (reason) {
-        console.log('socket.io disconnect event. reason: ', reason);
-        self.postMessage({socketEvent: 'disconnect'});
+    function killSocketClient() {
         stopPingChecks();
-    });
+        if (!self.peerioSocket)return;
+        try {
+            self.peerioSocket.disconnect();
+        } catch (err) {
+            console.log(err);
+        }
+        self.peerioSocket = null;
+    }
 
-    self.peerioSocket.on('ping', function () {
-        self.setLastPing();
-    });
+    function createSocketClient() {
+        killSocketClient();
+        // creating socket.io client instance
+        self.peerioSocket = io.connect(cfg.webSocketServer, {transports: ['websocket']});
+        // socket events should be passed to UI thread
+
+        // socket.io events
+        // 'connect' is fired on every connection (including reconnection)
+        self.peerioSocket.on('connect', function () {
+            console.log('socket.io connect event');
+            self.postMessage({socketEvent: 'connect'});
+            startPingChecks();
+        });
+
+        // 'disconnect' is fired on every disconnection
+        self.peerioSocket.on('disconnect', function (reason) {
+            console.log('socket.io disconnect event. reason: ', reason);
+            self.postMessage({socketEvent: 'disconnect'});
+            stopPingChecks();
+        });
+
+        self.peerioSocket.on('ping', function () {
+            self.setLastPing();
+        });
+    }
+
+    createSocketClient();
 
     // BROKEN CONNECTION DETECTION SYSTEM
     // Every time client receives a message, it saves the timestamp.
@@ -83,18 +100,16 @@ function initialize(cfg) {
         if (!lastPing) return;
         var timePassed = Date.now() - lastPing;
         if (timePassed > cfg.pingTimeout) {
-            console.log('Heartbeat service detected broken connection. ' + Math.round(timePassed / 1000)+ ' seconds without a ping.');
+            console.log('Heartbeat service detected broken connection. ' + Math.round(timePassed / 1000) + ' seconds without a ping.');
             resetConnection();
         }
     }
 
     // resets (restarts) connection
     function resetConnection() {
-        self.peerioSocket.disconnect();
+        killSocketClient();
         // Timeout 'just in case' :) Noticed a few times socket.io duplicating connections
-        setTimeout(function () {
-            self.peerioSocket.connect();
-        }, 1000);
+        setTimeout(createSocketClient, 1000);
     }
 
     // peerio events
@@ -143,11 +158,11 @@ function initialize(cfg) {
                 return;
             case 'disconnectSocket':
                 console.log('Application logic requested socket disconnect.');
-                self.peerioSocket.disconnect();
+                killSocketClient();
                 return;
             case 'connectSocket':
                 console.log('Application logic requested socket dconnect.');
-                self.peerioSocket.connect();
+                createSocketClient();
                 return;
         }
 

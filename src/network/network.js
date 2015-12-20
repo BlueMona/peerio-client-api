@@ -55,11 +55,11 @@ Peerio.Net.init = function () {
         sendToSocket('setApiVersion', {version: API_VERSION}, true)
             .then(function () {
                 connected = true;
-                Peerio.Action.connected();
+                window.setTimeout(Peerio.Action.connected, 0);
                 if (user)
                     api.login(user, true)
                         .catch(function (err) {
-                            console.log('Auto re-login failed. No new attempts will be made until reconnect.', err);
+                            L.error('Auto re-login failed. No new attempts will be made until reconnect. {0}', err);
                         });
             })
             .timeout(5000)// no crazy science behind this magic number, just common sense
