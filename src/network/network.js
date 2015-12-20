@@ -62,7 +62,6 @@ Peerio.Net.init = function () {
                             L.error('Auto re-login failed. No new attempts will be made until reconnect. {0}', err);
                         });
             })
-            .timeout(5000)// no crazy science behind this magic number, just common sense
             .catch(function (err) {
                 // This should not normally happen ever. But we must be prepared to not leave client in indeterminate state.
                 console.error('setApiVersion ' + API_VERSION + ' failed', err);
@@ -103,7 +102,6 @@ Peerio.Net.init = function () {
                 if (isThisAutoLogin)
                     Peerio.Action.authenticated();
             })
-            .timeout(60000) // magic number based on common sense
             .catch(function (error) {
                 // if it was a call from login page, we don't want to use wrong credentials upon reconnect
                 console.log('authentication failed.', error);
