@@ -34,6 +34,7 @@ function initialize(cfg) {
         stopPingChecks();
         if (!self.peerioSocket)return;
         try {
+            L.info('Disconnecting socket...');
             self.peerioSocket.disconnect();
         } catch (err) {
             console.log(err);
@@ -43,8 +44,9 @@ function initialize(cfg) {
 
     function createSocketClient() {
         killSocketClient();
+        L.info('Creating socket.io instance');
         // creating socket.io client instance
-        self.peerioSocket = io.connect(cfg.webSocketServer, {transports: ['websocket']});
+        self.peerioSocket = io.connect(cfg.webSocketServer, {transports: ['websocket'], forceNew: true});
         // socket events should be passed to UI thread
 
         // socket.io events
@@ -161,7 +163,7 @@ function initialize(cfg) {
                 killSocketClient();
                 return;
             case 'connectSocket':
-                console.log('Application logic requested socket dconnect.');
+                console.log('Application logic requested socket connect.');
                 createSocketClient();
                 return;
         }
