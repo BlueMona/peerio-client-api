@@ -19,6 +19,8 @@ Peerio.Net.init = function () {
     var connected = false;
     var authenticated = false;
     var user = null;
+    var cached2FARequest = null;
+    var gui2FAPromise = null;
 
 
     var socketEventHandlers = {
@@ -130,7 +132,6 @@ Peerio.Net.init = function () {
     // safe max promise id under 32-bit integer. Once we reach maximum, id resets to 0.
     var maxId = 4000000000;
     var currentId = 0;
-    var cached2FARequest = null;
 
     // registers new promise reject function and returns a unique id for it
     function addPendingPromise(rejectFn) {
@@ -194,38 +195,40 @@ Peerio.Net.init = function () {
                 // TODO: add constraints, for which functions
                 // is 2fa 424 error enabled
                 if (response.error == 424) {
-                    cached2FARequest = {
+                    // ignore everything after 2FA request
+                    if (gui2FAPromise) {
+                        return Promise.reject({ message: 'No operations before 2FA'});
+                    }
+                    // TODO: maybe store a stack of requests, still?
+                    cached2FARequest = cached2FARequest || {
                         name: name,
                         data: data,
                         ignoreConnectionState: ignoreConnectionState,
                         transfer: transfer,
                         ignoreTimeout: ignoreTimeout
                     };
-
-                    return new Promise( (nestedResolve, nestedReject) => {
+                    
+                    // for debugging
+                    gui2FAPromise = gui2FAPromise ||
+                        new Promise( (nestedResolve, nestedReject) => {
                         Peerio.Action.twoFactorAuthRequested(nestedResolve, nestedReject);
                     })
                     .then( () => {
                         return sendToSocket(cached2FARequest.name, 
                                             cached2FARequest.data, cached2FARequest.ignoreConnectionState,
                                             cached2FARequest.transfer, cached2FARequest.ignoreTimeout);
+                    })
+                    .finally( () => {
+                        cached2FARequest = null;
+                        gui2FAPromise = null;
                     });
+
+                    return gui2FAPromise;
                 }
                 return Promise.reject(err);
             })
             .finally(() => removePendingPromise(id));
     }
-
-    /**
-     * Will retry a cached 2fa request, if possible
-     */
-    api.retryCached2FARequest = function () {
-        if (cached2FARequest) {
-            sendToSocket(cached2FARequest.name, cached2FARequest.data, cached2FARequest.ignoreConnectionState,
-                cached2FARequest.transfer, cached2FARequest.ignoreTimeout);
-            cached2FARequest = null;
-        }
-    };
 
     //------------------------------------------------------------------------------------------------------------------
     //-- UTILITY API METHODS -------------------------------------------------------------------------------------------
