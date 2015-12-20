@@ -164,7 +164,7 @@ Peerio.Net.init = function () {
      *  @returns {Promise}
      */
     function sendToSocket(name, data, ignoreConnectionState, transfer, ignoreTimeout) {
-        if (!connected && !ignoreConnectionState) return Promise.reject('Not connected.');
+        if (!connected && !ignoreConnectionState) return Promise.reject(new Error('Not connected.'));
         // unique (within reasonable time frame) promise id
         var id = null;
         var promise = new Promise(

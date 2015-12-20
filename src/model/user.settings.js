@@ -83,7 +83,6 @@ var Peerio = this.Peerio || {};
                 receiveContactNotifications: receiveContactNotifications,
                 receiveContactRequestNotifications: receiveContactRequestNotifications
             });
-        }.bind(user);
-
-    }
+        };
+    };
 })();
