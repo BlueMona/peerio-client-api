@@ -62,6 +62,7 @@ Peerio.Action.init = function () {
 
         'TwoFactorAuthRequested',
         'TwoFactorAuthResend',
+        'TwoFactorAuthReject',
 
         'MessageAdded',
         'ReceiptAdded',

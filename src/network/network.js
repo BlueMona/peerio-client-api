@@ -110,10 +110,6 @@ Peerio.Net.init = function () {
                 } else {
                     Peerio.Action.authFail();
                 }
-                
-                if (error && error.code === 424) {
-                    Peerio.Action.twoFactorAuthRequested();
-                }
 
                 return Promise.reject(error);
             });
@@ -206,7 +202,14 @@ Peerio.Net.init = function () {
                         ignoreTimeout: ignoreTimeout
                     };
 
-                    Peerio.Action.twoFactorAuthRequested();
+                    return new Promise( (nestedResolve, nestedReject) => {
+                        Peerio.Action.twoFactorAuthRequested(nestedResolve, nestedReject);
+                    })
+                    .then( () => {
+                        return sendToSocket(cached2FARequest.name, 
+                                            cached2FARequest.data, cached2FARequest.ignoreConnectionState,
+                                            cached2FARequest.transfer, cached2FARequest.ignoreTimeout);
+                    });
                 }
                 return Promise.reject(err);
             })
