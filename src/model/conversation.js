@@ -83,8 +83,7 @@ var Peerio = this.Peerio || {};
             this.id,
             this.seqID,
             this.participants,
-            this.exParticipants,
-            this.lastTimestamp
+            this.exParticipants
         );
     }
 

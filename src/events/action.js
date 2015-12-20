@@ -65,8 +65,8 @@ Peerio.Action.init = function () {
 
         'MessageAdded',
         'ReceiptAdded',
-
-        'ConversationsUpdated',
+        'ConversationRemoved', // param: conversation id
+        'ParticipantLeft',     // participant left a conversation. param: partially filled Conversation object
 
         'ContactsUpdated',
 

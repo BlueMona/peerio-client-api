@@ -51,10 +51,10 @@ var Peerio = this.Peerio || {};
         );
     }
 
-    function updateConversationParticipants(id, seqID, participants, exParticipants, lastTimestamp) {
+    function updateConversationParticipants(id, seqID, participants, exParticipants) {
         return Peerio.SqlDB.user.executeSql(
-            'UPDATE conversations  SET  seqID=?, participants=?, exParticipants=?, lastTimestamp=? WHERE id=?',
-            [seqID, serializeArray(participants), serializeArray(exParticipants), lastTimestamp, id]
+            'UPDATE conversations  SET  seqID=?, participants=?, exParticipants=? WHERE id=?',
+            [seqID, serializeArray(participants), serializeArray(exParticipants), id]
         );
     }
 
