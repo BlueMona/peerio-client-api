@@ -24,9 +24,9 @@ var Peerio = this.Peerio || {};
         getConversation: getConversation,
         getMessages: getMessages,
         getConversationFiles: getConversationFiles,
-        getConversationMessageCount:getConversationMessageCount,
-        getNextConversationsPage:getNextConversationsPage,
-        getPrevConversationsPage:getPrevConversationsPage
+        getConversationMessageCount: getConversationMessageCount,
+        getNextConversationsPage: getNextConversationsPage,
+        getPrevConversationsPage: getPrevConversationsPage
     };
 
     /**
@@ -91,7 +91,8 @@ var Peerio = this.Peerio || {};
     }
 
     function updateConversationsLastTimestamp() {
-        return Peerio.SqlDB.user.executeSql('UPDATE conversations SET lastTimestamp = (SELECT timestamp FROM messages WHERE conversationID=conversations.id ORDER BY seqID DESC LIMIT 1)');
+        return Peerio.SqlDB.user.executeSql('UPDATE conversations SET lastTimestamp = (SELECT timestamp FROM messages WHERE conversationID=conversations.id ORDER BY seqID DESC LIMIT 1),'
+            + ' seqID = (SELECT seqID FROM messages WHERE conversationID=conversations.id ORDER BY seqID DESC LIMIT 1)');
     }
 
     function setConversationsCreatedTimestamp() {
@@ -110,12 +111,12 @@ var Peerio = this.Peerio || {};
         return Peerio.SqlDB.user.executeSql('SELECT * FROM conversations ORDER BY lastTimestamp DESC');
     }
 
-    function getNextConversationsPage(lastTimestamp, pageSize) {
-        return Peerio.SqlDB.user.executeSql('SELECT * FROM conversations WHERE lastTimestamp<=? ORDER BY lastTimestamp DESC LIMIT ?',[lastTimestamp, pageSize]);
+    function getNextConversationsPage(lastSeqID, pageSize) {
+        return Peerio.SqlDB.user.executeSql('SELECT * FROM conversations WHERE seqID<? ORDER BY seqID DESC LIMIT ?', [lastSeqID, pageSize]);
     }
 
-    function getPrevConversationsPage(lastTimestamp, pageSize) {
-        return Peerio.SqlDB.user.executeSql('SELECT * FROM conversations WHERE lastTimestamp>=? ORDER BY lastTimestamp ASC LIMIT ?',[lastTimestamp, pageSize]);
+    function getPrevConversationsPage(lastSeqID, pageSize) {
+        return Peerio.SqlDB.user.executeSql('SELECT * FROM conversations WHERE seqID>? ORDER BY seqID ASC LIMIT ?', [lastSeqID, pageSize]);
     }
 
     function getConversation(id) {
@@ -130,7 +131,7 @@ var Peerio = this.Peerio || {};
         return Peerio.SqlDB.user.executeSql('SELECT * FROM messages WHERE conversationID=? ORDER BY timestamp ASC', [conversationId]);
     }
 
-    function getConversationMessageCount(conversationId){
+    function getConversationMessageCount(conversationId) {
         return Peerio.SqlDB.user.executeSql('SELECT count(*) AS msgCount FROM messages WHERE conversationID=?', [conversationId]);
     }
 

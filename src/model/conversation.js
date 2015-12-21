@@ -198,15 +198,15 @@ var Peerio = this.Peerio || {};
             .then(materialize);
     };
 
-    Peerio.Conversation.getNextPage = function (lastTimestamp, pageSize) {
+    Peerio.Conversation.getNextPage = function (lastSeqID, pageSize) {
 
-        return Peerio.SqlQueries.getNextConversationsPage(lastTimestamp, pageSize || 10)
+        return Peerio.SqlQueries.getNextConversationsPage(lastSeqID, pageSize || 10)
             .then(materialize);
     };
 
-    Peerio.Conversation.getPrevPage = function (lastTimestamp, pageSize) {
+    Peerio.Conversation.getPrevPage = function (lastSeqID, pageSize) {
 
-        return Peerio.SqlQueries.getPrevConversationsPage(lastTimestamp, pageSize || 10)
+        return Peerio.SqlQueries.getPrevConversationsPage(lastSeqID, pageSize || 10)
             .then(materialize);
     };
 
