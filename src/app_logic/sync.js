@@ -23,12 +23,57 @@ var Peerio = this.Peerio || {};
     // index entries will be loaded and processed in batches
     var batch = 10;
     var running = false;
+    var runAgain = false;
     var interruptRequested = false;
     var progressMsg = 'downloading message data';
 
+    var notify;
+
+    function resetNotify() {
+        notify = {};
+        // when conversations were added
+        notify.updateAllConversations = false;
+        // when conversations were updated (files, read status, last timestamp) or deleted
+        notify.updated = null;
+        // when specific conversations were updated or there are new messages in them
+        notify.deleted = null;
+    }
+
+    function addUpdateNotify(id){
+        internalAddNotify(id, 'updated');
+    }
+
+    function addDeleteNotify(id){
+        internalAddNotify(id, 'deleted');
+    }
+
+    // we want notify.updated and notify.deleted to be
+    // null - when there is nothing to update or delete
+    // empty array - when there is more then 10 items and we just prefer to update all
+    function internalAddNotify(id, type) {
+        var arr = notify[type];
+        if (arr && arr.length === 0) return;
+
+        if (!arr) arr = notify[type] = [];
+        arr.push(id);
+        if (arr.length > 10) notify[type] = [];
+    }
+
+    function doNotify(){
+        if(notify.updateAllConversations===false && notify.updated === null && notify.deleted === null) return;
+        Peerio.Action.conversationsUpdated(notify);
+    }
+
+    resetNotify();
+
     function syncMessages() {
-        if (running) return;
+        if (running) {
+            runAgain = true;
+            return;
+        }
+        resetNotify();
         running = true;
+        runAgain = false;
         Peerio.Action.syncProgress(0, 0, progressMsg);
 
         return Promise.all([Peerio.SqlQueries.getMaxSeqID(), Peerio.Net.getMaxMessageIndexId()])
@@ -66,9 +111,11 @@ var Peerio = this.Peerio || {};
                 });
             })
             .finally(()=> {
+                doNotify();
                 Peerio.Action.syncProgress(1, 1, progressMsg);
                 running = false;
                 interruptRequested = false;
+                if (runAgain) window.setTimeout(syncMessages, 0);
             });
     }
 
@@ -85,7 +132,7 @@ var Peerio = this.Peerio || {};
                     (function () { // closure to capture mutable vars
                         var entry = mEntry;
                         // todo: temp hack to ignore wrong index entries
-                        if(entry.type === 'message' && entry.deleted == true) return;
+                        if (entry.type === 'message' && entry.deleted == true) return;
                         entry.entity.seqID = id;
                         var processor = entryProcessors[entry.type];
                         if (!processor) {
@@ -102,19 +149,24 @@ var Peerio = this.Peerio || {};
     }
 
     function processConversationEntry(entry) {
+        notify.updateAllConversations = true;
         return Peerio.Conversation().applyServerData(entry.entity).insert();
     }
 
     function processConversationParticipantsEntry(entry) {
+        addUpdateNotify(entry.entity.id);
         return Peerio.Conversation().applyServerData(entry.entity).updateParticipants();
     }
 
     function processConversationDeletedEntry(entry) {
+        addDeleteNotify(entry.entity.id);
         return Peerio.Conversation.deleteFromCache(entry.entity.id);
     }
 
 
     function processMessageEntry(entry) {
+        notify.updateAllConversations = true;
+        addUpdateNotify(entry.entity.id);
         var msg = Peerio.Message();
         return msg.applyServerData(entry.entity)
             .then(() => msg.insert())
@@ -130,6 +182,7 @@ var Peerio = this.Peerio || {};
     }
 
     function processMessageReadEntry(entry) {
+        addUpdateNotify(entry.entity.id);
         return Peerio.Message.addReceipt(entry.entity);
     }
 
@@ -137,7 +190,7 @@ var Peerio = this.Peerio || {};
         return Promise.all([
             Peerio.SqlQueries.setConversationsCreatedTimestamp(),
             Peerio.SqlQueries.updateConversationsLastTimestamp(),
-            Peerio.SqlQueries.updateConversationsUnreadCount(),
+            Peerio.SqlQueries.updateAllConversationsUnreadState(),
             Peerio.SqlQueries.updateConversationsHasFiles()
         ]);
 

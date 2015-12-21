@@ -30,6 +30,28 @@ function initialize(cfg) {
     var lastPing = null;
     var intervalId = null;
 
+    var serverEvents = [
+        'contactAdded',
+        'contactRemoved',
+        'contactRequestSent',
+        'contactRequestReceived',
+        'sentContactRequestRemoved',
+        'receivedContactRequestRemoved',
+
+      //  'messageAdded',
+        //'messageRead',
+       // 'conversationModified',
+      ///  'conversationRemoved',
+        'seqIndexUpdate',
+
+        'fileAdded',
+        'fileRemoved',
+
+        'settingsUpdated',
+
+        'twoFactorAuthRequested'
+    ];
+
     function killSocketClient() {
         stopPingChecks();
         if (!self.peerioSocket)return;
@@ -68,6 +90,8 @@ function initialize(cfg) {
         self.peerioSocket.on('ping', function () {
             self.setLastPing();
         });
+
+        subscribeToServerEvents();
 
     }
 
@@ -116,33 +140,16 @@ function initialize(cfg) {
         setTimeout(createSocketClient, 1000);
     }
 
-    // peerio events
-    [
-        'contactAdded',
-        'contactRemoved',
-        'contactRequestSent',
-        'contactRequestReceived',
-        'sentContactRequestRemoved',
-        'receivedContactRequestRemoved',
-
-        'messageAdded',
-        'messageRead',
-        'conversationModified',
-        'conversationRemoved',
-
-        'fileAdded',
-        'fileRemoved',
-
-        'settingsUpdated',
-
-        'twoFactorAuthRequested'
-    ].forEach(function (eventName) {
-        self.peerioSocket.on(eventName,
-            function (data) {
-                self.setLastPing();
-                self.postMessage({socketEvent: eventName, data: data});
-            });
-    });
+    function subscribeToServerEvents() {
+        // peerio events
+        serverEvents.forEach(function (eventName) {
+            self.peerioSocket.on(eventName,
+                function (data) {
+                    self.setLastPing();
+                    self.postMessage({socketEvent: eventName, data: data});
+                });
+        });
+    }
 
 
     // this function receives data from UI thread and sends it through socket

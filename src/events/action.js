@@ -64,10 +64,7 @@ Peerio.Action.init = function () {
         'TwoFactorAuthResend',
         'TwoFactorAuthReject',
 
-        'MessageAdded',
-        'ReceiptAdded',
-        'ConversationRemoved', // param: conversation id
-        'ParticipantLeft',     // participant left a conversation. param: partially filled Conversation object
+        'ConversationsUpdated', // param: {updateAllConversations:bool,  updated:[], delete:[]}
 
         'ContactsUpdated',
 

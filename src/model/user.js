@@ -57,7 +57,6 @@ var Peerio = this.Peerio || {};
                 .then(user.loadFiles)
                 .then(Peerio.FilesEventHandler.resume)
                 .then(Peerio.Sync.syncMessages)
-                .then(Peerio.MessagesEventHandler.resume)
                 .finally(()=> {
                     Peerio.Action.syncEnded();
                     running = false;
@@ -71,9 +70,10 @@ var Peerio = this.Peerio || {};
             return runningPromise;
         }.bind(user);
 
+        Peerio.Net.subscribe('seqIndexUpdate', Peerio.Sync.syncMessages);
+
         user.stopAllServerEvents = function () {
             Peerio.Sync.interrupt();
-            Peerio.MessagesEventHandler.pause();
             Peerio.FilesEventHandler.pause();
             Peerio.ContactsEventHandler.pause();
         }.bind(user);

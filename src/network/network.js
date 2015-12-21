@@ -118,6 +118,7 @@ Peerio.Net.init = function () {
     };
 
     api.signOut = function () {
+        L.info('Network layer performs sign out');
         socketEventHandlers = {
             connect: onConnect,
             disconnect: onDisconnect

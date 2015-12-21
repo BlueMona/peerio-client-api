@@ -55,6 +55,7 @@ var Peerio = this.Peerio || {};
                     Peerio.Dispatcher.onDisconnected(user.stopAllServerEvents);
                 })
                 .catch((e)=> {
+                    L.error('Peerio.user.login error. {0}', e);
                     // ! This is an important piece.
                     // Usually, to perform 'sign out' we reload app to clean all states and open resources.
                     // But here(initial login) we don't want to do that, because it will create an unpleasant UX.

@@ -39,7 +39,6 @@ Peerio.initAPI = function () {
             Peerio.FileSystem.init();
             Peerio.ContactsEventHandler.init();
             Peerio.FilesEventHandler.init();
-            Peerio.MessagesEventHandler.init();
 
             Peerio.Socket.start();
 
