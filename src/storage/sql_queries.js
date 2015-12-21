@@ -115,7 +115,7 @@ var Peerio = this.Peerio || {};
     }
 
     function getPrevConversationsPage(lastTimestamp, pageSize) {
-        return Peerio.SqlDB.user.executeSql('SELECT * FROM conversations WHERE lastTimestamp>=? ORDER BY lastTimestamp DESC LIMIT ?',[lastTimestamp, pageSize]);
+        return Peerio.SqlDB.user.executeSql('SELECT * FROM conversations WHERE lastTimestamp>=? ORDER BY lastTimestamp ASC LIMIT ?',[lastTimestamp, pageSize]);
     }
 
     function getConversation(id) {
