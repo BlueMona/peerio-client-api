@@ -42,7 +42,7 @@ function initialize(cfg) {
         //'messageRead',
        // 'conversationModified',
       ///  'conversationRemoved',
-        'seqIndexUpdate',
+        'seqIdUpdated',
 
         'fileAdded',
         'fileRemoved',
