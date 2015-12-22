@@ -61,6 +61,7 @@ var Peerio = this.Peerio || {};
 
     function doNotify(){
         if(notify.updateAllConversations===false && notify.updated === null && notify.deleted === null) return;
+        L.verbose(notify);
         Peerio.Action.conversationsUpdated(notify);
     }
 
@@ -69,8 +70,10 @@ var Peerio = this.Peerio || {};
     function syncMessages() {
         if (running) {
             runAgain = true;
+            L.verbose('Message sync already running.');
             return;
         }
+        L.verbose('Starting message sync.');
         resetNotify();
         running = true;
         runAgain = false;
@@ -111,6 +114,7 @@ var Peerio = this.Peerio || {};
                 });
             })
             .finally(()=> {
+                L.verbose('Message sync stopped.');
                 doNotify();
                 Peerio.Action.syncProgress(1, 1, progressMsg);
                 running = false;
@@ -125,6 +129,7 @@ var Peerio = this.Peerio || {};
     function processPage(from, to) {
         var chain = Promise.resolve();
         // load from server
+        L.silly('Requesting page from {0} to {1}', from, to);
         return Peerio.Net.getMessageIndexEntries(from, to)
             .then(entries => {
                 for (var id in entries) {
@@ -149,22 +154,26 @@ var Peerio = this.Peerio || {};
     }
 
     function processConversationEntry(entry) {
+        L.silly('{0}: Processing new conversation entry.', entry.entity.seqID);
         notify.updateAllConversations = true;
         return Peerio.Conversation().applyServerData(entry.entity).insert();
     }
 
     function processConversationParticipantsEntry(entry) {
+        L.silly('{0}: Processing participants entry.', entry.entity.seqID);
         addUpdateNotify(entry.entity.id);
         return Peerio.Conversation().applyServerData(entry.entity).updateParticipants();
     }
 
     function processConversationDeletedEntry(entry) {
+        L.silly('{0}: Processing conversation delete entry.', entry.entity.seqID);
         addDeleteNotify(entry.entity.id);
         return Peerio.Conversation.deleteFromCache(entry.entity.id);
     }
 
 
     function processMessageEntry(entry) {
+        L.silly('{0}: Processing message entry.', entry.entity.seqID);
         notify.updateAllConversations = true;
         addUpdateNotify(entry.entity.id);
         var msg = Peerio.Message();
@@ -182,17 +191,24 @@ var Peerio = this.Peerio || {};
     }
 
     function processMessageReadEntry(entry) {
+        L.silly('{0}: Processing message read entry.', entry.entity.seqID);
         addUpdateNotify(entry.entity.id);
         return Peerio.Message.addReceipt(entry.entity);
     }
 
     function updateConversations() {
+        L.verbose('Mass-updating conversations after sync...');
         return Promise.all([
             Peerio.SqlQueries.setConversationsCreatedTimestamp(),
             Peerio.SqlQueries.updateConversationsLastTimestamp(),
             Peerio.SqlQueries.updateConversationsUnreadCount(),
             Peerio.SqlQueries.updateConversationsHasFiles()
-        ]);
+        ]).tap(()=>{
+            L.verbose('Mass-update conversations done.');
+        }).catch((err)=>{
+            L.verbose('Mass-update conversations error.');
+            return Promise.reject(err);
+        });
 
     }
 
