@@ -210,12 +210,36 @@ var Peerio = this.Peerio || {};
             .then(materialize);
     };
 
+    Peerio.Conversation.getNextMessagesPage = function (conversationId, lastSeqID, pageSize) {
+        return Peerio.SqlQueries.getNextMessagesPage(conversationId, lastSeqID, pageSize || 10)
+            .then(materializeMessages);
+    };
+
+    Peerio.Conversation.getPrevMessagesPage = function (conversationId, lastSeqID, pageSize) {
+        return Peerio.SqlQueries.getPrevMessagesPage(conversationId, lastSeqID, pageSize || 10)
+            .then(materializeMessages);
+    };
+
+
     function materialize(res) {
         res = res.rows;
         var ret = [];
         for (var i = 0; i < res.length; i++) {
             ret.push(
                 Peerio.Conversation()
+                    .applyLocalData(res.item(i))
+                    .buildProperties()
+            );
+        }
+        return ret;
+    }
+
+    function materializeMessages(res) {
+        res = res.rows;
+        var ret = [];
+        for (var i = 0; i < res.length; i++) {
+            ret.push(
+                Peerio.Message()
                     .applyLocalData(res.item(i))
                     .buildProperties()
             );
