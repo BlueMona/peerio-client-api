@@ -38,10 +38,6 @@ function initialize(cfg) {
         'sentContactRequestRemoved',
         'receivedContactRequestRemoved',
 
-      //  'messageAdded',
-        //'messageRead',
-       // 'conversationModified',
-      ///  'conversationRemoved',
         'seqIdUpdated',
 
         'fileAdded',
