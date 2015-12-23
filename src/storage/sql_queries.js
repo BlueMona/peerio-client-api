@@ -29,7 +29,8 @@ var Peerio = this.Peerio || {};
         getNextConversationsPage: getNextConversationsPage,
         getPrevConversationsPage: getPrevConversationsPage,
         getNextMessagesPage: getNextMessagesPage,
-        getPrevMessagesPage: getPrevMessagesPage
+        getPrevMessagesPage: getPrevMessagesPage,
+        getMessagesRange:getMessagesRange
     };
 
     /**
@@ -135,7 +136,7 @@ var Peerio = this.Peerio || {};
     }
 
     function getMessagesRange(conversationId, fromSeqID, toSeqID) {
-        return Peerio.SqlDB.user.executeSql('SELECT * FROM messages WHERE conversationID=? AND seqID>=? and seqID<=? ORDER BY seqID DESC', [conversationId, fromSeqID, toSeqID]);
+        return Peerio.SqlDB.user.executeSql('SELECT * FROM messages WHERE conversationID=? AND seqID>=? and seqID<=? ORDER BY seqID ASC', [conversationId, fromSeqID, toSeqID]);
     }
 
     function getConversation(id) {

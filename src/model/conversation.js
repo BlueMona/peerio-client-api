@@ -157,20 +157,21 @@ var Peerio = this.Peerio || {};
             .return(this);
     }
 
-    function reply(recipients, body, fileIds) {
+    function reply(recipients, body, fileIds, subject) {
         if (recipients.indexOf(Peerio.user.username) < 0)
             recipients.push(Peerio.user.username);
 
-        return Peerio.Message.encrypt(recipients, null, body, fileIds)
+        return Peerio.Message.encrypt(recipients, typeof(subject) === 'undefined' ? null : subject, body, fileIds)
             .then(encrypted => {
                 if (!encrypted.header || !encrypted.body) return Promise.reject('Message encryption failed.');
-                return {
+                var ret = {
                     recipients: recipients,
                     header: encrypted.header,
                     body: encrypted.body,
-                    conversationID: this.id,
                     isDraft: false
                 };
+                if (this.id) ret.conversationID = this.id;
+                return ret;
             })
             // re-encrypting file headers (sharing files)
             .then(function (messageDTO) {
@@ -188,8 +189,8 @@ var Peerio = this.Peerio || {};
     function buildFileHeaders(recipients, fileIds) {
         return Promise.map(fileIds, function (id) {
             var file = Peerio.user.files.dict[id];
-            if(!file){
-                L.error('File id {0} not found in local cache. Cant build headers for it.', id);
+            if (!file) {
+                L.error("File id {0} not found in local cache. Cant build headers for it.", id);
                 return;
             }
             return file.generateHeader(recipients, id)
@@ -199,7 +200,6 @@ var Peerio = this.Peerio || {};
 
         }, Peerio.Crypto.recommendedConcurrency);
     }
-
 
 
     //-- PUBLIC API ------------------------------------------------------------------------------------------------------
