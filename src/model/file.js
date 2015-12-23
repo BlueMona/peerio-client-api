@@ -7,6 +7,19 @@ var Peerio = this.Peerio || {};
 (function () {
     'use strict';
 
+    function getInfo() {
+        return {
+            sender: this.sender,
+            header: this.header,
+            creator: this.creator,
+            size: this.size,
+            timestamp: this.timestamp,
+            id: this.id,
+            shortId: this.shortId,
+            name: this.name
+        };
+    }
+
     /**
      * Fills/replaces current File object properties with data sent by server.
      * Decrypts file name.
@@ -76,7 +89,7 @@ var Peerio = this.Peerio || {};
             .then(blob => {
                 L.info('File downloaded. Size = {0}. Decrypting.', blob.size);
                 setState(DL_STATE.DECRYPTING);
-                return Peerio.Crypto.decryptFile(this.id, blob, this);
+                return Peerio.Crypto.decryptFile(this.id, blob, this.getInfo());
             })
             // saving blob
             .then(decrypted => {
@@ -217,6 +230,7 @@ var Peerio = this.Peerio || {};
      */
     Peerio.File = function () {
         var obj = {
+            getInfo: getInfo,
             applyServerData: applyServerData,
             buildProperties: buildProperties,
             remove: remove,
