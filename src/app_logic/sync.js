@@ -39,11 +39,11 @@ var Peerio = this.Peerio || {};
         notify.deleted = null;
     }
 
-    function addUpdateNotify(id){
+    function addUpdateNotify(id) {
         internalAddNotify(id, 'updated');
     }
 
-    function addDeleteNotify(id){
+    function addDeleteNotify(id) {
         internalAddNotify(id, 'deleted');
     }
 
@@ -59,8 +59,8 @@ var Peerio = this.Peerio || {};
         if (arr.length > 10) notify[type] = [];
     }
 
-    function doNotify(){
-        if(notify.updateAllConversations===false && notify.updated === null && notify.deleted === null) return;
+    function doNotify() {
+        if (notify.updateAllConversations === false && notify.updated === null && notify.deleted === null) return;
         L.verbose(notify);
         Peerio.Action.conversationsUpdated(notify);
     }
@@ -95,7 +95,7 @@ var Peerio = this.Peerio || {};
                             reject('Sync interrupted.');
                             return;
                         }
-                        return processPage(localMax, Math.min(serverMax, localMax + batch - 1))
+                        return processPage(localMax + 1, Math.min(serverMax, localMax + batch))
                             .then(()=> {
                                 // moving to next page
                                 localMax += batch;
@@ -203,9 +203,9 @@ var Peerio = this.Peerio || {};
             Peerio.SqlQueries.updateConversationsLastTimestamp(),
             Peerio.SqlQueries.updateConversationsUnreadCount(),
             Peerio.SqlQueries.updateConversationsHasFiles()
-        ]).tap(()=>{
+        ]).tap(()=> {
             L.verbose('Mass-update conversations done.');
-        }).catch((err)=>{
+        }).catch((err)=> {
             L.verbose('Mass-update conversations error.');
             return Promise.reject(err);
         });

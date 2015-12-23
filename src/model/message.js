@@ -144,5 +144,19 @@ var Peerio = this.Peerio || {};
             .catch(err => L.error('Failed to add receipt. {0}. {1}.', err, receiptData));
     };
 
+    Peerio.Message.encrypt = function(recipients, subject, body, fileIDs) {
+        var message = {
+            message: body,
+            receipt: nacl.util.encodeBase64(nacl.randomBytes(32)),
+            fileIDs: fileIDs || [],
+            participants: recipients,
+            sequence: 0
+        };
+        if(subject) message.subject = subject;
+        return Peerio.Crypto.encryptMessage(message, recipients);
+    };
+
+
+
 
 })();

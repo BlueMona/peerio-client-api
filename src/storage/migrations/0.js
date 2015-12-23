@@ -33,6 +33,7 @@ Peerio.SqlMigrations = Peerio.SqlMigrations || [];
                 'CREATE TABLE messages (' +
                 'id TEXT PRIMARY KEY,' + // messageID
                 'seqID INTEGER,' +       // sequence id for this message
+                'lastReceiptSeqID INTEGER,' +       // sequence id for this message
                 'conversationID TEXT,' + // conversation this message belongs to
                 'sender TEXT,' +           // username
                 'timestamp INTEGER,' +     // timestamp
@@ -46,6 +47,7 @@ Peerio.SqlMigrations = Peerio.SqlMigrations || [];
             );
 
             tx.executeSql('CREATE INDEX msg_seq_index ON messages (seqID)');
+            tx.executeSql('CREATE INDEX msg_receipt_seq_index ON messages (lastReceiptSeqID)');
             tx.executeSql('CREATE INDEX msg_conv_id_index ON messages (conversationID)');
             tx.executeSql('CREATE INDEX msg_ts_index ON messages (timestamp)');
             tx.executeSql('CREATE INDEX msg_receipt_sent ON messages (receiptSent)');

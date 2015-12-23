@@ -604,7 +604,7 @@ Peerio.Crypto.init = function () {
 
         if (!decrypted) return Promise.reject('Failed to decrypt receipt.');
 
-        decrypted = encodeUTF8(decrypted);//.substring(0, decrypted.length - timestampLength);
+        decrypted = encodeUTF8(decrypted).substring(0, decrypted.length - timestampLength);
         return Promise.resolve(decrypted);
     };
 

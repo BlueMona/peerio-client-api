@@ -21,6 +21,7 @@ var Peerio = this.Peerio || {};
         updateConversationsHasFiles: updateConversationsHasFiles,
         setConversationsCreatedTimestamp: setConversationsCreatedTimestamp,
         getAllConversations: getAllConversations,
+        getConversationsRange: getConversationsRange,
         getConversation: getConversation,
         getMessages: getMessages,
         getConversationFiles: getConversationFiles,
@@ -36,7 +37,7 @@ var Peerio = this.Peerio || {};
      * @returns {Promise<Number>}
      */
     function getMaxSeqID() {
-        return Peerio.SqlDB.user.executeSql('SELECT MAX((SELECT MAX(seqID) from conversations),(SELECT MAX(seqID) from messages)) as maxid')
+        return Peerio.SqlDB.user.executeSql('SELECT MAX((SELECT MAX(seqID) from conversations), (SELECT MAX(seqID) from messages), (SELECT MAX(lastReceiptSeqID) from messages)) as maxid')
             .then(res => {
                 return res.rows.item(0).maxid || 0;
             });
@@ -75,8 +76,8 @@ var Peerio = this.Peerio || {};
     function createMessage(id, seqID, conversationID, sender, timestamp, body, files,
                            receiptSecret, receipts, receiptSent, unread) {
         return Peerio.SqlDB.user.executeSql(
-            'INSERT OR IGNORE INTO messages VALUES(?,?,?,?,?,?,?,?,?,?,?)',
-            [id, seqID, conversationID, sender, timestamp, body || '', serializeArray(files),
+            'INSERT OR IGNORE INTO messages VALUES(?,?,?,?,?,?,?,?,?,?,?,?)',
+            [id, seqID, 0, conversationID, sender, timestamp, body || '', serializeArray(files),
                 receiptSecret || null, serializeArray(receipts), receiptSent ? 1 : 0, unread ? 1 : 0]
         );
     }
@@ -87,7 +88,7 @@ var Peerio = this.Peerio || {};
 
     function updateReceipts(seqID, receipts, messageId, receipt) {
         return Peerio.SqlDB.user.executeSql(
-            'UPDATE messages SET seqID=?, receipts=? WHERE messageID=? and receiptSecret = ?',
+            'UPDATE messages SET lastReceiptSeqID=?, receipts=? WHERE id=? and receiptSecret = ?',
             [seqID, serializeArray(receipts), messageId, receipt || null]
         );
     }
@@ -111,6 +112,10 @@ var Peerio = this.Peerio || {};
 
     function getAllConversations() {
         return Peerio.SqlDB.user.executeSql('SELECT * FROM conversations ORDER BY lastTimestamp DESC');
+    }
+
+    function getConversationsRange(fromSeqID, toSeqID) {
+        return Peerio.SqlDB.user.executeSql('SELECT * FROM conversations WHERE seqID>=? and seqID<=? ORDER BY seqID DESC', [fromSeqID, toSeqID]);
     }
 
     function getNextConversationsPage(lastSeqID, pageSize) {

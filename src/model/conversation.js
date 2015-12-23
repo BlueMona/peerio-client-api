@@ -157,6 +157,50 @@ var Peerio = this.Peerio || {};
             .return(this);
     }
 
+    function reply(recipients, body, fileIds) {
+        if (recipients.indexOf(Peerio.user.username) < 0)
+            recipients.push(Peerio.user.username);
+
+        return Peerio.Message.encrypt(recipients, null, body, fileIds)
+            .then(encrypted => {
+                if (!encrypted.header || !encrypted.body) return Promise.reject('Message encryption failed.');
+                return {
+                    recipients: recipients,
+                    header: encrypted.header,
+                    body: encrypted.body,
+                    conversationID: this.id,
+                    isDraft: false
+                };
+            })
+            // re-encrypting file headers (sharing files)
+            .then(function (messageDTO) {
+                return buildFileHeaders(recipients, fileIds)
+                    .then(function (fileHeaders) {
+                        messageDTO.files = fileHeaders;
+                        return messageDTO;
+                    });
+            })
+            .then(function (messageDTO) {
+                return Peerio.Net.createMessage(messageDTO);
+            });
+    }
+
+    function buildFileHeaders(recipients, fileIds) {
+        return Promise.map(fileIds, function (id) {
+            var file = Peerio.user.files.dict[id];
+            if(!file){
+                L.error("File id {0} not found in local cache. Cant build headers for it.", id);
+                return;
+            }
+            return file.generateHeader(recipients, id)
+                .then(function (header) {
+                    return {id: id, header: header};
+                });
+
+        }, Peerio.Crypto.recommendedConcurrency);
+    }
+
+
 
     //-- PUBLIC API ------------------------------------------------------------------------------------------------------
     /**
@@ -174,6 +218,7 @@ var Peerio = this.Peerio || {};
             applyLocalData: applyLocalData,
             insert: insert,
             updateParticipants: updateParticipants,
+            reply: reply,
             //--
             buildProperties: buildProperties,
             loadMessageCount: loadMessageCount,
@@ -196,6 +241,10 @@ var Peerio = this.Peerio || {};
     Peerio.Conversation.getAll = function () {
         return Peerio.SqlQueries.getAllConversations()
             .then(materialize);
+    };
+
+    Peerio.Conversation.getRange = function (fromSeqID, toSeqID) {
+        return Peerio.SqlQueries.getConversationsRange(fromSeqID, toSeqID).then(materialize);
     };
 
     Peerio.Conversation.getNextPage = function (lastSeqID, pageSize) {
