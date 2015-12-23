@@ -63,7 +63,7 @@
 
         function addOrReplace(item, dontSort) {
             var current = this.dict[item[this.prop]];
-            if (!current && this.prop2) current = this.dict[item[this.prop2]];
+            if (!current && this.prop2 && item[this.prop2]) current = this.dict[item[this.prop2]];
             if (current) this.remove(current);
             this.add(item, dontSort);
         }

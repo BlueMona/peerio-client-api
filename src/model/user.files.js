@@ -13,6 +13,35 @@ var Peerio = this.Peerio || {};
         user.uploads = [];
         // todo from base
         user.filesVersion = -1;
+
+        function updateCollectionVersion(version) {
+            user.filesVersion = Math.max(user.filesVersion, version);
+            Peerio.Action.filesUpdated();
+        }
+
+        /**
+         * Adds/replaces a new file to local file list cache.
+         * Normally as a result of server event.
+         * @param {Peerio.file} file
+         * @param {number} version - collection version associated with this update
+         */
+        user.onFileAdded = function (file, version) {
+            user.files.addOrReplace(file);
+            updateCollectionVersion(version);
+        }.bind(user);
+
+        /**
+         * Removes a file from local file list cache.
+         * Normally as a result of server event.
+         * @param {string} id - removed file id
+         * @param {number} version - collection version associated with this update
+         */
+        user.onFileRemoved = function (id, version) {
+            user.files.removeByKey(id);
+            updateCollectionVersion(version);
+        }.bind(user);
+
+
         /**
          * Reloads and rebuilds file collection from server, unless already up to date
          * @returns Peerio.user
@@ -46,6 +75,5 @@ var Peerio = this.Peerio || {};
                     Peerio.Action.filesUpdated();
                 });
         }.bind(user);
-
-    }
+    };
 })();

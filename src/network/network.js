@@ -588,7 +588,7 @@ Peerio.Net.init = function () {
      * @param {string} [fileInfo.parentFolder]
      */
     api.uploadFile = function (fileInfo) {
-        return sendToSocket('uploadFile', fileInfo);
+        return sendToSocket('uploadFile', fileInfo, null, null, true);
     };
 
     /**
