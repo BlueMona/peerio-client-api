@@ -134,6 +134,9 @@ var Peerio = this.Peerio || {};
         return Peerio.SqlDB.user.executeSql('SELECT * FROM messages WHERE conversationID=? AND seqID>? ORDER BY seqID ASC LIMIT ?', [conversationId, lastSeqID, pageSize]);
     }
 
+    function getMessagesRange(conversationId, fromSeqID, toSeqID) {
+        return Peerio.SqlDB.user.executeSql('SELECT * FROM messages WHERE conversationID=? AND seqID>=? and seqID<=? ORDER BY seqID DESC', [conversationId, fromSeqID, toSeqID]);
+    }
 
     function getConversation(id) {
         return Peerio.SqlDB.user.executeSql('SELECT * FROM conversations WHERE id=? LIMIT 1', [id]);

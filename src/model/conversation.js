@@ -189,7 +189,7 @@ var Peerio = this.Peerio || {};
         return Promise.map(fileIds, function (id) {
             var file = Peerio.user.files.dict[id];
             if(!file){
-                L.error("File id {0} not found in local cache. Cant build headers for it.", id);
+                L.error('File id {0} not found in local cache. Cant build headers for it.', id);
                 return;
             }
             return file.generateHeader(recipients, id)
@@ -259,6 +259,12 @@ var Peerio = this.Peerio || {};
             .then(materialize);
     };
 
+    Peerio.Conversation.getMessagesRange = function (conversationId, fromSeqID, toSeqID) {
+        return Peerio.SqlQueries.getMessagesRange(conversationId, fromSeqID, toSeqID)
+        .then(materializeMessages);
+    };
+
+ 
     Peerio.Conversation.getNextMessagesPage = function (conversationId, lastSeqID, pageSize) {
         return Peerio.SqlQueries.getNextMessagesPage(conversationId, lastSeqID, pageSize || 10)
             .then(materializeMessages);
