@@ -24,6 +24,7 @@ var Peerio = this.Peerio || {};
         this.sender = data.sender;
         this.size = data.size;
         this.timestamp = data.timestamp;
+        this.header = data.header;
         // decrypting file name
         return Peerio.Crypto.decryptFileName(data.id, data.header)
             .then(name => {
@@ -51,6 +52,18 @@ var Peerio = this.Peerio || {};
         // todo state
         Peerio.FileSystem.removeCachedFile(this);
         return Peerio.Net.nukeFile(this.id);
+    }
+
+    // todo ugliness alert
+    function generateHeader(recipient) {
+        var publicKeys = [Peerio.user.publicKey];
+        recipients.forEach(function (username) {
+            var contact = Peerio.user.contacts.dict[username];
+            if (contact && contact.publicKey && publicKeys.indexOf(contact.publicKey) < 0) {
+                publicKeys.push(contact.publicKey);
+            }
+        });
+        return Peerio.Crypto.recreateHeader(publicKeys, this.header);
     }
 
     function deleteFromCache() {
@@ -223,7 +236,8 @@ var Peerio = this.Peerio || {};
             nuke: nuke,
             deleteFromCache: deleteFromCache,
             download: download,
-            upload: upload
+            upload: upload,
+            generateHeader: generateHeader
         };
 
         obj.self = obj;
