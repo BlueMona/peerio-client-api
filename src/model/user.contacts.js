@@ -24,8 +24,8 @@ var Peerio = this.Peerio || {};
          */
         user.onContactAdded = function (contact, version) {
             user.contacts.addOrReplace(contact);
-            user.sentContactRequests.removeByKey(data.username);
-            user.receivedContactRequests.removeByKey(data.username);
+            user.sentContactRequests.removeByKey(contact.username);
+            user.receivedContactRequests.removeByKey(contact.username);
             updateCollectionVersion(version);
         }.bind(user);
 
