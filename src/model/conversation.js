@@ -260,7 +260,8 @@ var Peerio = this.Peerio || {};
     };
 
     Peerio.Conversation.getMessagesRange = function (conversationId, fromSeqID, toSeqID) {
-        return Peerio.SqlQueries.getMessagesRange(conversationId, fromSeqID, toSeqID).then(materialize);
+        return Peerio.SqlQueries.getMessagesRange(conversationId, fromSeqID, toSeqID)
+        .then(materializeMessages);
     };
 
  
