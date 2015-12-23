@@ -68,7 +68,7 @@ var Peerio = this.Peerio || {};
     }
 
     // todo ugliness alert
-    function generateHeader(recipient) {
+    function generateHeader(recipients) {
         var publicKeys = [Peerio.user.publicKey];
         recipients.forEach(function (username) {
             var contact = Peerio.user.contacts.dict[username];
