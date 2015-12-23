@@ -17,7 +17,7 @@ var Peerio = this.Peerio || {};
         getMessageById: getMessageById,
         updateReceipts: updateReceipts,
         updateConversationsLastTimestamp: updateConversationsLastTimestamp,
-        updateConversationsUnreadCount: updateConversationsUnreadCount,
+        updateConversationsUnread: updateConversationsUnread,
         updateConversationsHasFiles: updateConversationsHasFiles,
         setConversationsCreatedTimestamp: setConversationsCreatedTimestamp,
         getAllConversations: getAllConversations,
@@ -102,8 +102,8 @@ var Peerio = this.Peerio || {};
         return Peerio.SqlDB.user.executeSql('UPDATE conversations SET createdTimestamp = (SELECT timestamp FROM messages WHERE conversationID=conversations.id ORDER BY seqID ASC LIMIT 1) WHERE createdTimestamp IS NULL');
     }
 
-    function updateConversationsUnreadCount() {
-        return Peerio.SqlDB.user.executeSql('UPDATE conversations SET unreadCount = (SELECT count(*) FROM messages WHERE conversationID=conversations.id AND unread=1)');
+    function updateConversationsUnread() {
+        return Peerio.SqlDB.user.executeSql('UPDATE conversations SET unread = (SELECT count(*) FROM messages WHERE conversationID=conversations.id AND unread=1)');
     }
 
     function updateConversationsHasFiles() {

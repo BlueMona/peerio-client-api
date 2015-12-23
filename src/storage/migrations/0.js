@@ -19,14 +19,14 @@ Peerio.SqlMigrations = Peerio.SqlMigrations || [];
                 'participants TEXT,' +              // current participants array ['username','username'] excluding current user
                 'exParticipants TEXT,' +            // same but for the ones who left
                 'lastTimestamp INTEGER,' +          // timestamp of last time this conversation or messages inside it got updated
-                'unreadCount INTEGER,' +            // number of new messages in conversation
+                'unread INTEGER,' +                 // number of new messages in conversation
                 'hasFiles BOOLEAN' +                //
                 ') WITHOUT ROWID');
 
             tx.executeSql('CREATE INDEX conv_seq_index ON conversations (seqID)');
             tx.executeSql('CREATE INDEX conv_original_index ON conversations (originalMsgID)');
             tx.executeSql('CREATE INDEX conv_last_ts_index ON conversations (lastTimestamp desc)');
-            tx.executeSql('CREATE INDEX conv_unread_count_index ON conversations (unreadCount)');
+            tx.executeSql('CREATE INDEX conv_unread_index ON conversations (unread)');
             tx.executeSql('CREATE INDEX conv_has_files_index ON conversations (hasFiles)');
 
             tx.executeSql(

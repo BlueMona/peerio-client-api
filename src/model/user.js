@@ -78,6 +78,22 @@ var Peerio = this.Peerio || {};
             Peerio.ContactsEventHandler.pause();
         }.bind(user);
 
+        // Unread statistics
+        user.unreadState = {conversations: false, files: false, contacts: false};
+
+        user.setConversationsUnreadState = function (state) {
+            user.unreadState.conversations = state;
+            Peerio.Action.unreadStateChanged();
+        };
+        user.setFilesUnreadState = function (state) {
+            user.unreadState.files = state;
+            Peerio.Action.unreadStateChanged();
+        };
+        user.setContactsUnreadState = function (state) {
+            user.unreadState.contacts = state;
+            Peerio.Action.unreadStateChanged();
+        };
+
 
         return user;
     };

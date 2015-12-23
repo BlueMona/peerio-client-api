@@ -15,6 +15,10 @@ var Peerio = this.Peerio || {};
         user.filesVersion = -1;
 
         function updateCollectionVersion(version) {
+            if(user.filesVersion!=-1 && user.filesVersion < version){
+                Peerio.user.setFilesUnreadState(true);
+            }
+
             user.filesVersion = Math.max(user.filesVersion, version);
             Peerio.Action.filesUpdated();
         }

@@ -201,7 +201,7 @@ var Peerio = this.Peerio || {};
         return Promise.all([
             Peerio.SqlQueries.setConversationsCreatedTimestamp(),
             Peerio.SqlQueries.updateConversationsLastTimestamp(),
-            Peerio.SqlQueries.updateConversationsUnreadCount(),
+            Peerio.SqlQueries.updateConversationsUnread(),
             Peerio.SqlQueries.updateConversationsHasFiles()
         ]).tap(()=> {
             L.verbose('Mass-update conversations done.');

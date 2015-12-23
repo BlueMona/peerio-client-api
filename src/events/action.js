@@ -60,6 +60,8 @@ Peerio.Action.init = function () {
 
         'SettingsUpdated',
 
+        'UnreadStateChanged',   // something un user model unread state has changed
+
         'TwoFactorAuthRequested',
         'TwoFactorAuthResend',
         'TwoFactorAuthReject',

@@ -12,6 +12,9 @@ var Peerio = this.Peerio || {};
         // todo: db cache
 
         function updateCollectionVersion(version) {
+            if(user.contactsVersion!=-1 && user.contactsVersion < version){
+                Peerio.user.setContactsUnreadState(true);
+            }
             user.contactsVersion = Math.max(user.contactsVersion, version);
             Peerio.Action.contactsUpdated();
         }
