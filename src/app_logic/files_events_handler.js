@@ -35,13 +35,15 @@ var Peerio = this.Peerio || {};
 
     }
 
-    function onFileAdded(data){
-
+    function onFileAdded(data) {
+        Peerio.File().applyServerData(data)
+            .then(file => {
+                file = file.buildProperties();
+                Peerio.user.onFileAdded(file, data.collectionVersion);
+            });
     }
 
-    function onFileRemoved(data){
-
+    function onFileRemoved(data) {
+        Peerio.user.onFileRemoved(data.id, data.collectionVersion);
     }
-
-    
 })();
