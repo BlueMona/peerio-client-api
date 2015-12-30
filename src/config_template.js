@@ -25,7 +25,7 @@ Peerio.Config.init = function () {
         cfg.cpuCount = navigator.hardwareConcurrency || 1;
         // if client will not receive pings for pingTimeout, connection will be considered broken
         cfg.pingTimeout = 20000;
-        cfg.networkTimeout = 10000;
+        cfg.serverResponseTimeout = 15000;
 
         cfg.appVersion = 'n/a';
 

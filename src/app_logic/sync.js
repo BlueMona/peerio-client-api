@@ -21,7 +21,7 @@ var Peerio = this.Peerio || {};
 
 
     // index entries will be loaded and processed in batches
-    var batch = 10;
+    var batch = 15;
     var running = false;
     var runAgain = false;
     var interruptRequested = false;

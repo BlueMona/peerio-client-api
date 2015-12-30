@@ -177,7 +177,7 @@ Peerio.Net.init = function () {
             });
 
         if (!ignoreTimeout) {
-            promise = promise.timeout(Peerio.Config.networkTimeout);
+            promise = promise.timeout(Peerio.Config.serverResponseTimeout);
         }
 
         return promise
