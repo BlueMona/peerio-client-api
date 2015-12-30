@@ -164,14 +164,14 @@ var Peerio = this.Peerio || {};
     function getSystemValueCount() {
         return Peerio.SqlDB.system.executeSql('SELECT count(*) as value FROM system_values')
         .then( (res) => {
-            return res && res.rows.length ? JSON.parse(res.rows[0]['value']) : null;
+            return res && res.rows.length ? JSON.parse(res.rows.item(0)['value']) : null;
         });
     }
 
     function getSystemValue(key) {
         return Peerio.SqlDB.system.executeSql('SELECT value FROM system_values WHERE key=?', [key])
         .then( (res) => {
-            return res && res.rows.length ? JSON.parse(res.rows[0]['value']) : null;
+            return res && res.rows.length ? JSON.parse(res.rows.item(0)['value']) : null;
         });
     }
 

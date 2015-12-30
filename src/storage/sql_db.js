@@ -59,12 +59,12 @@ Peerio.SqlDB.init = function () {
     // security measure, to make sure previous database is closed after app reload
     closeAllUserDatabases();
 
+    var systemDbName = 'peerio_system';
 
     function openSystemDB() {
-        var systemDbName = 'peerio_system';
         var passphrase = Peerio.Config.lowImportanceDeviceKey;
         return plugin.openDatabase(systemDbName, passphrase)
-        .then(db => Peerio.SqlDB.system = db)
+        .then( db => Peerio.SqlDB.system = db)
         .then( () => Peerio.SqlQueries.getSystemValueCount() )
         .then( (value) => L.info('System db loaded ok {0}', value) )
         .catch(err => {
@@ -108,7 +108,7 @@ Peerio.SqlDB.init = function () {
             .then(dblist => {
                 if (!dblist) return;
                 Promise.each(Object.keys(dblist), dbname => {
-                    if (dbname === tmpdbName) return;
+                    if (dbname === tmpdbName || dbname === systemDbName) return;
                     plugin.openDatabase(dbname)
                         .then(db => {
                             db.abortAllPendingTransactions();
