@@ -12,8 +12,12 @@ Peerio.TinyDB.init = function () {
     'use strict';
 
     var api = Peerio.TinyDB = {};
-    // currently, localStorage is fine for all platforms
-    var db = window.localStorage;
+
+    var db = {
+        setItem: (key, value) => Peerio.SqlQueries.setSystemValue(key, value),
+        getItem: (key) => Peerio.SqlQueries.getSystemValue(key),
+        removeItem: (key) => Peerio.SqlQueries.removeSystemValue(key)
+    };
 
     var keySize = 32;
 
@@ -29,15 +33,19 @@ Peerio.TinyDB.init = function () {
     }();
 
     function encrypt(str) {
+        return Promise.resolve(str);
+        /* not encrypting because we have sqlcipher now
         return Peerio.Crypto.secretBoxEncrypt(str, secretKey)
             .then(function (decInfo) {
                 decInfo.ciphertext = nacl.util.encodeBase64(decInfo.ciphertext);
                 decInfo.nonce = nacl.util.encodeBase64(decInfo.nonce);
                 return JSON.stringify(decInfo);
-            });
+            }); */
     }
 
     function decrypt(str) {
+        return Promise.resolve(str);
+        /* not encrypting because we have sqlcipher now
         if (str === null) return Promise.resolve(null);
         try {
             var decInfo = JSON.parse(str);
@@ -48,7 +56,7 @@ Peerio.TinyDB.init = function () {
         decInfo.ciphertext = nacl.util.decodeBase64(decInfo.ciphertext);
         decInfo.nonce = nacl.util.decodeBase64(decInfo.nonce);
 
-        return Peerio.Crypto.secretBoxDecrypt(decInfo.ciphertext, decInfo.nonce, secretKey);
+        return Peerio.Crypto.secretBoxDecrypt(decInfo.ciphertext, decInfo.nonce, secretKey); */
     }
 
     /**
@@ -84,11 +92,6 @@ Peerio.TinyDB.init = function () {
      * @param {string} key
      */
     api.removeItem = db.removeItem.bind(db);
-
-    /**
-     * Removes all items from storage
-     */
-    api.clearStorage = db.clear.bind(db);
 
     /**
      * Retrieves value as string
@@ -129,10 +132,7 @@ Peerio.TinyDB.init = function () {
      * @promise {object|null} value
      */
     api.getObject = function (key) {
-        return api.getString(key)
-            .then(function (val) {
-                return val == null ? null : JSON.parse(val);
-            });
+        return api.getString(key);
     };
 
 };
