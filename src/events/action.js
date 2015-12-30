@@ -75,7 +75,10 @@ Peerio.Action.init = function () {
 
         'SyncStarted',
         'SyncProgress',
-        'SyncEnded'
+        'SyncEnded',
+
+        'Offline',
+        'Online'
     ].forEach(function (action) {
         Peerio.Action.add(action);
     });

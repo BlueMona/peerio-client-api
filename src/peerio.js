@@ -20,7 +20,7 @@ Peerio.initAPI = function () {
     });
 
     return Peerio.Config.init()
-        .then(function () {
+        .then(() => {
             delete Peerio.initAPI;
             Peerio.Config.apiFolder = Peerio.apiFolder;
             delete Peerio.apiFolder;
@@ -41,8 +41,29 @@ Peerio.initAPI = function () {
             Peerio.FilesEventHandler.init();
 
             Peerio.Socket.start();
+        }).then(() => {
+            // todo: find a bettter place for this code
+            // Some users logs contain offline event followed by online event within 0-10 milliseconds.
+            // Since it's out of our control, we choose to react on on/offline events only if offline state persists for a few seconds.
+            var timer = null;
 
-            return Promise.resolve();
+            window.addEventListener('offline', ()=> {
+                timer = setTimeout(()=> {
+                    if (timer === null) return;
+                    timer = null;
+                    Peerio.Action.offline();
+                }, 3000);
+            }, false);
+
+            window.addEventListener('online', ()=> {
+                if (timer === null) {
+                    Peerio.Action.online();
+                    return;
+                }
+                clearInterval(timer);
+                timer = null;
+
+            }, false);
         });
 };
 
