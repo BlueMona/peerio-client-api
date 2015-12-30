@@ -43,14 +43,15 @@ Peerio.SqlDB.init = function () {
             deleteDatabase: function (name) {
                 console.warn('todo: delete polyfill for dev environment');
             }
-        }
+        };
     }
 
     //-- PUBLIC API ----------------------------------------------------------------------------------------------------
     Peerio.SqlDB = {
         openUserDB: openUserDB,
         deleteUserDB: deleteUserDB,
-        closeAll: closeAllUserDatabases
+        closeAll: closeAllUserDatabases,
+        openSystemDB: openSystemDB
     };
     //------------------------------------------------------------------------------------------------------------------
 
@@ -58,6 +59,22 @@ Peerio.SqlDB.init = function () {
     // security measure, to make sure previous database is closed after app reload
     closeAllUserDatabases();
 
+    var systemDbName = 'peerio_system';
+
+    function openSystemDB() {
+        var passphrase = Peerio.Config.lowImportanceDeviceKey;
+        return plugin.openDatabase(systemDbName, passphrase)
+        .then( db => Peerio.SqlDB.system = db)
+        .then( () => Peerio.SqlQueries.getSystemValueCount() )
+        .then( (value) => L.info('System db loaded ok {0}', value) )
+        .catch(err => {
+            L.error('Failed to open system database for {0}. {1}', systemDbName, err);
+            L.info('Recreating system database');
+            return Peerio.SqlQueries.dropSystemTables()
+            .then( () => Peerio.SqlQueries.createSystemTables() )
+            .then( () => L.info('db recreated') );
+        });
+    }
 
     function openUserDB(username, passphrase) {
         return plugin.openDatabase(getUserDBName(username), passphrase)
@@ -84,14 +101,14 @@ Peerio.SqlDB.init = function () {
                 setTimeout(()=> {
                     tmpdb.abortAllPendingTransactions();
                     tmpdb.close();
-                    plugin.deleteDatabase(tmpdbName)
+                    plugin.deleteDatabase(tmpdbName);
                 }, 10);
                 return dblist;
             })
             .then(dblist => {
                 if (!dblist) return;
                 Promise.each(Object.keys(dblist), dbname => {
-                    if (dbname === tmpdbName) return;
+                    if (dbname === tmpdbName || dbname === systemDbName) return;
                     plugin.openDatabase(dbname)
                         .then(db => {
                             db.abortAllPendingTransactions();
@@ -102,8 +119,7 @@ Peerio.SqlDB.init = function () {
     }
 
     //-- PROMISIFICATORS -----------------------------------------------------------------------------------------------
-    // replacing original functions is a bad idea, because plugin internally call them sometimes...
-    // so every promisified function just takes original fn name and adds 'P' to it.
+    // we are not afraid of anything now. replace the functions with what suits us the best
     // NOTE: executeSql inside transaction does not require promisification because transaction will resolve once all
     //       nested executeSql are done. Async inside transaction will break it anyway.
     function promisifyStatic() {
@@ -146,11 +162,11 @@ Peerio.SqlDB.init = function () {
         });
         db.executeSql = (statement, params) => {
             return new Promise((resolve, reject) => {
-                originalExecute(statement, params, resolve, reject)
+                originalExecute(statement, params, resolve, reject);
             }).catch(function (err) {
                 return Promise.reject(err && err.message || err);
             });
-        }
+        };
     }
 
 

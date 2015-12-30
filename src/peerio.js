@@ -25,8 +25,11 @@ Peerio.initAPI = function () {
             Peerio.Config.apiFolder = Peerio.apiFolder;
             delete Peerio.apiFolder;
 
-            Peerio.TinyDB.init();
             Peerio.SqlDB.init();
+        })
+        .then( () => Peerio.SqlDB.openSystemDB() )
+        .then( () => {
+            Peerio.TinyDB.init();
             Peerio.Util.init();
             Peerio.Crypto.init();
             Peerio.PhraseGenerator.init();

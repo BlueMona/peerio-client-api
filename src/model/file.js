@@ -123,18 +123,18 @@ var Peerio = this.Peerio || {};
     }
 
 
-    function upload(fileUrl) {
+    function upload(fileUrl, fileName) {
         var setState = setUploadState.bind(this);
         var encrypted;
         // temporary file id for current upload, helps identifying chunks
         this.id = Base58.encode(nacl.randomBytes(32));
-        this.name = fileUrl;
+        this.name = fileName ? fileName : fileUrl;
         setState(UL_STATE.READING);
 
         return Peerio.FileSystem.plugin.getByURL(fileUrl)
             .then(fileEntry => Peerio.FileSystem.plugin.readFile(fileEntry))
             .then(file => {
-                this.name = file.file.name;
+                this.name = fileName ? fileName : file.file.name;
                 setState(UL_STATE.ENCRYPTING);
                 return Peerio.Crypto.encryptFile(file.data, this.name);
             })

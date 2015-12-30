@@ -30,7 +30,13 @@ var Peerio = this.Peerio || {};
         getPrevConversationsPage: getPrevConversationsPage,
         getNextMessagesPage: getNextMessagesPage,
         getPrevMessagesPage: getPrevMessagesPage,
-        getMessagesRange:getMessagesRange
+        getMessagesRange: getMessagesRange,
+        getSystemValue: getSystemValue,
+        getSystemValueCount: getSystemValueCount,
+        setSystemValue: setSystemValue,
+        dropSystemTables: dropSystemTables,
+        createSystemTables: createSystemTables,
+        removeSystemValue: removeSystemValue
     };
 
     /**
@@ -153,6 +159,40 @@ var Peerio = this.Peerio || {};
 
     function getConversationMessageCount(conversationId) {
         return Peerio.SqlDB.user.executeSql('SELECT count(*) AS msgCount FROM messages WHERE conversationID=?', [conversationId]);
+    }
+
+    function getSystemValueCount() {
+        return Peerio.SqlDB.system.executeSql('SELECT count(*) as value FROM system_values')
+        .then( (res) => {
+            return res && res.rows.length ? JSON.parse(res.rows.item(0)['value']) : null;
+        });
+    }
+
+    function getSystemValue(key) {
+        return Peerio.SqlDB.system.executeSql('SELECT value FROM system_values WHERE key=?', [key])
+        .then( (res) => {
+            return res && res.rows.length ? JSON.parse(res.rows.item(0)['value']) : null;
+        });
+    }
+
+    function setSystemValue(key, value) {
+        return Peerio.SqlDB.system.executeSql('INSERT OR REPLACE INTO system_values(value, key) VALUES(?, ?)', [value, key]);
+    }
+
+    function removeSystemValue(key) {
+        return Peerio.SqlDB.system.executeSql('DELETE FROM system_values WHERE key=?', [key]);
+    }
+
+    function dropSystemTables() {
+        return Peerio.SqlDB.system.executeSql('DROP TABLE system_values')
+        .catch( (err) => L.info(err) );
+    }
+
+    function createSystemTables() {
+        return Peerio.SqlDB.system.executeSql(
+            'CREATE TABLE system_values(' +
+            'key TEXT, ' + 
+            'value TEXT)');
     }
 
     //-- Utilities

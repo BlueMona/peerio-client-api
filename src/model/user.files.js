@@ -70,10 +70,10 @@ var Peerio = this.Peerio || {};
         }.bind(user);
 
 
-        user.uploadFile = function (fileUrl) {
+        user.uploadFile = function (fileData) {
             var file = Peerio.File();
             Peerio.user.uploads.push(file);
-            return file.upload(fileUrl)
+            return file.upload(fileData.fileUrl, fileData.fileName)
                 .finally(function () {
                     _.pull(Peerio.user.uploads, file);
                     Peerio.Action.filesUpdated();
