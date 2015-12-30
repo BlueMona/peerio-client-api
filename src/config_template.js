@@ -16,6 +16,12 @@ Peerio.Config.init = function () {
 
         cfg.webSocketServer = 'wss://app.peerio.com:443';
 
+        cfg.push = {
+            android: {
+                senderId: '605156423279'
+            }
+        };
+
         cfg.cpuCount = navigator.hardwareConcurrency || 1;
         // if client will not receive pings for pingTimeout, connection will be considered broken
         cfg.pingTimeout = 20000;
