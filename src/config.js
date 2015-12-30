@@ -31,6 +31,12 @@ Peerio.Config.init = function () {
         // This secret key will be used for low-importance data encryption to store in on device.
         cfg.lowImportanceDeviceKey = '12345';
 
+        cfg.push = {
+            android: {
+                senderId: '605156423279'
+            }
+        };
+
         // using cordova AppVersion plugin if available
         if (window.AppVersion && AppVersion.version)
             cfg.appVersion = AppVersion.version;
