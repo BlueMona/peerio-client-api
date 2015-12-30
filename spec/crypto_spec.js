@@ -5,7 +5,7 @@
  *
  */
 
-describe('Crypto', function () {
+fdescribe('Crypto', function () {
   'use strict';
 
   jasmine.DEFAULT_TIMEOUT_INTERVAL = 15000;
@@ -213,7 +213,7 @@ describe('Crypto', function () {
       });
   });
 
-  xdescribe('benchmarks', function () {
+  fdescribe('benchmarks', function () {
     var hugeMessage;
     var testMsg = {subject: 'encryption test', message: 'this is an encryption unit test message'};
     var messageCount = 100;//(0.1 * 1024 * 1024) / 80;
