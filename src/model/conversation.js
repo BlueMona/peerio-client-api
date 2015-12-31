@@ -161,7 +161,7 @@ var Peerio = this.Peerio || {};
         if (recipients.indexOf(Peerio.user.username) < 0)
             recipients.push(Peerio.user.username);
 
-        return Peerio.Message.encrypt(recipients, typeof(subject) === 'undefined' ? null : subject, body, fileIds)
+        return Peerio.Message.encrypt(recipients, typeof(subject) === 'undefined' ? '' : subject, body, fileIds)
             .then(encrypted => {
                 if (!encrypted.header || !encrypted.body) return Promise.reject('Message encryption failed.');
                 var ret = {
