@@ -50,7 +50,7 @@ var Peerio = this.Peerio || {};
             .return(this);
     }
 
-    function decryptReceipts(recipients){
+    function decryptReceipts(recipients) {
         return Promise.map(recipients, recipient => {
             if (recipient.username !== Peerio.user.username || !recipient.receipt || !recipient.receipt.encryptedReturnReceipt) return;
             return Peerio.Crypto.decryptReceipt(this.sender, recipient.receipt.encryptedReturnReceipt)
@@ -152,11 +152,9 @@ var Peerio = this.Peerio || {};
             participants: recipients,
             sequence: 0
         };
-        if(subject) message.subject = subject;
+        if (subject !== null) message.subject = subject;
         return Peerio.Crypto.encryptMessage(message, recipients);
     };
-
-
 
 
 })();
