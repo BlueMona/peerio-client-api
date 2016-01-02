@@ -53,7 +53,7 @@ var Peerio = this.Peerio || {};
                 .then(user.buildProperties)
                 .then(user.buildIdenticon)
                 .then(user.loadContacts)
-                .then(Peerio.ContactsEventHandler.resume)
+                .then(user.resumeContactEvents)
                 .then(user.loadFiles)
                 .then(Peerio.FilesEventHandler.resume)
                 .then(Peerio.Sync.syncMessages)
@@ -75,7 +75,7 @@ var Peerio = this.Peerio || {};
         user.stopAllServerEvents = function () {
             Peerio.Sync.interrupt();
             Peerio.FilesEventHandler.pause();
-            Peerio.ContactsEventHandler.pause();
+            user.pauseContactEvents();
         }.bind(user);
 
         // Unread statistics

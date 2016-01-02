@@ -12,6 +12,14 @@ Peerio.User.addContactsModule = function (user) {
     var queue = Queue();
     var net = Peerio.Net;
 
+    user.pauseContactEvents = function(){
+      queue.pause();
+    };
+
+    user.resumeContactEvents = function(){
+      queue.resume();
+    };
+
     //subscribing to server events
     net.subscribe('contactAdded', data=>queue.add(onAdded, data));
     net.subscribe('contactRemoved', data=>queue.add(onRemoved, data));
