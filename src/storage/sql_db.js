@@ -64,16 +64,16 @@ Peerio.SqlDB.init = function () {
     function openSystemDB() {
         var passphrase = Peerio.Config.lowImportanceDeviceKey;
         return plugin.openDatabase(systemDbName, passphrase)
-        .then( db => Peerio.SqlDB.system = db)
-        .then( () => Peerio.SqlQueries.getSystemValueCount() )
-        .then( (value) => L.info('System db loaded ok {0}', value) )
-        .catch(err => {
-            L.error('Failed to open system database for {0}. {1}', systemDbName, err);
-            L.info('Recreating system database');
-            return Peerio.SqlQueries.dropSystemTables()
-            .then( () => Peerio.SqlQueries.createSystemTables() )
-            .then( () => L.info('db recreated') );
-        });
+            .then(db => Peerio.SqlDB.system = db)
+            .then(() => Peerio.SqlQueries.getSystemValueCount())
+            .then((value) => L.info('System db loaded ok {0}', value))
+            .catch(err => {
+                L.error('Failed to open system database for {0}. {1}', systemDbName, err);
+                L.info('Recreating system database');
+                return Peerio.SqlQueries.dropSystemTables()
+                    .then(() => Peerio.SqlQueries.createSystemTables())
+                    .then(() => L.info('db recreated'));
+            });
     }
 
     function openUserDB(username, passphrase) {
@@ -90,7 +90,7 @@ Peerio.SqlDB.init = function () {
     }
 
     function getUserDBName(username) {
-        return 'peerio_' + username + '.db';
+        return 'peerio_' + cfg.dbPrefix + '_' + username + '.db';
     }
 
     function closeAllUserDatabases() {

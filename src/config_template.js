@@ -16,6 +16,9 @@ Peerio.Config.init = function () {
 
         cfg.webSocketServer = 'wss://app.peerio.com:443';
 
+        cfg.dbPrefix = /\/\/(.*)\.peerio\.com/.exec(cfg.webSocketServer)[1];
+        if (cfg.dbPrefix === 'app') cfg.dbPrefix = '';
+
         cfg.push = {
             android: {
                 senderId: '605156423279'
