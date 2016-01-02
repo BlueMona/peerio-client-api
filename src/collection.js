@@ -16,8 +16,8 @@
 
     /**
      * Collection of objects available as array and as indexed by property dictionary
-     * @param {string} indexPropName
-     * @param {string} [indexPropName2]
+     * @param {string} indexPropName - property value has to be string
+     * @param {string} [indexPropName2] - property value has to be string
      * @param {string} [defaultSortProp] - property name to use for sorting by default
      * @param {bool} [defaultSortAsc] - set to false for desc sorting by default
      * @return {{}}
@@ -68,12 +68,14 @@
             this.add(item, dontSort);
         }
 
+        // todo: non-string values sort
+
         function sortAsc(propName) {
-            Peerio.Util.sortAsc(this.arr, propName || this.sortProp);
+            Peerio.Util.sortStringAsc(this.arr, propName || this.sortProp);
         }
 
         function sortDesc(propName) {
-            Peerio.Util.sortDesc(this.arr, propName || this.sortProp);
+            Peerio.Util.sortStringDesc(this.arr, propName || this.sortProp);
         }
 
         function getPropValByKey(key, propName) {
