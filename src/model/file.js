@@ -259,6 +259,7 @@ var Peerio = this.Peerio || {};
         return obj;
     };
 
+
     Peerio.File.DL_STATE = DL_STATE;
     Peerio.File.UL_STATE = UL_STATE;
     /**
@@ -266,7 +267,7 @@ var Peerio = this.Peerio || {};
      * @param {Object} data
      * @returns {Promise<File>}
      */
-    Peerio.File.create = function (data) {
+    Peerio.File.fromServerData = function (data) {
         return Peerio.File()
             .applyServerData(data)
             .then(file => file.buildProperties());

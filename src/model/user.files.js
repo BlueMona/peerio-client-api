@@ -4,80 +4,92 @@
 
 var Peerio = this.Peerio || {};
 
-(function () {
+Peerio.User = Peerio.User || {};
+
+Peerio.User.addFilesModule = function (user) {
     'use strict';
-    Peerio.User = Peerio.User || {};
 
-    Peerio.User.addFilesModule = function (user) {
+    var queue = Queue();
+    var net = Peerio.Net;
 
-        user.uploads = [];
-        // todo from base
-        user.filesVersion = -1;
+    user.uploads = [];
 
-        function updateCollectionVersion(version) {
-            if(user.filesVersion!=-1 && user.filesVersion < version){
-                Peerio.user.setFilesUnreadState(true);
-            }
+    // todo from base
+    user.filesVersion = -1;
 
-            user.filesVersion = Math.max(user.filesVersion, version);
-            Peerio.Action.filesUpdated();
+    user.pauseFileEvents = function () {
+        queue.pause();
+    }.bind(user);
+
+    user.resumeFileEvents = function () {
+        queue.resume();
+    }.bind(user);
+
+    //subscribing to server events
+    net.subscribe('fileAdded', queue.add.bind(queue, onFileAdded));
+    net.subscribe('fileRemoved', queue.add.bind(queue, onFileRemoved));
+
+    function updateCollectionVersion(version) {
+        if (user.filesVersion != -1 && user.filesVersion < version) {
+            Peerio.user.setFilesUnreadState(true);
         }
 
-        /**
-         * Adds/replaces a new file to local file list cache.
-         * Normally as a result of server event.
-         * @param {Peerio.file} file
-         * @param {number} version - collection version associated with this update
-         */
-        user.onFileAdded = function (file, version) {
-            user.files.addOrReplace(file);
-            updateCollectionVersion(version);
-        }.bind(user);
+        user.filesVersion = Math.max(user.filesVersion, version);
+        Peerio.Action.filesUpdated();
+    }
 
-        /**
-         * Removes a file from local file list cache.
-         * Normally as a result of server event.
-         * @param {string} id - removed file id
-         * @param {number} version - collection version associated with this update
-         */
-        user.onFileRemoved = function (id, version) {
-            user.files.removeByKey(id);
-            updateCollectionVersion(version);
-        }.bind(user);
+    function onFileAdded(data) {
+        Peerio.File.fromServerData(data)
+            .then(file => {
+                user.files.addOrReplace(file);
+                updateCollectionVersion(data.collectionVersion);
+            })
+            .catch(err => {
+                L.error('Failed to process fileAdded event. {0}', err);
+            });
+    }
 
+    function onFileRemoved(data) {
+        try {
+            user.files.removeByKey(data.id);
+            updateCollectionVersion(data.collectionVersion);
+        } catch (err) {
+            L.error('Failed to process fileRemoved event. {0}', err);
+        }
+    }
 
-        /**
-         * Reloads and rebuilds file collection from server, unless already up to date
-         * @returns Peerio.user
-         */
-        user.loadFiles = function () {
-            Peerio.Action.syncProgress(0, 0, 'synchronizing files');
+    /**
+     * Reloads and rebuilds file collection from server, unless already up to date
+     * @returns Peerio.user
+     */
+    user.loadFiles = function () {
+        Peerio.Action.syncProgress(0, 0, 'synchronizing files');
 
-            return Peerio.Net.getCollectionsVersion()
-                .then(response => {
-                    // files are up to date
-                    if (user.filesVersion === response.versions.files)
+        return Peerio.Net.getCollectionsVersion()
+            .then(response => {
+                // files are up to date
+                if (user.filesVersion === response.versions.files)
+                    return user;
+
+                return Peerio.Files.getFiles()
+                    .then(files => {
+                        user.files = files;
+                        updateCollectionVersion(response.versions.files);
                         return user;
+                    });
+            }).finally(()=>Peerio.Action.syncProgress(1, 1, 'synchronizing files'));
 
-                    return Peerio.Files.getFiles()
-                        .then(files => {
-                            user.filesVersion = response.versions.files;
-                            user.files = files;
-                            return user;
-                        });
-                }).finally(()=>Peerio.Action.syncProgress(1, 1, 'synchronizing files'));
-
-        }.bind(user);
+    }.bind(user);
 
 
-        user.uploadFile = function (fileData) {
-            var file = Peerio.File();
-            Peerio.user.uploads.push(file);
-            return file.upload(fileData.fileUrl, fileData.fileName)
-                .finally(function () {
-                    _.pull(Peerio.user.uploads, file);
-                    Peerio.Action.filesUpdated();
-                });
-        }.bind(user);
-    };
-})();
+    user.uploadFile = function (fileData) {
+        var file = Peerio.File();
+        Peerio.user.uploads.push(file);
+        return file.upload(fileData.fileUrl, fileData.fileName)
+            .finally(function () {
+                _.pull(Peerio.user.uploads, file);
+                Peerio.Action.filesUpdated();
+            });
+    }.bind(user);
+};
+

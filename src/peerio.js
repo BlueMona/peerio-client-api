@@ -40,7 +40,6 @@ Peerio.initAPI = function () {
             Peerio.ActionOverrides.init();
             Peerio.AppState.init();
             Peerio.FileSystem.init();
-            Peerio.FilesEventHandler.init();
 
             Peerio.Socket.start();
         }).then(() => {

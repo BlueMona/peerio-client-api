@@ -12,13 +12,16 @@ Peerio.User.addContactsModule = function (user) {
     var queue = Queue();
     var net = Peerio.Net;
 
+    // todo from base
+    user.contactsVersion = -1;
+
     user.pauseContactEvents = function(){
       queue.pause();
-    };
+    }.bind(user);
 
     user.resumeContactEvents = function(){
       queue.resume();
-    };
+    }.bind(user);
 
     //subscribing to server events
     net.subscribe('contactAdded', data=>queue.add(onAdded, data));
@@ -118,9 +121,6 @@ Peerio.User.addContactsModule = function (user) {
         }
     }
 
-    // todo from base
-
-    user.contactsVersion = -1;
     /**
      * Reloads contact collection from server.
      * Skips reload if cached collection version is the same as on server.

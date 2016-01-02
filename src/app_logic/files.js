@@ -19,7 +19,7 @@ var Peerio = this.Peerio || {};
         var counter = 0, max = keys.length;
         return Promise.map(keys, function (fileId) {
                 Peerio.Action.syncProgress(counter++, max, 'synchronizing files');
-                return Peerio.File.create(data[fileId])
+                return Peerio.File.fromServerData(data[fileId])
                     .then(file => files.add(file, true))
                     .catch(function (e) {
                         L.error('Failed to create file from server data {0}. {1}', fileId, e);

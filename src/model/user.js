@@ -55,7 +55,7 @@ var Peerio = this.Peerio || {};
                 .then(user.loadContacts)
                 .then(user.resumeContactEvents)
                 .then(user.loadFiles)
-                .then(Peerio.FilesEventHandler.resume)
+                .then(user.resumeFileEvents)
                 .then(Peerio.Sync.syncMessages)
                 .finally(()=> {
                     Peerio.Action.syncEnded();
@@ -74,7 +74,7 @@ var Peerio = this.Peerio || {};
 
         user.stopAllServerEvents = function () {
             Peerio.Sync.interrupt();
-            Peerio.FilesEventHandler.pause();
+            user.pauseFileEvents();
             user.pauseContactEvents();
         }.bind(user);
 
