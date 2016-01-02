@@ -630,6 +630,7 @@ Peerio.Net.init = function () {
      * @param {string} id
      */
     api.removeFile = function (id) {
+        if(!id) return Promise.reject();
         return sendToSocket('removeFile', {ids: [id]});
     };
 
@@ -638,6 +639,7 @@ Peerio.Net.init = function () {
      * @param {string} id
      */
     api.nukeFile = function (id) {
+        if(!id) return Promise.reject();
         return sendToSocket('nukeFile', {ids: [id]});
     };
 

@@ -3,156 +3,154 @@
  */
 
 var Peerio = this.Peerio || {};
+Peerio.User = Peerio.User || {};
 
-(function () {
+Peerio.User.addContactsModule = function (user) {
     'use strict';
-    Peerio.User = Peerio.User || {};
+    // todo: db cache
 
-    Peerio.User.addContactsModule = function (user) {
-        // todo: db cache
+    var queue = Queue();
+    var net = Peerio.Net;
 
-        function updateCollectionVersion(version) {
-            if(user.contactsVersion!=-1 && user.contactsVersion < version){
-                Peerio.user.setContactsUnreadState(true);
-            }
-            user.contactsVersion = Math.max(user.contactsVersion, version);
-            Peerio.Action.contactsUpdated();
+    //subscribing to server events
+    net.subscribe('contactAdded', data=>queue.add(onAdded, data));
+    net.subscribe('contactRemoved', data=>queue.add(onRemoved, data));
+
+    net.subscribe('contactRequestSent', data=>queue.add(onRequestSent, data));
+    net.subscribe('sentContactRequestRemoved', data=>queue.add(onSentRequestRemoved, data));
+
+    net.subscribe('contactRequestReceived', data=>queue.add(onRequestReceived, data));
+    net.subscribe('receivedContactRequestRemoved', data=>queue.add(onReceivedRequestRemoved, data));
+
+    function updateCollectionVersion(version) {
+        if (user.contactsVersion != -1 && user.contactsVersion < version) {
+            Peerio.user.setContactsUnreadState(true);
         }
+        user.contactsVersion = Math.max(user.contactsVersion, version);
+        Peerio.Action.contactsUpdated();
+    }
 
-        /**
-         * Adds/replaces a new contact to local contact list cache.
-         * Normally as a result of server event.
-         * @param {Peerio.Contact} contact
-         * @param {number} version - collection version associated with this update
-         */
-        user.onContactAdded = function (contact, version) {
-            user.contacts.addOrReplace(contact);
-            user.sentContactRequests.removeByKey(contact.username);
-            user.receivedContactRequests.removeByKey(contact.username);
-            updateCollectionVersion(version);
-        }.bind(user);
+    function setCryptoContacts() {
+        var cryptoContacts = {};
+        user.contacts.arr.forEach(item => {
+            cryptoContacts[item.username] = {
+                username: item.username,
+                publicKey: item.publicKey
+            }
+        });
 
-        /**
-         * Removes a contact from local contact list cache.
-         * Normally as a result of server event.
-         * @param {string} username - removed contact username
-         * @param {number} version - collection version associated with this update
-         */
-        user.onContactRemoved = function (username, version) {
-            user.contacts.removeByKey(username);
-            updateCollectionVersion(version);
-        }.bind(user);
+        Peerio.Crypto.setDefaultContacts(cryptoContacts);
+    }
 
-        /**
-         * Adds/replaces a new contact request to local contact list cache.
-         * Normally as a result of server event.
-         * @param {Peerio.Contact} contact
-         * @param {number} version - collection version associated with this update
-         */
-        user.onContactRequestSent = function (contact, version) {
-            // todo: legacy flags, refactor and remove
-            contact.isRequest = true;
-            user.sentContactRequests.addOrReplace(contact);
-            updateCollectionVersion(version);
-        }.bind(user);
+    function onAdded(data) {
+        Peerio.Contact.fromServerData(data)
+            .then(contact=> {
+                user.contacts.addOrReplace(contact);
+                user.sentContactRequests.removeByKey(contact.username);
+                user.receivedContactRequests.removeByKey(contact.username);
+                setCryptoContacts();
+                updateCollectionVersion(data.collectionVersion);
+            })
+            .catch(err => {
+                L.error('Failed to process contactAdded event. {0}', err);
+            });
+    }
 
-        /**
-         * Removes a contact request from local contact list cache.
-         * Normally as a result of server event.
-         * @param {string} username - removed contact username
-         * @param {number} version - collection version associated with this update
-         */
-        user.onSentContactRequestRemoved = function (username, version) {
-            Peerio.user.sentContactRequests.removeByKey(username);
-            updateCollectionVersion(version);
-        }.bind(user);
+    function onRemoved(data) {
+        try {
+            user.contacts.removeByKey(data.username);
+            setCryptoContacts();
+            updateCollectionVersion(data.collectionVersion);
+        } catch (err) {
+            L.error('Failed to process contactRemoved event. {0}', err);
+        }
+    }
 
-        /**
-         * Adds/replaces a new received contact request to local contact list cache.
-         * Normally as a result of server event.
-         * @param {Peerio.Contact} contact
-         * @param {number} version - collection version associated with this update
-         */
-        user.onContactRequestReceived = function (contact, version) {
-            // todo: legacy flags, refactor and remove
-            contact.isRequest = contact.isReceivedRequest = true;
-            user.receivedContactRequests.addOrReplace(contact);
-            updateCollectionVersion(version);
-        }.bind(user);
+    function onRequestSent(data) {
+        Peerio.Contact.fromServerData(data)
+            .then(contact=> {
+                // todo: legacy flags, refactor and remove
+                contact.isRequest = true;
+                user.sentContactRequests.addOrReplace(contact);
+                updateCollectionVersion(data.collectionVersion);
+            })
+            .catch(err => {
+                L.error('Failed to process contactRequestSent event. {0}', err);
+            });
+    }
 
-        /**
-         * Removes a received request from local contact list cache.
-         * Normally as a result of server event.
-         * @param {string} username - removed contact username
-         * @param {number} version - collection version associated with this update
-         */
-        user.onReceivedContactRequestRemoved = function (username, version) {
-            Peerio.user.receivedContactRequests.removeByKey(username);
-            updateCollectionVersion(version);
-        }.bind(user);
-        // todo from base
-        user.contactsVersion = -1;
-        /**
-         * Reloads contact collection from server.
-         * Skips reload if cached collection version is the same as on server.
-         */
-        user.loadContacts = function () {
-            var msg = 'synchronizing contacts';
-            // todo cache to db
-            Peerio.Action.syncProgress(0, 0, msg);
+    function onSentRequestRemoved(data) {
+        try {
+            user.sentContactRequests.removeByKey(data.username);
+            updateCollectionVersion(data.collectionVersion);
+        } catch (err) {
+            L.error('Failed to process sentContactRequestRemoved event. {0}', err);
+        }
+    }
 
-            return Peerio.Net.getCollectionsVersion()
-                .then(response => {
-                    // contacts are up to date
-                    if (user.contactsVersion === response.versions.contacts)
-                        return;
-
-                    // contacts
-                    var p1 = Peerio.Contacts.getContacts(user.username)
-                        .then(contacts => {
-                            user.contacts = contacts;
-
-                            var cryptoContacts = {};
-                            contacts.arr.forEach(item => {
-                                cryptoContacts[item.username] = {
-                                    username: item.username,
-                                    publicKey: item.publicKey
-                                }
-                            });
-
-                            Peerio.Crypto.setDefaultContacts(cryptoContacts);
-                        });
-
-                    // received requests
-                    var p2 = Peerio.Contacts.getReceivedRequests()
-                        .then(received => {
-                            //todo: old code compatibility flags, refactor and remove
-                            received.arr.forEach(item =>  item.isRequest = item.isReceivedRequest = true);
-                            return user.receivedContactRequests = received;
-                        });
-
-                    // sent requests
-                    var p3 = Peerio.Contacts.getSentRequests()
-                        .then(sent => {
-                            sent.arr.forEach(item => item.isRequest = true);
-                            return user.sentContactRequests = sent;
-                        });
-
-                    // we don't care if it was increased since we requested getCollectionVersions,
-                    // because contact event handler got this data anyway
-                    updateCollectionVersion(response.versions.contacts);
-
-                    // after all promises are done, setting collection version
-                    return Promise.all([p1, p2, p3])
-                        .then(function () {
-                            // in case it got updated from other events already
-                            updateCollectionVersion(response.versions.contacts);
-                        });
-                })
-                .finally(()=>Peerio.Action.syncProgress(1, 1, msg));
-
-
-        }.bind(this);
+    function onRequestReceived(data) {
+        Peerio.Contact.fromServerData(data)
+            .then(contact=> {
+                contact.isRequest = contact.isReceivedRequest = true;
+                user.receivedContactRequests.addOrReplace(contact);
+                updateCollectionVersion(data.collectionVersion);
+            })
+            .catch(err => {
+                L.error('Failed to process contactRequestReceived event. {0}', err);
+            });
 
     }
-})();
+
+    function onReceivedRequestRemoved(data) {
+        try {
+            user.receivedContactRequests.removeByKey(data.username);
+            updateCollectionVersion(data.collectionVersion);
+        } catch (err) {
+            L.error('Failed to process receivedContactRequestRemoved event. {0}', err);
+        }
+    }
+
+    // todo from base
+
+    user.contactsVersion = -1;
+    /**
+     * Reloads contact collection from server.
+     * Skips reload if cached collection version is the same as on server.
+     */
+    user.loadContacts = function () {
+        var msg = 'synchronizing contacts';
+        // todo cache to db
+        Peerio.Action.syncProgress(0, 0, msg);
+
+        return Peerio.Net.getCollectionsVersion()
+            .then(versionResp => {
+                var currentVersion = versionResp.versions.contacts;
+                // contacts are up to date
+                if (user.contactsVersion === currentVersion)
+                    return;
+
+                // after all promises are done, setting collection version
+                return Promise.all([
+                        Peerio.Contacts.getContacts(user.username),
+                        Peerio.Contacts.getReceivedRequests(),
+                        Peerio.Contacts.getSentRequests()
+                    ])
+                    .spread(function (contacts, received, sent) {
+                        user.contacts = contacts;
+                        setCryptoContacts();
+
+                        received.arr.forEach(item => item.isRequest = item.isReceivedRequest = true);
+                        user.receivedContactRequests = received;
+
+                        sent.arr.forEach(item => item.isRequest = true);
+                        user.sentContactRequests = sent;
+
+                        // if version changed while we were retrieving data it will be updated when event queue resumes
+                        updateCollectionVersion(currentVersion);
+                    });
+            })
+            .finally(() => Peerio.Action.syncProgress(1, 1, msg));
+
+    }.bind(user);
+
+};
