@@ -90,7 +90,7 @@ Peerio.SqlDB.init = function () {
     }
 
     function getUserDBName(username) {
-        return 'peerio_' + cfg.dbPrefix + '_' + username + '.db';
+        return 'peerio_' + Peerio.Config.dbPrefix + '_' + username + '.db';
     }
 
     function closeAllUserDatabases() {

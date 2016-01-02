@@ -93,7 +93,6 @@ Peerio.FileSystem.init = function () {
    */
   api.cacheCloudFile = function (file, blob) {
     L.info('Peerio.File.cacheCloudFile(...) id:{0}', file && file.id);
-    L.silly(file);
     return getFilesDirectory()
       .then(function (dir) {
         var name = getLocalName(file);
@@ -112,7 +111,6 @@ Peerio.FileSystem.init = function () {
 
   api.removeCachedFile = function (file) {
     L.info('Peerio.File.removeCachedFile() id:{0}', file && file.id);
-    L.silly(file);
     return getFilesDirectory()
       .then(function (dir) {
         var name = getLocalName(file);
@@ -127,7 +125,6 @@ Peerio.FileSystem.init = function () {
 
   api.openFileWithOS = function (file) {
     L.info('Peerio.File.openFileWithOS() id:{0}', file && file.id);
-    L.silly(file);
     return getFilesDirectory()
       .then(function (dir) {
         L.info('Getting file entry');

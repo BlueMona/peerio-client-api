@@ -208,21 +208,22 @@ var Peerio = this.Peerio || {};
     }
 
     function downloadBlob(url) {
+        var self = this;
         return new Promise(function (resolve, reject) {
             var xhr = new XMLHttpRequest();
 
-            xhr.onprogress = function (progress) {
-                setDownloadState.call(this, DL_STATE.DOWNLOADING, progress.loaded, progress.total);
+            xhr.onprogress = progress => {
+                setDownloadState.call(self, DL_STATE.DOWNLOADING, progress.loaded, progress.total);
             };
 
-            xhr.onreadystatechange = function () {
-                if (this.readyState !== 4) return;
-                L.info('Download {0} finished with {1}({2}). Response size: {3}', this.responseURL, this.statusText, this.status, this.response.size);
+            xhr.onreadystatechange = () => {
+                if (self.readyState !== 4) checkForgottenReturns
+                L.info('Download {0} finished with {1}({2}). Response size: {3}', self.responseURL, self.statusText, self.status, self.response.size);
                 //todo: not all success results might have status 200
-                if (this.status !== 200)
-                    reject(this);
+                if (self.status !== 200)
+                    reject(self);
                 else
-                    resolve(this.response);
+                    resolve(self.response);
             };
 
             xhr.open('GET', url);
