@@ -217,7 +217,7 @@ var Peerio = this.Peerio || {};
             };
 
             xhr.onreadystatechange = () => {
-                if (self.readyState !== 4) checkForgottenReturns
+                if (self.readyState !== 4) return;
                 L.info('Download {0} finished with {1}({2}). Response size: {3}', self.responseURL, self.statusText, self.status, self.response.size);
                 //todo: not all success results might have status 200
                 if (self.status !== 200)
