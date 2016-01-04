@@ -20,9 +20,10 @@
      * @param {string} [indexPropName2] - property value has to be string
      * @param {string} [defaultSortProp] - property name to use for sorting by default
      * @param {bool} [defaultSortAsc] - set to false for desc sorting by default
+     * @param {bool} [stringSort] - set to true for sorting by default sort prop using locale-aware compare
      * @return {{}}
      */
-    root.Collection = function (indexPropName, indexPropName2, defaultSortProp, defaultSortAsc) {
+    root.Collection = function (indexPropName, indexPropName2, defaultSortProp, defaultSortAsc, stringSort) {
         function clear() {
             this.arr = [];
             this.dict = {};
@@ -71,11 +72,11 @@
         // todo: non-string values sort
 
         function sortAsc(propName) {
-            Peerio.Util.sortStringAsc(this.arr, propName || this.sortProp);
+            (stringSort ? Peerio.Util.sortStringAsc : Peerio.Util.sortAsc)(this.arr, propName || this.sortProp);
         }
 
         function sortDesc(propName) {
-            Peerio.Util.sortStringDesc(this.arr, propName || this.sortProp);
+            (stringSort ? Peerio.Util.sortStringDesc : Peerio.Util.sortDesc)(this.arr, propName || this.sortProp);
         }
 
         function getPropValByKey(key, propName) {

@@ -153,10 +153,10 @@ Peerio.Util.init = function () {
     var ascCompare, descCompare;
     if (collator) {
         ascCompare = function (a, b) {
-            return collator.compare(a[prop], b[prop]);
+            return collator.compare(a, b);
         };
         descCompare = function (a, b) {
-            return collator.compare(b[prop], a[prop])
+            return collator.compare(b, a)
         };
     } else {
         ascCompare = function (a, b) {
@@ -167,10 +167,14 @@ Peerio.Util.init = function () {
         };
     }
     api.sortStringAsc = function (arr, prop) {
-        return arr.sort(ascCompare);
+        return arr.sort(function (a, b) {
+            return ascCompare(a[prop], b[prop]);
+        });
     };
     api.sortStringDesc = function (arr, prop) {
-        return arr.sort(descCompare);
+        return arr.sort(function (a, b) {
+            return descCompare(a[prop], b[prop]);
+        });
     };
 
     /**
