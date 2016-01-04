@@ -1,97 +1,41 @@
 /**
- * Tiny key-value permanent storage abstraction/wrapper.
- * Use it for storing small (few megabytes) data only.
- * All values are encrypted with device-specific key.
+ *  Permanent key-value storage abstraction/wrapper.
  */
 
 var Peerio = this.Peerio || {};
 Peerio.TinyDB = {};
 
-// todo: change to module pattern, remove 'init'
-Peerio.TinyDB.init = function () {
+(function () {
     'use strict';
 
-    var api = Peerio.TinyDB = {};
-
-    var db = {
-        setItem: (key, value) => Peerio.SqlQueries.setSystemValue(key, value),
-        getItem: (key) => Peerio.SqlQueries.getSystemValue(key),
-        removeItem: (key) => Peerio.SqlQueries.removeSystemValue(key)
-    };
-
-    var keySize = 32;
-
-    var secretKey = function () {
-        var strKey = '';
-
-        while (strKey.length < keySize)
-            strKey += Peerio.Config.lowImportanceDeviceKey;
-
-        var ret = nacl.util.decodeUTF8(strKey);
-
-        return ret.subarray(0, keySize);
-    }();
-
-    function encrypt(str) {
-        return Promise.resolve(str);
-        /* not encrypting because we have sqlcipher now
-        return Peerio.Crypto.secretBoxEncrypt(str, secretKey)
-            .then(function (decInfo) {
-                decInfo.ciphertext = nacl.util.encodeBase64(decInfo.ciphertext);
-                decInfo.nonce = nacl.util.encodeBase64(decInfo.nonce);
-                return JSON.stringify(decInfo);
-            }); */
-    }
-
-    function decrypt(str) {
-        return Promise.resolve(str);
-        /* not encrypting because we have sqlcipher now
-        if (str === null) return Promise.resolve(null);
-        try {
-            var decInfo = JSON.parse(str);
-        } catch (ex) {
-            L.error('TinyDB: failed to decode. ', str);
-            Promise.reject();
-        }
-        decInfo.ciphertext = nacl.util.decodeBase64(decInfo.ciphertext);
-        decInfo.nonce = nacl.util.decodeBase64(decInfo.nonce);
-
-        return Peerio.Crypto.secretBoxDecrypt(decInfo.ciphertext, decInfo.nonce, secretKey); */
-    }
-
+    var api = Peerio.TinyDB;
     /**
      * Saves scalar value to storage.
      * @param {string} key - unique key. Existing value with the same key will be overwritten.
-     * @param {string|number|boolean|null} value - should have toString() function, because storage accepts only strings.
+     * @param {string|number|boolean|null} value - should have toString() function
      * @promise
      */
     api.setVar = function (key, value) {
-        return encrypt(value.toString())
-            .then(function (encryptedStr) {
-                db.setItem(key, encryptedStr);
-                return true;
-            });
+        return Peerio.SqlQueries.setSystemValue(key, value.toString());
     };
 
     /**
      * Saves object or array to storage.
      * @param {string} key - unique key. Existing value with the same key will be overwritten.
-     * @param {object|Array} value - Will be serialized with JSON.stringify(), because storage accepts only strings.
+     * @param {object|Array} value - Will be serialized with JSON.stringify()
      * @promise
      */
     api.setObject = function (key, value) {
-        return encrypt(JSON.stringify(value))
-            .then(function (encryptedStr) {
-                db.setItem(key, encryptedStr);
-                return true;
-            });
+        return Peerio.SqlQueries.setSystemValue(key, JSON.stringify(value));
     };
 
     /**
      * Removes item from storage
      * @param {string} key
      */
-    api.removeItem = db.removeItem.bind(db);
+    api.removeItem = function (key){
+        return Peerio.SqlQueries.removeSystemValue(key);
+    };
 
     /**
      * Retrieves value as string
@@ -99,7 +43,7 @@ Peerio.TinyDB.init = function () {
      * @promise {string|null} value
      */
     api.getString = function (key) {
-        return decrypt(db.getItem(key));
+        return Peerio.SqlQueries.getSystemValue(key);
     };
 
     /**
@@ -135,4 +79,4 @@ Peerio.TinyDB.init = function () {
         return api.getString(key);
     };
 
-};
+})();
