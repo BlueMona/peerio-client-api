@@ -149,17 +149,28 @@ Peerio.Util.init = function () {
             return 0;
         });
     };
-    var collator = new Intl.Collator(undefined, {sensitivity: 'base'});
-
-    api.sortStringAsc = function (arr, prop) {
-        return arr.sort(function (a, b) {
+    var collator = window.Intl && Intl.Collator && new Intl.Collator(undefined, {sensitivity: 'base'}) || null;
+    var ascCompare, descCompare;
+    if (collator) {
+        ascCompare = function (a, b) {
             return collator.compare(a[prop], b[prop]);
-        });
+        };
+        descCompare = function (a, b) {
+            return collator.compare(b[prop], a[prop])
+        };
+    } else {
+        ascCompare = function (a, b) {
+            a.localeCompare(b, undefined, {sensitivity: 'base'});
+        };
+        descCompare = function (a, b) {
+            b.localeCompare(a, undefined, {sensitivity: 'base'});
+        };
+    }
+    api.sortStringAsc = function (arr, prop) {
+        return arr.sort(ascCompare);
     };
     api.sortStringDesc = function (arr, prop) {
-        return arr.sort(function (a, b) {
-            return collator.compare(b[prop], a[prop])
-        });
+        return arr.sort(descCompare);
     };
 
     /**
