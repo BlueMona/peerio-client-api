@@ -29,7 +29,6 @@ Peerio.initAPI = function () {
         })
         .then( () => Peerio.SqlDB.openSystemDB() )
         .then( () => {
-            Peerio.TinyDB.init();
             Peerio.Util.init();
             Peerio.Crypto.init();
             Peerio.PhraseGenerator.init();
@@ -43,7 +42,7 @@ Peerio.initAPI = function () {
 
             Peerio.Socket.start();
         }).then(() => {
-            // todo: find a bettter place for this code
+            // todo: find a better place for this code
             // Some users logs contain offline event followed by online event within 0-10 milliseconds.
             // Since it's out of our control, we choose to react on on/offline events only if offline state persists for a few seconds.
             var timer = null;

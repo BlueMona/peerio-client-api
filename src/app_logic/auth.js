@@ -18,7 +18,6 @@
  * @property {KeyPair} keyPair
  */
 
-
 var Peerio = this.Peerio || {};
 
 (function () {
@@ -26,7 +25,7 @@ var Peerio = this.Peerio || {};
 
     //-- Public API ------------------------------------------------------------------------------------------------------
     Peerio.Auth = {
-        resolvePassphrase: resolvePassphrase,
+        getSavedKeys: getSavedKeys,
         generateKeys: generateKeys,
         signup: signup,
         setPIN: setPIN,
@@ -41,29 +40,43 @@ var Peerio = this.Peerio || {};
     var lastLoginKey = 'lastLogin';
 
     /**
-     * Detects if user entered code is PIN or passphrase and returns passphrase
+     * Tries to retrieve saved keys encrypted with passcode
      * @param username
-     * @param enteredPass
-     * @returns {Promise<string, bool>} - passphrase and flag PINIsSet
+     * @param userInput - we don't know if user entered PIN or passphrase, so we will try to treat is as a PIN first
+     * @returns {Promise<{Keys} || boolean>} - base58 encoded keys
+     *                  or true/false meaning that PIN exists but can't decrypt or PIN does not exist.
      */
-    function resolvePassphrase(username, enteredPass) {
-        var PINIsSet = false;
+    function getSavedKeys(username, userInput) {
 
         L.info('Checking for PIN existence.');
 
         return Peerio.TinyDB.getObject(username + 'PIN')
             .then(function (encrypted) {
-                if (encrypted) {
-                    L.info('PIN exists. Decrypting key with PIN.');
-                    PINIsSet = true;
-                    return getPassphraseFromPIN(username, enteredPass, encrypted)
-                    // if it failed because user entered passphrase - we don't care, other cases are logged anyway
-                        .catch(() => enteredPass);
+                if (!encrypted) {
+                    L.info('PIN is not set.');
+                    return false;
                 }
-                L.info('PIN does not exist.');
-                return enteredPass;
-            })
-            .then(passphrase => [passphrase, PINIsSet]);
+
+                L.info('PIN exists. Trying to decrypt keys with user input.');
+                // if it failed because user entered passphrase - we don't care, other cases are logged anyway
+                var keys;
+                return decryptKeys(username, userInput, encrypted)
+                    .then(k=> {
+                        keys = {
+                            keyPair: {
+                                publicKey: Base58.decode(k.publicKey),
+                                secretKey: Base58.decode(k.secretKey)
+                            }
+                        };
+                        // publicKey contains extra char for hash
+                        return Peerio.Crypto.getPublicKeyString(keys.keyPair.publicKey);
+                    })
+                    .then(pk => {
+                        keys.publicKey = pk;
+                        return keys;
+                    })
+                    .catch(() => true);
+            });
     }
 
 
@@ -108,37 +121,39 @@ var Peerio = this.Peerio || {};
      */
     function clearSavedLogin() {
         L.info('Removing last logged user info');
-        try {
-            Peerio.TinyDB.removeItem(lastLoginKey);
-            return true;
-        } catch (e) {
-            L.error('Failed to remove logged user info. {e}', e);
-            return false;
-        }
+
+        return Peerio.TinyDB.removeItem(lastLoginKey)
+            .then(()=>L.info('Removed last saved login info'))
+            .catch(err=>L.error('Failed to remove logged user info. {e}', err));
     }
 
     /**
-     * Saves encrypted passphrase to local db.
-     * @param PIN
-     * @param username
-     * @param passphrase
+     * Saves encrypted keys to local db.
+     * @param {string} PIN
+     * @param {string} username
+     * @param {KeyPair} keyPair
      * @returns {Promise}
      */
-    function setPIN(PIN, username, passphrase) {
+    function setPIN(PIN, username, keyPair) {
         L.info('Peerio.Auth.setPIN(...). Deriving key.');
 
         return Peerio.Crypto.getKeyFromPIN(PIN, username)
             .then(function (PINkey) {
-                L.info('Encrypting passphrase.');
-                return Peerio.Crypto.secretBoxEncrypt(passphrase, PINkey);
+                L.info('Encrypting keys.');
+                var obj = {
+                    publicKey: Base58.encode(keyPair.publicKey),
+                    secretKey: Base58.encode(keyPair.secretKey)
+                };
+                return Peerio.Crypto.secretBoxEncrypt(JSON.stringify(obj), PINkey);
             })
             .then(function (encrypted) {
-                L.info('Storing encrypted passphrase.');
+                L.info('Storing encrypted keys.');
                 //todo: encapsulate crypto details
                 encrypted.ciphertext = nacl.util.encodeBase64(encrypted.ciphertext);
                 encrypted.nonce = nacl.util.encodeBase64(encrypted.nonce);
                 return Peerio.TinyDB.setObject(username + 'PIN', encrypted);
             })
+            .then(()=> L.info('PIN is set'))
             .catch(function (e) {
                 L.error('Error setting PIN. {0}', e);
                 return Promise.reject();
@@ -148,43 +163,43 @@ var Peerio = this.Peerio || {};
     /**
      * Removes passphrase encrypted with PIN from local db
      * @param username
-     * @returns {boolean}
+     * @returns {Promise}
      */
     function removePIN(username) {
         L.info('PeerioAuth.removePIN()');
-        try {
-            Peerio.TinyDB.removeItem(username + 'PIN');
-            L.info('Pin removed');
-            return true;
-        } catch (e) {
-            L.error('Failed to remove PIN. {0}', e);
-            return false;
-        }
+
+        return Peerio.TinyDB.removeItem(username + 'PIN')
+            .then(()=>L.info('Pin removed'))
+            .catch(err=> {
+                L.error('Failed to remove PIN. {0}', err);
+                return Promise.reject();
+            });
     }
 
     /**
-     * Decrypts passphrase with pin
+     * Decrypts saved keys with pin
      * @param username
      * @param PIN
-     * @param encryptedPassphrase
-     * @returns {Promise<string>} passphrase
+     * @param encryptedKeys
+     * @returns {Promise<{publicKey:string, secretKey:string}>} - b64 encoded public and secret keys
      */
-    function getPassphraseFromPIN(username, PIN, encryptedPassphrase) {
-        L.info('Generating key from PIN and username');
+    function decryptKeys(username, PIN, encryptedKeys) {
+        L.info('Generating decrypting key from PIN and username');
         return Peerio.Crypto.getKeyFromPIN(PIN, username)
             .then(PINkey => {
-                L.info('Decrypting passphrase');
+                L.info('Decrypting keys');
                 // todo: this chunk of code knows too much about crypto
-                return Peerio.Crypto.secretBoxDecrypt(nacl.util.decodeBase64(encryptedPassphrase.ciphertext),
-                    nacl.util.decodeBase64(encryptedPassphrase.nonce), PINkey);
+                return Peerio.Crypto.secretBoxDecrypt(nacl.util.decodeBase64(encryptedKeys.ciphertext),
+                    nacl.util.decodeBase64(encryptedKeys.nonce), PINkey);
             })
-            .then(passphrase => {
-                if(passphrase === '') return Promise.reject();
-                L.info('Passphrase decrypted.');
-                return passphrase;
+            .then(keys => {
+                if (!keys) return Promise.reject();
+
+                L.info('Keys decrypted.');
+                return JSON.parse(keys);
             })
             .catch(function (e) {
-                L.error('Failed to decrypt passphrase. {0}', e);
+                L.error('Failed to decrypt keys. {0}', e);
                 return Promise.reject();
             });
     }

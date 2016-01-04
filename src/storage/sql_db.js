@@ -30,8 +30,9 @@ Peerio.SqlDB.init = function () {
                     console.log('DB OPEN MOCK');
                 };
 
-                ret.close = function () {
+                ret.close = function (resolve) {
                     console.log('DB CLOSE MOCK');
+                    resolve();
                 };
                 ret.abortAllPendingTransactions = function () {
                     console.log('DB abortAllPendingTransactions MOCK');
@@ -40,8 +41,9 @@ Peerio.SqlDB.init = function () {
                 return ret;
 
             },
-            deleteDatabase: function (name) {
+            deleteDatabase: function (name, resolve) {
                 console.warn('todo: delete polyfill for dev environment');
+                return resolve();
             }
         };
     }
@@ -59,25 +61,32 @@ Peerio.SqlDB.init = function () {
     // security measure, to make sure previous database is closed after app reload
     closeAllUserDatabases();
 
-    var systemDbName = 'peerio_system';
+    // '_' prefix is important to 100% avoid collisions with user databases
+    var systemDbName = '_peerio_system';
 
     function openSystemDB() {
-        var passphrase = Peerio.Config.lowImportanceDeviceKey;
-        return plugin.openDatabase(systemDbName, passphrase)
+        return plugin.openDatabase(systemDbName, Peerio.Config.lowImportanceDeviceKey)
             .then(db => Peerio.SqlDB.system = db)
-            .then(() => Peerio.SqlQueries.getSystemValueCount())
-            .then((value) => L.info('System db loaded ok {0}', value))
+            .then(Peerio.SqlQueries.checkSystemDB)
+            .then((value) => L.info('System db seems ok, has {0} records.', value))
             .catch(err => {
-                L.error('Failed to open system database for {0}. {1}', systemDbName, err);
+                L.error('Failed to open system database {0}. {1}', systemDbName, err);
                 L.info('Recreating system database');
-                return Peerio.SqlQueries.dropSystemTables()
-                    .then(() => Peerio.SqlQueries.createSystemTables())
-                    .then(() => L.info('db recreated'));
+                return Peerio.SqlDB.system.close()
+                    .catch(()=> false)
+                    .then(() => plugin.deleteDatabase(systemDbName))
+                    .catch(()=> false)
+                    .then(()=> plugin.openDatabase(systemDbName, Peerio.Config.lowImportanceDeviceKey))
+                    .then(db => Peerio.SqlDB.system = db)
+                    .then(Peerio.SqlQueries.dropSystemTables)
+                    .then(Peerio.SqlQueries.createSystemTables)
+                    .then(() => L.info('System db created'))
+                    .catch(err=> L.error('Failed to create system db. {0}', err));
             });
     }
 
-    function openUserDB(username, passphrase) {
-        return plugin.openDatabase(getUserDBName(username), passphrase)
+    function openUserDB(username, key) {
+        return plugin.openDatabase(getUserDBName(username), key)
             .then(db => Peerio.SqlDB.user = db)
             .catch(err => {
                 L.error('Failed to open database for {0}. {1}', username, err);
