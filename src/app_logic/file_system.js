@@ -63,6 +63,17 @@ Peerio.FileSystem.init = function () {
      */
     getFile: dummy.bind(null, 'getFile'),
     /**
+     * Returns file's properties
+     * name: The name of the file. (DOMString)
+     * fullPath: The full path of the file including the file name. (DOMString)
+     * type: The mime type of the file. (DOMString)
+     * lastModifiedDate: The last time the file was modified. (Date)
+     * size: The size of the file in bytes. (long)
+     * @param {FileEntry} fileEntry
+     * @returns {Promise<File>}
+     */
+    getFileProperties: dummy.bind(null, 'getFileProperties'),
+    /**
      * Opens file with OS api
      * @param {FileEntry} fileEntry
      */
