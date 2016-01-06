@@ -192,7 +192,10 @@ var Peerio = this.Peerio || {};
 
     function processMessageReadEntry(entry) {
         L.silly('{0}: Processing message read entry.', entry.entity.seqID);
-        addUpdateNotify(entry.entity.id);
+        // todo: add own recepit?
+        if(entry.entity.username === Peerio.user.username) return Promise.resolve();
+
+        addUpdateNotify(entry.entity.messageId);
         return Peerio.Message.addReceipt(entry.entity);
     }
 
