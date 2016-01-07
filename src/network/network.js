@@ -95,7 +95,7 @@ Peerio.Net.init = function () {
         return sendToSocket('getAuthenticationToken', {
             username: user.username,
             publicKeyString: user.publicKey
-        }, null, null, true)
+        })
             .then(encryptedAuthToken => Peerio.Crypto.decryptAuthToken(encryptedAuthToken, user.keyPair))
             .then(authToken => sendToSocket('login', {authToken: authToken}))
             .then(() => {
@@ -107,7 +107,7 @@ Peerio.Net.init = function () {
             .catch(function (error) {
                 // if it was a call from login page, we don't want to use wrong credentials upon reconnect
                 console.log('authentication failed.', error);
-                if (!isThisAutoLogin) { 
+                if (!isThisAutoLogin) {
                     user = null;
                 } else {
                     Peerio.Action.authFail();
@@ -198,31 +198,31 @@ Peerio.Net.init = function () {
                 if (response.error == 424) {
                     // ignore everything after 2FA request
                     if (gui2FAPromise) {
-                        return Promise.reject({ message: 'No operations before 2FA'});
+                        return Promise.reject({message: 'No operations before 2FA'});
                     }
                     // TODO: maybe store a stack of requests, still?
                     cached2FARequest = cached2FARequest || {
-                        name: name,
-                        data: data,
-                        ignoreConnectionState: ignoreConnectionState,
-                        transfer: transfer,
-                        ignoreTimeout: ignoreTimeout
-                    };
-                    
+                            name: name,
+                            data: data,
+                            ignoreConnectionState: ignoreConnectionState,
+                            transfer: transfer,
+                            ignoreTimeout: ignoreTimeout
+                        };
+
                     // for debugging
                     gui2FAPromise = gui2FAPromise ||
-                        new Promise( (nestedResolve, nestedReject) => {
-                        Peerio.Action.twoFactorAuthRequested(nestedResolve, nestedReject);
-                    })
-                    .then( () => {
-                        return sendToSocket(cached2FARequest.name, 
-                                            cached2FARequest.data, cached2FARequest.ignoreConnectionState,
-                                            cached2FARequest.transfer, cached2FARequest.ignoreTimeout);
-                    })
-                    .finally( () => {
-                        cached2FARequest = null;
-                        gui2FAPromise = null;
-                    });
+                        new Promise((nestedResolve, nestedReject) => {
+                            Peerio.Action.twoFactorAuthRequested(nestedResolve, nestedReject);
+                        })
+                            .then(() => {
+                                return sendToSocket(cached2FARequest.name,
+                                    cached2FARequest.data, cached2FARequest.ignoreConnectionState,
+                                    cached2FARequest.transfer, cached2FARequest.ignoreTimeout);
+                            })
+                            .finally(() => {
+                                cached2FARequest = null;
+                                gui2FAPromise = null;
+                            });
 
                     return gui2FAPromise;
                 }
@@ -588,7 +588,7 @@ Peerio.Net.init = function () {
      * @param {string} [fileInfo.parentFolder]
      */
     api.uploadFile = function (fileInfo) {
-        return sendToSocket('uploadFile', fileInfo, null, null, true);
+        return sendToSocket('uploadFile', fileInfo);
     };
 
     /**
@@ -630,7 +630,7 @@ Peerio.Net.init = function () {
      * @param {string} id
      */
     api.removeFile = function (id) {
-        if(!id) return Promise.reject();
+        if (!id) return Promise.reject();
         return sendToSocket('removeFile', {ids: [id]});
     };
 
@@ -639,7 +639,7 @@ Peerio.Net.init = function () {
      * @param {string} id
      */
     api.nukeFile = function (id) {
-        if(!id) return Promise.reject();
+        if (!id) return Promise.reject();
         return sendToSocket('nukeFile', {ids: [id]});
     };
 
