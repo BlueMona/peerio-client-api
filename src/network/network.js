@@ -496,8 +496,8 @@ Peerio.Net.init = function () {
     /**
      * Redeem coupon code
      */
-    api.redeemCouponCode = function(data) {
-        return sendToSocket('redeemCouponCode', data);
+    api.redeemCouponCode = function(code) {
+        return sendToSocket('redeemCouponCode', {code: code});
     };
 
 
