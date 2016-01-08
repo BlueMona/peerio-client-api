@@ -84,5 +84,9 @@ var Peerio = this.Peerio || {};
                 receiveContactRequestNotifications: receiveContactRequestNotifications
             });
         };
+
+        user.redeemCouponCode = function(code) {
+            return Peerio.Net.redeemCouponCode({code: code});
+        };
     };
 })();

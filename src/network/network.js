@@ -493,6 +493,13 @@ Peerio.Net.init = function () {
         return sendToSocket('registerMobileDevice', data);
     };
 
+    /**
+     * Redeem coupon code
+     */
+    api.redeemCouponCode = function(data) {
+        return sendToSocket('redeemCouponCode', data);
+    };
+
 
     //------------------------------------------------------------------------------------------------------------------
     //-- MESSAGES API METHODS ------------------------------------------------------------------------------------------
