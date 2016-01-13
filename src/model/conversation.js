@@ -43,6 +43,7 @@ var Peerio = this.Peerio || {};
         _.assign(this, data);
         this.participants = JSON.parse(this.participants) || [];
         this.exParticipants = JSON.parse(this.exParticipants) || [];
+        this.readState = JSON.parse(this.readState) || {};
         return this;
     }
 
@@ -93,7 +94,7 @@ var Peerio = this.Peerio || {};
      * Loads file id array from all messages in ths conversation
      * @returns {Promise<this>}
      */
-    function loadFileIds() {
+    function loadFileIDs() {
         return Peerio.SqlQueries.getConversationFiles(this.id)
             .then(res=> {
                 res = res.rows;
@@ -102,7 +103,7 @@ var Peerio = this.Peerio || {};
                 for (var i = 0; i < res.length; i++) {
                     (JSON.parse(res.item(i).files) || emptyArr).forEach(id => ids.push(id));
                 }
-                this.fileIds = _.uniq(ids);
+                this.fileIDs = _.uniq(ids);
             })
             .return(this);
     }
@@ -130,21 +131,19 @@ var Peerio = this.Peerio || {};
             });
     }
 
-    /**
-     * Loads all messages for this conversation
-     * @returns {Promise<this>}
-     */
-    function loadAllMessages() {
-        return Peerio.SqlQueries.getMessages(this.id)
-            .then(res => {
-                res = res.rows;
-                var ret = [];
-                for (var i = 0; i < res.length; i++) {
-                    ret.push(Peerio.Message().applyLocalData(res.item(i)));
-                }
-                this.messages = ret;
-            })
-            .return(this);
+    function updateReadState(seqID, usernames) {
+        if (!is.array(usernames)) usernames = [usernames];
+        var dirty = false;
+        usernames.forEach(user => {
+            if (!this.readState.hasOwnProperty(user)) {
+                this.readState[user] = seqID;
+                dirty = true;
+                return;
+            }
+            if(this.readState[user].seqID>= seqID) return;
+            this.readState[user].seqID = seqID;
+
+        });
     }
 
 
@@ -153,15 +152,15 @@ var Peerio = this.Peerio || {};
      * @returns {Promise<this>}
      */
     function loadStats() {
-        return Promise.all([this.loadMessageCount(), this.loadFileIds(this)])
+        return Promise.all([this.loadMessageCount(), this.loadFileIDs(this)])
             .return(this);
     }
 
-    function reply(recipients, body, fileIds, subject) {
+    function reply(recipients, body, fileIDs, subject) {
         if (recipients.indexOf(Peerio.user.username) < 0)
             recipients.push(Peerio.user.username);
 
-        return Peerio.Message.encrypt(recipients, typeof(subject) === 'undefined' ? '' : subject, body, fileIds)
+        return Peerio.Message.encrypt(recipients, typeof(subject) === 'undefined' ? '' : subject, body, fileIDs)
             .then(encrypted => {
                 if (!encrypted.header || !encrypted.body) return Promise.reject('Message encryption failed.');
                 var ret = {
@@ -175,7 +174,7 @@ var Peerio = this.Peerio || {};
             })
             // re-encrypting file headers (sharing files)
             .then(function (messageDTO) {
-                return buildFileHeaders(recipients, fileIds)
+                return buildFileHeaders(recipients, fileIDs)
                     .then(function (fileHeaders) {
                         messageDTO.files = fileHeaders;
                         return messageDTO;
@@ -186,8 +185,8 @@ var Peerio = this.Peerio || {};
             });
     }
 
-    function buildFileHeaders(recipients, fileIds) {
-        return Promise.map(fileIds, function (id) {
+    function buildFileHeaders(recipients, fileIDs) {
+        return Promise.map(fileIDs, function (id) {
             var file = Peerio.user.files.dict[id];
             if (!file) {
                 L.error("File id {0} not found in local cache. Cant build headers for it.", id);
@@ -212,17 +211,17 @@ var Peerio = this.Peerio || {};
         var obj = {
             id: id,
             load: load,
-            loadAllMessages: loadAllMessages,
             loadStats: loadStats,
             applyServerData: applyServerData,
             applyLocalData: applyLocalData,
             insert: insert,
             updateParticipants: updateParticipants,
+            updateReadState: updateReadState,
             reply: reply,
             //--
             buildProperties: buildProperties,
             loadMessageCount: loadMessageCount,
-            loadFileIds: loadFileIds
+            loadFileIDs: loadFileIDs
         };
 
         return obj;
@@ -236,11 +235,6 @@ var Peerio = this.Peerio || {};
      */
     Peerio.Conversation.deleteFromCache = function (id) {
         return Peerio.SqlQueries.deleteConversation(id);
-    };
-
-    Peerio.Conversation.getAll = function () {
-        return Peerio.SqlQueries.getAllConversations()
-            .then(materialize);
     };
 
     Peerio.Conversation.getRange = function (fromSeqID, toSeqID) {
@@ -259,19 +253,19 @@ var Peerio = this.Peerio || {};
             .then(materialize);
     };
 
-    Peerio.Conversation.getMessagesRange = function (conversationId, fromSeqID, toSeqID) {
-        return Peerio.SqlQueries.getMessagesRange(conversationId, fromSeqID, toSeqID)
-        .then(materializeMessages);
-    };
-
- 
-    Peerio.Conversation.getNextMessagesPage = function (conversationId, lastSeqID, pageSize) {
-        return Peerio.SqlQueries.getNextMessagesPage(conversationId, lastSeqID, pageSize || 10)
+    Peerio.Conversation.getMessagesRange = function (conversationID, fromSeqID, toSeqID) {
+        return Peerio.SqlQueries.getMessagesRange(conversationID, fromSeqID, toSeqID)
             .then(materializeMessages);
     };
 
-    Peerio.Conversation.getPrevMessagesPage = function (conversationId, lastSeqID, pageSize) {
-        return Peerio.SqlQueries.getPrevMessagesPage(conversationId, lastSeqID, pageSize || 10)
+
+    Peerio.Conversation.getNextMessagesPage = function (conversationID, lastSeqID, pageSize) {
+        return Peerio.SqlQueries.getNextMessagesPage(conversationID, lastSeqID, pageSize || 10)
+            .then(materializeMessages);
+    };
+
+    Peerio.Conversation.getPrevMessagesPage = function (conversationID, lastSeqID, pageSize) {
+        return Peerio.SqlQueries.getPrevMessagesPage(conversationID, lastSeqID, pageSize || 10)
             .then(materializeMessages);
     };
 

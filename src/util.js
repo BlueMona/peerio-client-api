@@ -90,10 +90,10 @@ Peerio.Util.init = function () {
 
         var addressLookups = [];
 
-        var processAddress = function (address, contactId) {
+        var processAddress = function (address, contactID) {
             var parsed = api.parseAddress(address.value);
             if (parsed) {
-                var parsedObj = {id: contactId};
+                var parsedObj = {id: contactID};
                 parsedObj[parsed.type] = parsed.value;
                 addressLookups.push(parsedObj);
             }

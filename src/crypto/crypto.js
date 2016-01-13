@@ -450,19 +450,9 @@ Peerio.Crypto.init = function () {
                 decrypted = message;
                 decrypted.receipts = [];
 
-                return Promise.each(encMessage.recipients, function (recipient) {
-                    if (recipient.username === user.username || !recipient.receipt || !recipient.receipt.encryptedReturnReceipt) return;
-
-                    return api.decryptReceipt(recipient.username, recipient.receipt.encryptedReturnReceipt)
-                        .then(function (decReceipt) {
-                            if (decrypted.receipt === decReceipt.substring(0, decReceipt.length - timestampLength)) {
-                                //todo parse and store receipt timestamp
-                                decrypted.receipts.push(recipient.username);
-                            }
-                        })
-                        .catch(function (err) {
-                            L.error(err);
-                        });
+                encMessage.recipients.forEach(function (recipient) {
+                    if (!recipient.receipt || !recipient.receipt.encryptedReturnReceipt) return;
+                    decrypted.receipts.push(recipient.username);
                 });
 
             })
@@ -487,8 +477,8 @@ Peerio.Crypto.init = function () {
             var headerString = JSON.stringify(fileInfo.header);
             var headerStringLength = decodeUTF8(headerString).length;
 
-            var decodedId = decodeB64(id);
-            if (decodedId === null) {
+            var decodedID = decodeB64(id);
+            if (decodedID === null) {
                 reject('Failed to decode file id.');
                 return;
             }
@@ -498,7 +488,7 @@ Peerio.Crypto.init = function () {
                 numberToByteArray(headerStringLength),
                 headerString,
                 numberToByteArray(fileNameSize),
-                decodedId,
+                decodedID,
                 blob
             ]);
 
@@ -939,7 +929,7 @@ Peerio.Crypto.init = function () {
                 try {
                     header = encodeUTF8(header.data);
                     header = parseJSON(header);
-                    if(header === null){
+                    if (header === null) {
                         callback(false);
                         return false;
                     }

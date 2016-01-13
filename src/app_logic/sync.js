@@ -79,7 +79,7 @@ var Peerio = this.Peerio || {};
         runAgain = false;
         Peerio.Action.syncProgress(0, 0, progressMsg);
 
-        return Promise.all([Peerio.SqlQueries.getMaxSeqID(), Peerio.Net.getMaxMessageIndexId()])
+        return Promise.all([Peerio.SqlQueries.getMaxSeqID(), Peerio.Net.getMaxMessageIndexID()])
             .spread((localMax, serverMax)=> {
                 if (localMax === serverMax) return;
                 var progressStartAt = localMax;
@@ -192,10 +192,8 @@ var Peerio = this.Peerio || {};
 
     function processMessageReadEntry(entry) {
         L.silly('{0}: Processing message read entry.', entry.entity.seqID);
-        // todo: add own recepit?
-        if(entry.entity.username === Peerio.user.username) return Promise.resolve();
 
-        addUpdateNotify(entry.entity.messageId);
+        addUpdateNotify(entry.entity.messageID);
         return Peerio.Message.addReceipt(entry.entity);
     }
 

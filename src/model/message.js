@@ -23,57 +23,20 @@ var Peerio = this.Peerio || {};
         this.conversationID = data.conversationID;
         this.sender = data.sender;
         this.timestamp = data.timestamp;
-        this.unread = true;
-        this.receiptSent = false;
 
         return Peerio.Crypto.decryptMessage(data)
             .then(decrypted => {
                 this.files = decrypted.fileIDs;
                 this.body = decrypted.message;
-                this.receiptSecret = decrypted.receipt.substring(0, 44);
-                this.subject = decrypted.subject; // todo copy to conversation
-                this.receipts = decrypted.receipts;
-            })
-            .then(()=> {
-                // todo: find a way to remove direct dependency to Peerio.user
-                // i sent this message
-                if (this.sender === Peerio.user.username) {
-                    this.unread = false;
-                    this.receiptSent = true; //actually receipt not needed but this will make logic ignore it
-                    return;
-                }
-
-                // I'm not the sender, which means it's incoming message and it might have my receipt
-                return this.decryptReceipts(data.recipients);
-
+                this.subject = decrypted.subject;
+                Peerio.Conversation.updateReadState(data.conversationID, data.seqID, decrypted.receipts)
             })
             .return(this);
-    }
-
-    function decryptReceipts(recipients) {
-        return Promise.map(recipients, recipient => {
-            if (recipient.username !== Peerio.user.username || !recipient.receipt || !recipient.receipt.encryptedReturnReceipt) return;
-            return Peerio.Crypto.decryptReceipt(this.sender, recipient.receipt.encryptedReturnReceipt)
-                .then(decryptedReceipt=> {
-                    if (decryptedReceipt.indexOf(this.receiptSecret) === 0) {
-                        this.unread = false;
-                        this.receiptSent = true;
-                    }
-                })
-                .catch(err => {
-                    L.error("Failed to decrypt receipt. {0}, {1}", recipient, err);
-                    //todo remove this after client is changed to have all the public keys from deleted contacts
-                    //because ignoring decrypt errors leaves a possibility to fake read status for malicious server
-                    this.unread = false;
-                    this.receiptSent = true;
-                });
-        });
     }
 
     function applyLocalData(data) {
         _.assign(this, data);
         this.files = JSON.parse(this.files) || [];
-        this.receipts = JSON.parse(this.receipts) || [];
         this.buildProperties();
         return this;
     }
@@ -94,11 +57,7 @@ var Peerio = this.Peerio || {};
             this.sender,
             this.timestamp,
             this.body,
-            this.files,
-            this.receiptSecret,
-            this.receipts,
-            this.receiptSent,
-            this.unread
+            this.files
         );
     }
 
@@ -129,18 +88,20 @@ var Peerio = this.Peerio || {};
         var receipts;
 
         // fetching message
-        Peerio.SqlQueries.getMessageById(receiptData.messageId)
+        Peerio.SqlQueries.getMessageByID(receiptData.messageID)
             .then(res => {
                 // message found?
-                if (res.rows.length !== 1) return Promise.reject('Message id ' + receiptData.messageId + ' not found');
+                if (res.rows.length !== 1) return Promise.reject('Message id ' + receiptData.messageID + ' not found');
                 // do we maybe already have this receipt?
                 receipts = JSON.parse(res.rows.item(0).receipts) || [];
                 if (receipts.indexOf(receiptData.username) >= 0) return Promise.reject('Receipt already exists.');
+                // TODO: update conversation readState
                 // adding receipt
-                receipts.push(receiptData.username);
+               // receipts.push(receiptData.username);
+               // return Peerio.SqlQueries.updateReceipts(receiptData.seqID, receipts, receiptData.messageId)
             })
-            .then(() => Peerio.Crypto.decryptReceipt(receiptData.username, receiptData.encrypted_receipt))
-            .then(decrypted => Peerio.SqlQueries.updateReceipts(receiptData.seqID, receipts, receiptData.messageId, decrypted))
+            //.then(() => Peerio.Crypto.decryptReceipt(receiptData.username, receiptData.encrypted_receipt))
+            //.then(decrypted => Peerio.SqlQueries.updateReceipts(receiptData.seqID, receipts, receiptData.messageId, decrypted))
             .catch(err => L.error('Failed to add receipt. {0}. {1}.', err, receiptData));
     };
 

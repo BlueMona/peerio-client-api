@@ -10,10 +10,10 @@
     // 3 digits, collision is not critical and unlikely
     // this is diagnostic data, doesn't affect logic
     var letters = ['A', 'B', 'C', 'E', 'F', 'K', 'L', 'H', 'X', 'Z']; // just a random 10 letters to encode id for easier reading
-    self.peerioWorkerId = letters[Math.trunc(Math.random() * 10)]
+    self.peerioWorkerID = letters[Math.trunc(Math.random() * 10)]
         + letters[Math.trunc(Math.random() * 10)]
         + letters[Math.trunc(Math.random() * 10)];
-    L.switchToWorkerMode('W_CRPT_' + self.peerioWorkerId + ': ');
+    L.switchToWorkerMode('W_CRPT_' + self.peerioWorkerID + ': ');
 
     Peerio.Crypto.init();
 

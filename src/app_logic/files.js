@@ -14,15 +14,15 @@ var Peerio = this.Peerio || {};
     //--------------------------------------------------------------------------------------------------------------------
 
     function createFilesFromServerData(data) {
-        var files = Collection('id', 'shortId', 'timestamp', false);
+        var files = Collection('id', 'shortID', 'timestamp', false);
         var keys = Object.keys(data);
         var counter = 0, max = keys.length;
-        return Promise.map(keys, function (fileId) {
+        return Promise.map(keys, function (fileID) {
                 Peerio.Action.syncProgress(counter++, max, 'synchronizing files');
-                return Peerio.File.fromServerData(data[fileId])
+                return Peerio.File.fromServerData(data[fileID])
                     .then(file => files.add(file, true))
                     .catch(function (e) {
-                        L.error('Failed to create file from server data {0}. {1}', fileId, e);
+                        L.error('Failed to create file from server data {0}. {1}', fileID, e);
                     });
             }, Peerio.Crypto.recommendedConcurrency)
             .then(()=> {

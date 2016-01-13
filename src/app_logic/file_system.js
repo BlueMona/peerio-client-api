@@ -187,7 +187,7 @@ Peerio.FileSystem.init = function () {
   }
 
   function getLocalName(file) {
-    var name = file.shortId;
+    var name = file.shortID;
     var ext = Peerio.Util.getFileExtension(file.name);
 
     if (ext.length > 0)

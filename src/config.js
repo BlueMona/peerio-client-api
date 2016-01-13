@@ -23,12 +23,6 @@ Peerio.Config.init = function () {
         cfg.dbPrefix = /\/\/(.*)\.peerio\.com/.exec(cfg.webSocketServer)[1];
         if (cfg.dbPrefix === 'app') cfg.dbPrefix = '';
 
-        cfg.push = {
-            android: {
-                senderId: '605156423279'
-            }
-        };
-
         cfg.cpuCount = 1; //navigator.hardwareConcurrency || 1;
         // if client will not receive pings for pingTimeout, connection will be considered broken
         cfg.pingTimeout = 30000;
@@ -39,12 +33,6 @@ Peerio.Config.init = function () {
         // Set this dynamically to something related to device where app is currently running.
         // This secret key will be used for low-importance data encryption to store in on device.
         cfg.lowImportanceDeviceKey = '12345';
-
-        cfg.push = {
-            android: {
-                senderId: '605156423279'
-            }
-        };
 
         // using cordova AppVersion plugin if available
         if (window.AppVersion && AppVersion.version)

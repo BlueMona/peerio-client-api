@@ -15,7 +15,7 @@ var Peerio = this.Peerio || {};
             size: this.size,
             timestamp: this.timestamp,
             id: this.id,
-            shortId: this.shortId,
+            shortID: this.shortID,
             name: this.name
         };
     }
@@ -50,7 +50,7 @@ var Peerio = this.Peerio || {};
      * Builds computed properties
      */
     function buildProperties() {
-        this.shortId = Peerio.Util.sha256(this.id);
+        this.shortID = Peerio.Util.sha256(this.id);
         this.moment = moment(this.timestamp);
         return this;
     }

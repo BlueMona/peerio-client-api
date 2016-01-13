@@ -28,7 +28,7 @@ self.onmessage = function (payload) {
 // cfg - Peerio.Config object
 function initialize(cfg) {
     var lastPing = null;
-    var intervalId = null;
+    var intervalID = null;
 
     var serverEvents = [
         'contactAdded',
@@ -38,7 +38,7 @@ function initialize(cfg) {
         'sentContactRequestRemoved',
         'receivedContactRequestRemoved',
 
-        'seqIdUpdated',
+        'seqIDUpdated',
 
         'fileAdded',
         'fileRemoved',
@@ -107,15 +107,15 @@ function initialize(cfg) {
     function startPingChecks() {
         if (cfg.pingTimeout === 0) return;
         stopPingChecks();
-        intervalId = setInterval(checkPings, Math.ceil(cfg.pingTimeout / 2));
+        intervalID = setInterval(checkPings, Math.ceil(cfg.pingTimeout / 2));
     }
 
     // stops timeout checking interval interval
     function stopPingChecks() {
-        if (intervalId != null)
-            clearInterval(intervalId);
+        if (intervalID != null)
+            clearInterval(intervalID);
 
-        intervalId = null;
+        intervalID = null;
         lastPing = null;
     }
 

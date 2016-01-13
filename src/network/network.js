@@ -131,14 +131,14 @@ Peerio.Net.init = function () {
     // here we store all pending promises by unique id
     var pending = {};
     // safe max promise id under 32-bit integer. Once we reach maximum, id resets to 0.
-    var maxId = 4000000000;
-    var currentId = 0;
+    var maxID = 4000000000;
+    var currentID = 0;
 
     // registers new promise reject function and returns a unique id for it
     function addPendingPromise(rejectFn) {
-        if (++currentId > maxId) currentId = 0;
-        pending[currentId] = rejectFn;
-        return currentId;
+        if (++currentID > maxID) currentID = 0;
+        pending[currentID] = rejectFn;
+        return currentID;
     }
 
     // removes previously registered promise rejection fn by id
@@ -152,7 +152,7 @@ Peerio.Net.init = function () {
         _.forOwn(pending, function (reject) {
             reject(reason);
         });
-        currentId = 0;
+        currentID = 0;
     }
 
     //-- HELPERS -------------------------------------------------------------------------------------------------------
@@ -657,7 +657,7 @@ Peerio.Net.init = function () {
     /**
      * Returns maximum index id that exists for messages
      */
-    api.getMaxMessageIndexId = function () {
+    api.getMaxMessageIndexID = function () {
         return sendToSocket('indexCount');
     };
 
