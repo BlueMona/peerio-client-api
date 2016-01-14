@@ -9,21 +9,26 @@ Peerio.User = Peerio.User || {};
 
 Peerio.User.addAuthModule = function (user) {
     'use strict';
-    user.login = function (passphraseOrPIN) {
-        return Peerio.Auth.getSavedKeys(user.username, passphraseOrPIN)
+    user.login = function (passphraseOrPIN, keyPair) {
+        var action = keyPair ? Promise.resolve( { 
+            keyPair: keyPair,
+            publicKey: keyPair.publicKey 
+        }) :
+            Peerio.Auth.getSavedKeys(user.username, passphraseOrPIN)
             .then(keys => {
                 if (keys === true || keys === false) {
                     user.PINIsSet = keys;
-                    return Peerio.Auth.generateKeys(user.username, passphraseOrPIN)
+                    return Peerio.Auth.generateKeys(user.username, passphraseOrPIN);
                 }
 
                 user.PINIsSet = true;
                 return keys;
-            })
+            });
+        return action
             .then((keys) => {
                 user.publicKey = keys.publicKey;
                 user.keyPair = keys.keyPair;
-                user.localEncryptionKey = Base58.encode(user.keyPair.secretKey)
+                user.localEncryptionKey = Base58.encode(user.keyPair.secretKey);
             })
             .then(() => Peerio.Net.login({
                 username: user.username,
