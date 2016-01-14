@@ -10,10 +10,14 @@ Peerio.User = Peerio.User || {};
 Peerio.User.addAuthModule = function (user) {
     'use strict';
     user.login = function (passphraseOrPIN, keyPair) {
-        var action = keyPair ? Promise.resolve( { 
-            keyPair: keyPair,
-            publicKey: keyPair.publicKey 
-        }) :
+        var action = keyPair ? 
+            Peerio.Crypto.getPublicKeyString(keyPair.publicKey).then(
+                (publicKey) => { 
+                    return { 
+                        keyPair: keyPair,
+                        publicKey: publicKey
+                    };
+            }) :
             Peerio.Auth.getSavedKeys(user.username, passphraseOrPIN)
             .then(keys => {
                 if (keys === true || keys === false) {

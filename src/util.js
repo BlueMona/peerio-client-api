@@ -69,7 +69,7 @@ Peerio.Util.init = function () {
 
         deviceContacts.forEach(function (contact) {
             parsedContacts.push({
-                id: "contact-" + contact.id,
+                id: 'contact-' + contact.id,
                 emails: _.filter(contact.emails, validateEmail),
                 name: contact.name.formatted,
                 phones: _.filter(contact.phoneNumbers, validatePhone)
@@ -101,11 +101,11 @@ Peerio.Util.init = function () {
 
         _.forOwn(deviceContacts, function (contact) {
             _.each(contact.emails, function (email) {
-                processAddress(email, contact.id)
+                processAddress(email, contact.id);
             });
 
             _.each(contact.phones, function (phone) {
-                processAddress(phone, contact.id)
+                processAddress(phone, contact.id);
             });
         });
 
@@ -156,7 +156,7 @@ Peerio.Util.init = function () {
             return collator.compare(a, b);
         };
         descCompare = function (a, b) {
-            return collator.compare(b, a)
+            return collator.compare(b, a);
         };
     } else {
         ascCompare = function (a, b) {
@@ -196,7 +196,7 @@ Peerio.Util.init = function () {
         var dotInd = fileName.lastIndexOf('.');
         if (dotInd >= 0)fileName = fileName.substring(0, dotInd);
         var slashInd = fileName.lastIndexOf('/');
-        var bslashInd = fileName.lastIndexOf("\\");
+        var bslashInd = fileName.lastIndexOf('\\');
         slashInd = Math.max(slashInd, bslashInd);
         if (slashInd >= 0) fileName = fileName.substring(slashInd + 1);
         return fileName;
@@ -204,5 +204,9 @@ Peerio.Util.init = function () {
 
     api.getFileNameAndExtension = function (path) {
         return api.getFileName(path) + '.' + api.getFileExtension(path);
+    };
+
+    api.toInt8Array = function(val) {
+        return new Uint8Array(Object.keys(val).map( (key) => val[key] ));
     };
 };
