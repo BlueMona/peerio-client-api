@@ -23,6 +23,7 @@ participants: ["username1", "username2"],
 subject: "message subject", // in next versions leave this field for 1st message only
 message: "message body",
 receipt: "random base64 secret string", // deprecated, remove after desktop rewrite
+fileIDs: [],
 sequence: 0 // deprecated, remove in next version
 ```
 

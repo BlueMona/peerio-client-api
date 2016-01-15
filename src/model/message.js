@@ -29,7 +29,9 @@ var Peerio = this.Peerio || {};
                 this.files = decrypted.fileIDs;
                 this.body = decrypted.message;
                 this.subject = decrypted.subject;
-                Peerio.Conversation.updateReadState(data.conversationID, data.seqID, decrypted.receipts)
+                this.receipts = decrypted.receipts;
+                this.innerIndex = decrypted.innerIndex;
+                this.sequence = decrypted.sequence;
             })
             .return(this);
     }
@@ -58,7 +60,11 @@ var Peerio = this.Peerio || {};
             this.timestamp,
             this.body,
             this.files
-        );
+        ).then(()=> {
+            if (!this.receipts || !this.receipts.length) return;
+            return Promise.each(decrypted.receipts,
+                username => Peerio.SqlQueries.updateReadPosition(this.conversationID, username, this.seqID));
+        });
     }
 
     //-- PUBLIC API ------------------------------------------------------------------------------------------------------
@@ -72,40 +78,13 @@ var Peerio = this.Peerio || {};
             applyLocalData: applyLocalData,
             insert: insert,
             //--
-            buildProperties: buildProperties,
-            decryptReceipts: decryptReceipts
-
+            buildProperties: buildProperties
         };
 
         return obj;
     };
 
-    /**
-     * Parses server 'message_read' object data and adds receipt to existing message
-     * @param receiptData
-     */
-    Peerio.Message.addReceipt = function (receiptData) {
-        var receipts;
-
-        // fetching message
-        Peerio.SqlQueries.getMessageByID(receiptData.messageID)
-            .then(res => {
-                // message found?
-                if (res.rows.length !== 1) return Promise.reject('Message id ' + receiptData.messageID + ' not found');
-                // do we maybe already have this receipt?
-                receipts = JSON.parse(res.rows.item(0).receipts) || [];
-                if (receipts.indexOf(receiptData.username) >= 0) return Promise.reject('Receipt already exists.');
-                // TODO: update conversation readState
-                // adding receipt
-               // receipts.push(receiptData.username);
-               // return Peerio.SqlQueries.updateReceipts(receiptData.seqID, receipts, receiptData.messageId)
-            })
-            //.then(() => Peerio.Crypto.decryptReceipt(receiptData.username, receiptData.encrypted_receipt))
-            //.then(decrypted => Peerio.SqlQueries.updateReceipts(receiptData.seqID, receipts, receiptData.messageId, decrypted))
-            .catch(err => L.error('Failed to add receipt. {0}. {1}.', err, receiptData));
-    };
-
-    Peerio.Message.encrypt = function(recipients, subject, body, fileIDs) {
+    Peerio.Message.encrypt = function (recipients, subject, body, fileIDs) {
         var message = {
             message: body,
             receipt: nacl.util.encodeBase64(nacl.randomBytes(32)),

@@ -65,8 +65,11 @@ Peerio.Action.init = function () {
         'TwoFactorAuthRequested',
         'TwoFactorAuthResend',
         'TwoFactorAuthReject',
-
-        'ConversationsUpdated', // param: {updateAllConversations:bool,  updated:[], delete:[]}
+                                // arrays can be in 3 states
+                                // 1. null - no changes made
+                                // 2. empty - too many changed conversations
+                                // 3  has elements - ids of updated/deleted conversations
+        'ConversationsUpdated', // param: {updated:[], deleted:[]}
 
         'ContactsUpdated',
 

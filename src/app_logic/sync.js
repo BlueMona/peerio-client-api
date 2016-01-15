@@ -31,28 +31,18 @@ var Peerio = this.Peerio || {};
 
     function resetNotify() {
         notify = {};
-        // when conversations were added
-        notify.updateAllConversations = false;
-        // when conversations were updated (files, read status, last timestamp) or deleted
         notify.updated = null;
-        // when specific conversations were updated or there are new messages in them
         notify.deleted = null;
     }
 
-    function addUpdateNotify(id) {
-        internalAddNotify(id, 'updated');
-    }
 
-    function addDeleteNotify(id) {
-        internalAddNotify(id, 'deleted');
-    }
-
-    // we want notify.updated and notify.deleted to be
-    // null - when there is nothing to update or delete
-    // empty array - when there is more then 10 items and we just prefer to update all
-    function internalAddNotify(id, type) {
+    function addNotify(id, type) {
         var arr = notify[type];
         if (arr && arr.length === 0) return;
+        if(id === null) {
+            arr.length = 0;
+            return;
+        }
 
         if (!arr) arr = notify[type] = [];
         arr.push(id);
@@ -60,8 +50,8 @@ var Peerio = this.Peerio || {};
     }
 
     function doNotify() {
-        if (notify.updateAllConversations === false && notify.updated === null && notify.deleted === null) return;
-        L.verbose(notify);
+        if (notify.updated === null && notify.deleted === null) return;
+        L.verbose('notify: {0}', notify);
         Peerio.Action.conversationsUpdated(notify);
     }
 
@@ -155,32 +145,38 @@ var Peerio = this.Peerio || {};
 
     function processConversationEntry(entry) {
         L.silly('{0}: Processing new conversation entry.', entry.entity.seqID);
-        notify.updateAllConversations = true;
+        addNotify(entry.id, 'updated');
         return Peerio.Conversation().applyServerData(entry.entity).insert();
     }
 
     function processConversationParticipantsEntry(entry) {
         L.silly('{0}: Processing participants entry.', entry.entity.seqID);
-        addUpdateNotify(entry.entity.id);
+        addNotify(entry.entity.id, 'updated');
         return Peerio.Conversation().applyServerData(entry.entity).updateParticipants();
     }
 
     function processConversationDeletedEntry(entry) {
         L.silly('{0}: Processing conversation delete entry.', entry.entity.seqID);
-        addDeleteNotify(entry.entity.id);
+        addNotify(entry.entity.id, 'deleted');
         return Peerio.Conversation.deleteFromCache(entry.entity.id);
     }
 
 
     function processMessageEntry(entry) {
         L.silly('{0}: Processing message entry.', entry.entity.seqID);
-        notify.updateAllConversations = true;
-        addUpdateNotify(entry.entity.id);
+        addNotify(entry.entity.conversationID, 'updated');
         var msg = Peerio.Message();
         return msg.applyServerData(entry.entity)
             .then(() => msg.insert())
             .then(() => {
-                if (msg.subject != null && msg.subject != '')
+                // 1. old format conversations might not have innerIndex
+                // but if it's there and > 0 - it's not the original message
+                // 3. sequence is from old format
+                // 4. both innerIndex and sequence can be used to detect first message due to migration transition of old conversation
+                // 0 does not mean original message, but > 0 can be trusted t obe NOT the original one
+                if (is.number(msg.innerIndex) && msg.innerIndex > 0 || is.number(msg.sequence) && msg.sequence > 0) return;
+                // todo: trust innerIndex == 0 for new format conversations (stat timestamp after migration)
+                if (msg.subject != null)
                     return Peerio.SqlQueries.updateConversationSubject(msg.subject, msg.id);
             })
             .catch(err=> {
@@ -192,9 +188,8 @@ var Peerio = this.Peerio || {};
 
     function processMessageReadEntry(entry) {
         L.silly('{0}: Processing message read entry.', entry.entity.seqID);
-
-        addUpdateNotify(entry.entity.messageID);
-        return Peerio.Message.addReceipt(entry.entity);
+        addNotify(entry.entity.conversationID, 'updated');
+        return Peerio.SqlQueries.updateReadPosition(entry.entity.conversationID, entry.entity.username, entry.entity.seqID);
     }
 
     function updateConversations() {
@@ -202,16 +197,16 @@ var Peerio = this.Peerio || {};
         return Promise.all([
             Peerio.SqlQueries.setConversationsCreatedTimestamp(),
             Peerio.SqlQueries.updateConversationsLastTimestamp(),
-            Peerio.SqlQueries.updateConversationsUnread(),
-            Peerio.SqlQueries.updateConversationsHasFiles()
+            Peerio.SqlQueries.updateConversationsHasFiles(),
+            Peerio.SqlQueries.updateConversationsRead()
         ]).tap(()=> {
             L.verbose('Mass-update conversations done.');
         }).catch((err)=> {
             L.verbose('Mass-update conversations error.');
             return Promise.reject(err);
         });
-
     }
+
 
     function interrupt() {
         interruptRequested = running;

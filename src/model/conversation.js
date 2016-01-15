@@ -131,21 +131,6 @@ var Peerio = this.Peerio || {};
             });
     }
 
-    function updateReadState(seqID, usernames) {
-        if (!is.array(usernames)) usernames = [usernames];
-        var dirty = false;
-        usernames.forEach(user => {
-            if (!this.readState.hasOwnProperty(user)) {
-                this.readState[user] = seqID;
-                dirty = true;
-                return;
-            }
-            if(this.readState[user].seqID>= seqID) return;
-            this.readState[user].seqID = seqID;
-
-        });
-    }
-
 
     /**
      * Loads extended object properties
@@ -216,7 +201,6 @@ var Peerio = this.Peerio || {};
             applyLocalData: applyLocalData,
             insert: insert,
             updateParticipants: updateParticipants,
-            updateReadState: updateReadState,
             reply: reply,
             //--
             buildProperties: buildProperties,
@@ -268,6 +252,40 @@ var Peerio = this.Peerio || {};
         return Peerio.SqlQueries.getPrevMessagesPage(conversationID, lastSeqID, pageSize || 10)
             .then(materializeMessages);
     };
+
+    /**
+     * Updates conversation read state if passed seqID is older then current
+     * @param {string} conversationID - last read seqID by usernames
+     * @param {number} seqID - last read seqID by usernames
+     * @param {string || Array<string>} usernames - username or array of usernames
+     * @returns {Promise<boolean>} - true if change was actually made
+     */
+    Peerio.Conversation.updateReadState = function updateReadState(conversationID, seqID, usernames) {
+        if (!usernames || !usernames.length) return Promise.resolve(false);
+        Peerio.SqlQueries.getConversationReadState(conversationID)
+            .then(res => {
+                var readState = JSON.parse(res.rows.item(0)) || {};
+                var dirty = false;
+                if (is.array(usernames)) {
+                    usernames.forEach(username => dirty = dirty || changeReadState(seqID, username));
+                } else {
+                    dirty = changeReadState(readState, seqID, usernames)
+                }
+                if (!dirty) return Promise.resolve(false);
+                return Peerio.SqlQueries.updateReadState(conversationID, readState)
+                    .return(readState);
+            });
+    };
+
+    function changeReadState(readState, seqID, username) {
+        if (!readState.hasOwnProperty(username)) {
+            readState[username] = seqID;
+            return true;
+        }
+        if (readState[username].seqID >= seqID) return false;
+        readState[username].seqID = seqID;
+        return true;
+    }
 
 
     function materialize(res) {
