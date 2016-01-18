@@ -21,10 +21,9 @@ Peerio.initAPI = function () {
 
     return Peerio.Config.init()
         .then(() => {
-            delete Peerio.initAPI;
-            Peerio.Config.apiFolder = Peerio.apiFolder;
-            delete Peerio.apiFolder;
-
+            Peerio.initAPI=undefined;
+            Peerio.Config.apiFolder = window.peerioApiFolder;
+            window.peerioApiFolder = undefined;
             Peerio.SqlDB.init();
         })
         .then( () => Peerio.SqlDB.openSystemDB() )
@@ -75,5 +74,5 @@ Peerio.initAPI = function () {
     var path = document.currentScript && document.currentScript.getAttribute('src')
         || document.scripts[document.scripts.length - 1].getAttribute('src');
     // temporary saving api folder in root namespace until Config is initalized
-    Peerio.apiFolder = path.substring(0, path.lastIndexOf('/')) + '/';
+    window.peerioApiFolder = path.substring(0, path.lastIndexOf('/')) + '/';
 }());

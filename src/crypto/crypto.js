@@ -25,7 +25,7 @@ Peerio.Crypto.init = function () {
     L.verbose('Peerio.Crypto.init() start');
 
     var api = Peerio.Crypto;
-    delete Peerio.Crypto.init;
+    Peerio.Crypto.init = undefined;
     //-- PRIVATE ---------------------------------------------------------------------------------------------------------
 
     var base58Match = new RegExp('^[1-9ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]+$');
@@ -148,6 +148,8 @@ Peerio.Crypto.init = function () {
      * @promise {Uint8Array} publicKeyBytes
      */
     api.getPublicKeyBytes = function (publicKey) {
+        if (!validatePublicKey(publicKey)) return Promise.reject('Invalid public key.');
+
         return Promise.resolve(
             getPublicKeyBytesSync(publicKey)
         );
@@ -238,6 +240,8 @@ Peerio.Crypto.init = function () {
                     keyPair.secretKey
                 );
 
+                // tokens have a strict format: "AT" + 30 bytes
+
                 //todo: explain magic numbers
                 if (token && token.length === 0x20 && token[0] === 0x41 && token[1] === 0x43)
                     return Promise.resolve(encodeB64(token));
@@ -270,7 +274,7 @@ Peerio.Crypto.init = function () {
                 );
                 L.silly('decrypted token:', dToken);
                 L.info('validating token');
-                //todo: explain magic numbers
+                // tokens have a strict format: "AT" + 30 bytes
                 if (dToken && dToken.length === 0x20 && dToken[0] === 0x41 && dToken[1] === 0x54)
                     return Promise.resolve(encodeB64(dToken));
                 var msg = 'token validation failed.';

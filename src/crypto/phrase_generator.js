@@ -11,7 +11,7 @@ Peerio.PhraseGenerator.init = function () {
   'use strict';
 
   var api = Peerio.PhraseGenerator;
-  delete Peerio.PhraseGenerator.init;
+  Peerio.PhraseGenerator.init = undefined;
 
   // dictionary for the language required will be loaded here
   var loadedDictionary = null;

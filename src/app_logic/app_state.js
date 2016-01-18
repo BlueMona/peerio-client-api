@@ -12,7 +12,7 @@ Peerio.AppState.init = function () {
   L.verbose('Peerio.AppState.init() start');
 
   var api = Peerio.AppState;
-  delete Peerio.AppState.init;
+  Peerio.AppState.init=undefined;
   var d = Peerio.Dispatcher;
 
   // initial state

@@ -16,7 +16,7 @@ Peerio.Config.init = function () {
     return new Promise(function (resolve) {
 
         var cfg = Peerio.Config;
-        delete Peerio.Config.init;
+        Peerio.Config.init=undefined;
 
         cfg.webSocketServer = 'wss://app.peerio.com:443';
 

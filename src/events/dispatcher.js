@@ -26,7 +26,7 @@ Peerio.Dispatcher.init = function () {
     'use strict';
 
     var api = Peerio.Dispatcher;
-    delete Peerio.Dispatcher.init;
+    Peerio.Dispatcher.init=undefined;
 
     // subscribers container
     // KEY: action. VALUE: [{id, handler},..] objects array

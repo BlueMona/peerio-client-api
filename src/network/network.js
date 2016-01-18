@@ -12,7 +12,7 @@ Peerio.Net.init = function () {
     var API_VERSION = '2.1.0';
 
     var api = Peerio.Net;
-    delete Peerio.Net.init;
+    Peerio.Net.init=undefined;
     var hasProp = Peerio.Util.hasProp;
 
     //-- SOCKET EVENT HANDLING, AUTH & CONNECTION STATE ----------------------------------------------------------------

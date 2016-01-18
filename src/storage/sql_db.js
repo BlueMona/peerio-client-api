@@ -11,7 +11,7 @@ Peerio.SqlDB = {};
 Peerio.SqlDB.init = function () {
     'use strict';
 
-    delete Peerio.SqlDB.init;
+    Peerio.SqlDB.init = undefined;
 
     var plugin = window.sqlitePlugin;
     // mockup for debugging in browser

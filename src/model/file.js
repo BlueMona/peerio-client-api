@@ -193,7 +193,7 @@ var Peerio = this.Peerio || {};
     // notifies on file change
     function setDownloadState(state, progress, total) {
         if (state === null) {
-            delete this.downloadState;
+            this.downloadState = null;
         } else {
             this.downloadState = this.downloadState || {};
             this.downloadState.state = state;

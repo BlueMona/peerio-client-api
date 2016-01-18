@@ -29,6 +29,7 @@ var Peerio = this.Peerio || {};
                 this.files = decrypted.fileIDs;
                 this.body = decrypted.message;
                 this.subject = decrypted.subject;
+                this.receipt = decrypted.receipt;
                 this.receipts = decrypted.receipts;
                 this.innerIndex = decrypted.innerIndex;
                 this.sequence = decrypted.sequence;
@@ -59,12 +60,9 @@ var Peerio = this.Peerio || {};
             this.sender,
             this.timestamp,
             this.body,
-            this.files
-        ).then(()=> {
-            if (!this.receipts || !this.receipts.length) return;
-            return Promise.each(decrypted.receipts,
-                username => Peerio.SqlQueries.updateReadPosition(this.conversationID, username, this.seqID));
-        });
+            this.files,
+            this.receipt
+        );
     }
 
     //-- PUBLIC API ------------------------------------------------------------------------------------------------------

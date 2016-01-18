@@ -6,6 +6,7 @@ var Peerio = this.Peerio || {};
     //-- PUBLIC API ------------------------------------------------------------------------------------------------------
     Peerio.Sync = {
         syncMessages: syncMessages,
+        syncMessagesDebounced: _.debounce(syncMessages, 2000, {maxWait: 6000}),
         interrupt: interrupt
     };
 
@@ -28,6 +29,7 @@ var Peerio = this.Peerio || {};
     var progressMsg = 'downloading message data';
 
     var notify;
+    var readPositionsCache;
 
     function resetNotify() {
         notify = {};
@@ -39,14 +41,14 @@ var Peerio = this.Peerio || {};
     function addNotify(id, type) {
         var arr = notify[type];
         if (arr && arr.length === 0) return;
-        if(id === null) {
-            arr.length = 0;
+        if (id === null) {
+            arr ? arr.length = 0 : notify[type] = [];
             return;
         }
 
         if (!arr) arr = notify[type] = [];
         arr.push(id);
-        if (arr.length > 10) notify[type] = [];
+        if (arr.length > 10) arr.length = 0;
     }
 
     function doNotify() {
@@ -65,6 +67,7 @@ var Peerio = this.Peerio || {};
         }
         L.verbose('Starting message sync.');
         resetNotify();
+        readPositionsCache = {};
         running = true;
         runAgain = false;
         Peerio.Action.syncProgress(0, 0, progressMsg);
@@ -145,7 +148,7 @@ var Peerio = this.Peerio || {};
 
     function processConversationEntry(entry) {
         L.silly('{0}: Processing new conversation entry.', entry.entity.seqID);
-        addNotify(entry.id, 'updated');
+        addNotify(entry.entity.id, 'updated');
         return Peerio.Conversation().applyServerData(entry.entity).insert();
     }
 
@@ -169,19 +172,24 @@ var Peerio = this.Peerio || {};
         return msg.applyServerData(entry.entity)
             .then(() => msg.insert())
             .then(() => {
+                msg.receipts.forEach(username => addToReadPositionsCache(msg.conversationID, username, entry.entity.seqID))
+                if (msg.sender == Peerio.user.username)
+                    addToReadPositionsCache(msg.conversationID, Peerio.user.username, entry.entity.seqID)
+            })
+            .then(() => {
                 // 1. old format conversations might not have innerIndex
                 // but if it's there and > 0 - it's not the original message
                 // 3. sequence is from old format
                 // 4. both innerIndex and sequence can be used to detect first message due to migration transition of old conversation
                 // 0 does not mean original message, but > 0 can be trusted t obe NOT the original one
                 if (is.number(msg.innerIndex) && msg.innerIndex > 0 || is.number(msg.sequence) && msg.sequence > 0) return;
-                // todo: trust innerIndex == 0 for new format conversations (stat timestamp after migration)
+                // todo: trust innerIndex == 0 for new format conversations (start timestamp after migration)
                 if (msg.subject != null)
                     return Peerio.SqlQueries.updateConversationSubject(msg.subject, msg.id);
             })
             .catch(err=> {
                 //todo: separate different error processing
-                //todo: detect orphaned conversations
+                //todo: detect orphaned messages
                 L.error(err);
             });
     }
@@ -189,22 +197,44 @@ var Peerio = this.Peerio || {};
     function processMessageReadEntry(entry) {
         L.silly('{0}: Processing message read entry.', entry.entity.seqID);
         addNotify(entry.entity.conversationID, 'updated');
-        return Peerio.SqlQueries.updateReadPosition(entry.entity.conversationID, entry.entity.username, entry.entity.seqID);
+        return addToReadPositionsCache(entry.entity.conversationID, entry.entity.username, entry.entity.seqID);
+    }
+
+    function addToReadPositionsCache(conversationID, username, seqID) {
+        var c = readPositionsCache[conversationID] || (readPositionsCache[conversationID] = {});
+        if (c[username] < seqID || !c[username]) c[username] = seqID;
+    }
+
+    // todo: read positions cache should have a limit, after which sync should pause until cache is saved to db
+    function updateReadPositions() {
+        return Promise.each(Object.keys(readPositionsCache),
+            conversationID =>
+                Promise.each(Object.keys(readPositionsCache[conversationID]),
+                    username =>
+                        Peerio.SqlQueries.updateReadPosition(conversationID, username,
+                            readPositionsCache[conversationID][username])
+                )
+        );
     }
 
     function updateConversations() {
+        L.B.start('Mass update');
         L.verbose('Mass-updating conversations after sync...');
         return Promise.all([
-            Peerio.SqlQueries.setConversationsCreatedTimestamp(),
-            Peerio.SqlQueries.updateConversationsLastTimestamp(),
-            Peerio.SqlQueries.updateConversationsHasFiles(),
-            Peerio.SqlQueries.updateConversationsRead()
-        ]).tap(()=> {
-            L.verbose('Mass-update conversations done.');
-        }).catch((err)=> {
-            L.verbose('Mass-update conversations error.');
-            return Promise.reject(err);
-        });
+                Peerio.SqlQueries.setConversationsCreatedTimestamp(),
+                Peerio.SqlQueries.updateConversationsLastTimestamp(),
+                Peerio.SqlQueries.updateConversationsHasFiles(),
+                updateReadPositions(),
+                Peerio.SqlQueries.updateConversationsRead(Peerio.user.username)
+            ])
+            .tap(()=> {
+                L.verbose('Mass-update conversations done.');
+            })
+            .catch((err)=> {
+                L.verbose('Mass-update conversations error.');
+                return Promise.reject(err);
+            })
+            .finally(() => L.B.stop('Mass update'));
     }
 
 

@@ -35,7 +35,8 @@ Peerio.SqlMigrations = Peerio.SqlMigrations || [];
                 'sender TEXT,' +           // username
                 'timestamp INTEGER,' +     // timestamp
                 'body TEXT,' +
-                'files TEXT' +      // file id array ['id', 'id']
+                'files TEXT, ' +      // file id array ['id', 'id']
+                'receipt TEXT' +           // username
                 ') WITHOUT ROWID'
             );
 

@@ -13,7 +13,8 @@ Peerio.Action = {};
 Peerio.Action.init = function () {
     'use strict';
 
-    delete Peerio.Action.init;
+    // don't want to delete property, kills js optimisations
+    Peerio.Action.init = undefined;
 
     /**
      * Adds an action to Event System. Creates convenience functions.
@@ -65,10 +66,10 @@ Peerio.Action.init = function () {
         'TwoFactorAuthRequested',
         'TwoFactorAuthResend',
         'TwoFactorAuthReject',
-                                // arrays can be in 3 states
-                                // 1. null - no changes made
-                                // 2. empty - too many changed conversations
-                                // 3  has elements - ids of updated/deleted conversations
+        // arrays can be in 3 states
+        // 1. null - no changes made
+        // 2. empty - too many changed conversations
+        // 3  has elements - ids of updated/deleted conversations
         'ConversationsUpdated', // param: {updated:[], deleted:[]}
 
         'ContactsUpdated',

@@ -70,7 +70,8 @@ var Peerio = this.Peerio || {};
             return runningPromise;
         }.bind(user);
 
-        Peerio.Net.subscribe('seqIDUpdated', Peerio.Sync.syncMessages);
+
+        Peerio.Net.subscribe('seqIdUpdated', Peerio.Sync.syncMessagesDebounced);
 
         user.stopAllServerEvents = function () {
             Peerio.Sync.interrupt();

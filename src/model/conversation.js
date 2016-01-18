@@ -9,6 +9,7 @@ var Peerio = this.Peerio || {};
 
     /**
      * Fills/replaces current Conversation object properties with data sent by server.
+     * This function prepares object for saving and may lack properties required for rendering in UI
      * @param data - conversation data in server format
      * @returns {Peerio.Conversation} - this
      */
@@ -22,12 +23,12 @@ var Peerio = this.Peerio || {};
         this.id = data.id;
         this.originalMsgID = data.original;
         this.lastTimestamp = data.lastTimestamp;
-        this.participants = data.participants; //todo: CHECK FOR MATCH when original message arrives
+        this.participants = _.pull(data.participants, Peerio.user.username);
         if (data.events) {
-            this.exParticipants = [];
+            this.exParticipants = {};
             data.events.forEach(event => {
                 if (event.type !== 'remove') return;
-                this.exParticipants.push({u: event.participant, t: event.timestamp});
+                this.exParticipants[event.participant] = event.timestamp;
             });
         }
 
@@ -42,7 +43,7 @@ var Peerio = this.Peerio || {};
     function applyLocalData(data) {
         _.assign(this, data);
         this.participants = JSON.parse(this.participants) || [];
-        this.exParticipants = JSON.parse(this.exParticipants) || [];
+        this.exParticipants = JSON.parse(this.exParticipants) || {};
         return this;
     }
 
@@ -53,9 +54,11 @@ var Peerio = this.Peerio || {};
     function buildProperties() {
         this.lastMoment = moment(this.lastTimestamp);
         this.createdMoment = moment(this.createdTimestamp);
-        this.exParticipants.forEach((p)=> {
-            p.moment = moment(p.t);
-        });
+        this.exParticipantsArr = [];
+        for (var username in this.exParticipants) {
+            this.exParticipants[username] = moment(this.exParticipants[username]);
+            this.exParticipantsArr.push(username);
+        }
 
         return this;
     }
@@ -122,11 +125,19 @@ var Peerio = this.Peerio || {};
      * @returns {Promise<this>}
      */
     function load() {
-        return Peerio.SqlQueries.getConversation(this.id)
+        var p = Peerio.SqlQueries.getConversation(this.id)
             .then(res => {
                 this.applyLocalData(res.rows.item(0));
                 this.buildProperties(this);
-                return this;
+            });
+
+        return Promise.all([p, this.loadReadPositions()]).return(this);
+    }
+
+    function loadReadPositions() {
+        return Peerio.SqlQueries.getReadPositions(this.id)
+            .then(positions => {
+                this.readPositions = positions;
             });
     }
 
@@ -169,6 +180,46 @@ var Peerio = this.Peerio || {};
             });
     }
 
+    //todo: queue calls
+    var markingUpTo = null;
+
+    function markAsRead(endSeqID) {
+        if (!this.readPositions || !endSeqID) return;
+        if (markingUpTo === endSeqID) return;
+
+        var startSeqID = this.readPositions[Peerio.user.username];
+        if (!is.number(startSeqID)) startSeqID = 0;
+        if (startSeqID >= endSeqID) return;
+
+        markingUpTo = endSeqID;
+
+        var toSend = [];
+        return Peerio.SqlQueries.getReceipts(this.id, startSeqID + 1, endSeqID, Peerio.user.username)
+            .then(res => {
+                var promises = [];
+                for (var i = 0; i < res.rows.length; i++) {
+                    (function () {
+                        var msg = res.rows.item(i);
+                        var p = Peerio.Crypto.encryptReceipt(msg.receipt.toString() + Date.now(), msg.sender)
+                            .then(function (receipt) {
+                                toSend.push({id: msg.id, encryptedReturnReceipt: receipt});
+                            })
+                            .catch(L.error);
+                        promises.push(p);
+                    })();
+                }
+                return Promise.all(promises);
+            })
+            .then(function () {
+                if (!toSend.length) return;
+                return Peerio.Net.readMessages(toSend);
+            })
+            .finally(()=>{
+                markingUpTo = null;
+            })
+
+    }
+
     function buildFileHeaders(recipients, fileIDs) {
         return Promise.map(fileIDs, function (id) {
             var file = Peerio.user.files.dict[id];
@@ -196,11 +247,13 @@ var Peerio = this.Peerio || {};
             id: id,
             load: load,
             loadStats: loadStats,
+            loadReadPositions: loadReadPositions,
             applyServerData: applyServerData,
             applyLocalData: applyLocalData,
             insert: insert,
             updateParticipants: updateParticipants,
             reply: reply,
+            markAsRead: markAsRead,
             //--
             buildProperties: buildProperties,
             loadMessageCount: loadMessageCount,

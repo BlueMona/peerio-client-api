@@ -16,7 +16,7 @@ Peerio.FileSystem.init = function () {
   L.verbose('Peerio.FileSystem.init() start');
 
   var api = Peerio.FileSystem;
-  delete Peerio.FileSystem.init;
+  Peerio.FileSystem.init = undefined;
 
   var filesDirectoryName = 'files';
   var filesDirectoryEntry; // lazy init cache
