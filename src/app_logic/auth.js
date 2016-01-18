@@ -25,6 +25,7 @@ var Peerio = this.Peerio || {};
 
     //-- Public API ------------------------------------------------------------------------------------------------------
     Peerio.Auth = {
+        getPinForUser: getPinForUser,
         getSavedKeys: getSavedKeys,
         generateKeys: generateKeys,
         signup: signup,
@@ -39,6 +40,9 @@ var Peerio = this.Peerio || {};
     // tinyDB key for last logged in user
     var lastLoginKey = 'lastLogin';
 
+    function getPinForUser(username) {
+        return Peerio.TinyDB.getObject(username + 'PIN');
+    }
     /**
      * Tries to retrieve saved keys encrypted with passcode
      * @param username
@@ -50,7 +54,7 @@ var Peerio = this.Peerio || {};
 
         L.info('Checking for PIN existence.');
 
-        return Peerio.TinyDB.getObject(username + 'PIN')
+        return getPinForUser(username)
             .then(function (encrypted) {
                 if (!encrypted) {
                     L.info('PIN is not set.');
