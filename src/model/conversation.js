@@ -201,10 +201,10 @@ var Peerio = this.Peerio || {};
                     (function () {
                         var msg = res.rows.item(i);
                         var p = Peerio.Crypto.encryptReceipt(msg.receipt.toString() + Date.now(), msg.sender)
+                            .catch(L.error)
                             .then(function (receipt) {
-                                toSend.push({id: msg.id, encryptedReturnReceipt: receipt});
-                            })
-                            .catch(L.error);
+                                toSend.push({id: msg.id, encryptedReturnReceipt: receipt||'not in contacts'});
+                            });
                         promises.push(p);
                     })();
                 }

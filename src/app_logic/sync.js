@@ -6,7 +6,7 @@ var Peerio = this.Peerio || {};
     //-- PUBLIC API ------------------------------------------------------------------------------------------------------
     Peerio.Sync = {
         syncMessages: syncMessages,
-        syncMessagesDebounced: _.debounce(syncMessages, 2000, {maxWait: 6000}),
+        syncMessagesThrottled: _.throttle(syncMessages, 3000),
         interrupt: interrupt
     };
 
@@ -224,9 +224,15 @@ var Peerio = this.Peerio || {};
                 Peerio.SqlQueries.setConversationsCreatedTimestamp(),
                 Peerio.SqlQueries.updateConversationsLastTimestamp(),
                 Peerio.SqlQueries.updateConversationsHasFiles(),
-                updateReadPositions(),
-                Peerio.SqlQueries.updateConversationsRead(Peerio.user.username)
+                updateReadPositions()
             ])
+            .then(()=>Peerio.SqlQueries.updateConversationsRead(Peerio.user.username))
+            .then(()=>{
+                Peerio.SqlQueries.getConversationsUnreadState()
+                .then(unread=>{
+                   Peerio.user.setConversationsUnreadState(unread);
+                });
+            })
             .tap(()=> {
                 L.verbose('Mass-update conversations done.');
             })

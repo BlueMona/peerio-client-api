@@ -76,7 +76,6 @@ var Peerio = this.Peerio || {};
 
     // TODO: this query is too heavy
     api.updateConversationsRead = function (username) {
-        console.log('USERNAME '+username);
         return Peerio.SqlDB.user.executeSql(
             'UPDATE conversations SET ' +
             'unread = seqID > coalesce((SELECT pos.seqID FROM read_positions AS pos WHERE pos.conversationID=id AND pos.username=?), 0)',
@@ -141,21 +140,21 @@ var Peerio = this.Peerio || {};
 
     api.getConversationsRange = function (fromSeqID, toSeqID) {
         return Peerio.SqlDB.user.executeSql(
-            'SELECT * FROM conversations WHERE seqID>=? and seqID<=? ORDER BY seqID DESC',
+            'SELECT * FROM conversations WHERE seqID>=? and seqID<=? ORDER BY unread DESC, seqID DESC',
             [fromSeqID, toSeqID]
         );
     };
 
     api.getNextConversationsPage = function (lastSeqID, pageSize) {
         return Peerio.SqlDB.user.executeSql(
-            'SELECT * FROM conversations WHERE seqID<? ORDER BY seqID DESC LIMIT ?',
+            'SELECT * FROM conversations WHERE seqID<? ORDER BY unread DESC, seqID DESC  LIMIT ?',
             [lastSeqID, pageSize]
         );
     };
 
     api.getPrevConversationsPage = function (lastSeqID, pageSize) {
         return Peerio.SqlDB.user.executeSql(
-            'SELECT * FROM conversations WHERE seqID>? ORDER BY seqID ASC LIMIT ?',
+            'SELECT * FROM conversations WHERE seqID>? ORDER BY unread ASC, seqID ASC  LIMIT ?',
             [lastSeqID, pageSize]
         );
     };
@@ -176,6 +175,11 @@ var Peerio = this.Peerio || {};
 
     api.getConversationMessageCount = function (conversationID) {
         return Peerio.SqlDB.user.executeSql('SELECT count(*) AS msgCount FROM messages WHERE conversationID=?', [conversationID]);
+    };
+
+    api.getConversationsUnreadState = function(){
+      return Peerio.SqlDB.user.executeSql('SELECT EXISTS(SELECT * FROM conversations WHERE unread=1) AS unread')
+        .then(res=>!!res.rows.item(0).unread);
     };
 
 
