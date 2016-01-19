@@ -140,21 +140,21 @@ var Peerio = this.Peerio || {};
 
     api.getConversationsRange = function (fromSeqID, toSeqID) {
         return Peerio.SqlDB.user.executeSql(
-            'SELECT * FROM conversations WHERE seqID>=? and seqID<=? ORDER BY unread DESC, seqID DESC',
+            'SELECT * FROM conversations WHERE seqID>=? and seqID<=? ORDER BY seqID DESC',
             [fromSeqID, toSeqID]
         );
     };
 
     api.getNextConversationsPage = function (lastSeqID, pageSize) {
         return Peerio.SqlDB.user.executeSql(
-            'SELECT * FROM conversations WHERE seqID<? ORDER BY unread DESC, seqID DESC  LIMIT ?',
+            'SELECT * FROM conversations WHERE seqID<? ORDER BY seqID DESC  LIMIT ?',
             [lastSeqID, pageSize]
         );
     };
 
     api.getPrevConversationsPage = function (lastSeqID, pageSize) {
         return Peerio.SqlDB.user.executeSql(
-            'SELECT * FROM conversations WHERE seqID>? ORDER BY unread ASC, seqID ASC  LIMIT ?',
+            'SELECT * FROM conversations WHERE seqID>? ORDER BY seqID ASC  LIMIT ?',
             [lastSeqID, pageSize]
         );
     };
