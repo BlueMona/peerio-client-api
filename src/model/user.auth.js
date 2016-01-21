@@ -28,6 +28,22 @@ Peerio.User.addAuthModule = function (user) {
                 user.PINIsSet = true;
                 return keys;
             });
+        // making sure that the app is already connected
+        action = action.then( (keys) => {
+            return new Promise( (resolve, reject) => {
+                var maxTries = 5;
+                var currentTry = 0;
+                var timeoutCheck = function() {
+                    if( !Peerio.AppState.connected && (++currentTry < maxTries) ) {
+                        L.info('Not connected. Waiting');
+                        window.setTimeout(timeoutCheck, 1000);
+                        return;
+                    }
+                    resolve(keys);
+                };
+                timeoutCheck();
+            });
+        });
         return action
             .then((keys) => {
                 user.publicKey = keys.publicKey;
