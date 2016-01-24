@@ -71,7 +71,7 @@ var Peerio = this.Peerio || {};
         }.bind(user);
 
 
-        Peerio.Net.subscribe('seqIdUpdated', Peerio.Sync.syncMessagesThrottled);
+        Peerio.Net.subscribe('seqIDUpdated', Peerio.Sync.syncMessagesThrottled);
 
         user.stopAllServerEvents = function () {
             Peerio.Sync.interrupt();

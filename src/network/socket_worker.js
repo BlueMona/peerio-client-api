@@ -38,7 +38,7 @@ function initialize(cfg) {
         'sentContactRequestRemoved',
         'receivedContactRequestRemoved',
 
-        'seqIdUpdated',
+        'seqIDUpdated',
 
         'fileAdded',
         'fileRemoved',
