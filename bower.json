@@ -36,7 +36,7 @@
     "node-uuid": "~1.4.3",
     "scrypt-async": "~1.2.0",
 	"socket.io-client": "~1.4.4",
-    "L.js": "~1.1.0",
+    "peerio-log": "~1.2.0",
     "is_js": "*"
   },
   "private": true,
