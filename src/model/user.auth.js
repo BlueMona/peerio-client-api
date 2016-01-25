@@ -9,16 +9,8 @@ Peerio.User = Peerio.User || {};
 
 Peerio.User.addAuthModule = function (user) {
     'use strict';
-    user.login = function (passphraseOrPIN, keyPair) {
-        var action = keyPair ? 
-            Peerio.Crypto.getPublicKeyString(keyPair.publicKey).then(
-                (publicKey) => { 
-                    return { 
-                        keyPair: keyPair,
-                        publicKey: publicKey
-                    };
-            }) :
-            Peerio.Auth.getSavedKeys(user.username, passphraseOrPIN)
+    user.login = function (passphraseOrPIN, isSystemPin) {
+        var action = Peerio.Auth.getSavedKeys(user.username, passphraseOrPIN, isSystemPin)
             .then(keys => {
                 if (keys === true || keys === false) {
                     user.PINIsSet = keys;
@@ -83,16 +75,16 @@ Peerio.User.addAuthModule = function (user) {
 
     }.bind(user);
 
-    user.setPIN = function (pin) {
-        return Peerio.Auth.setPIN(pin, user.username, user.keyPair)
+    user.setPIN = function (pin, isSystemPin) {
+        return Peerio.Auth.setPIN(pin, user.username, user.keyPair, isSystemPin)
             .then(() => {
                 user.PINIsSet = true;
                 Peerio.Action.settingsUpdated();
             });
     }.bind(user);
 
-    user.removePIN = function () {
-        return Peerio.Auth.removePIN(user.username).then(()=> {
+    user.removePIN = function (isSystemPin) {
+        return Peerio.Auth.removePIN(user.username, isSystemPin).then(()=> {
             user.PINIsSet = false;
             Peerio.Action.settingsUpdated();
         });
