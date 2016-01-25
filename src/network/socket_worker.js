@@ -62,7 +62,7 @@ function initialize(cfg) {
 
     function createSocketClient() {
         killSocketClient();
-        L.info('Creating socket.io instance');
+        L.info('Creating socket.io instance: {0}', cfg.webSocketServer);
         // creating socket.io client instance
         self.peerioSocket = io.connect(cfg.webSocketServer, {transports: ['websocket'], forceNew: true});
         // socket events should be passed to UI thread

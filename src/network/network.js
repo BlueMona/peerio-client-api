@@ -12,7 +12,7 @@ Peerio.Net.init = function () {
     var API_VERSION = '2.1.0';
 
     var api = Peerio.Net;
-    Peerio.Net.init=undefined;
+    Peerio.Net.init = undefined;
     var hasProp = Peerio.Util.hasProp;
 
     //-- SOCKET EVENT HANDLING, AUTH & CONNECTION STATE ----------------------------------------------------------------
@@ -54,7 +54,7 @@ Peerio.Net.init = function () {
     });
 
     function onConnect() {
-        sendToSocket('setApiVersion', {version: API_VERSION}, true)
+        sendToSocket('setApiVersion', {version: API_VERSION}, {ignoreConnectionState: true})
             .then(function () {
                 connected = true;
                 window.setTimeout(Peerio.Action.connected, 0);
@@ -156,16 +156,20 @@ Peerio.Net.init = function () {
     }
 
     //-- HELPERS -------------------------------------------------------------------------------------------------------
+    var empty = {};
     /**
      *  generalized DRY function to use from public api functions
      *  @param {string} name - message name
      *  @param {Object} [data] - object to send
-     *  @param {boolean} [ignoreConnectionState] - only setApiVersion needs it, couldn't find more elegant way
-     *  @param {Array} [transfer] - array of objects to transfer to worker (object won't be available on this thread anymore)
-     *  @param {boolean} [ignoreTimeout] - tells our function to ignore timeout completely. useful for file uploads
+     *  @param {Object} [options]
+     *  @param {boolean} [options.ignoreConnectionState] - only setApiVersion needs it, couldn't find more elegant way
+     *  @param {Array} [options.transfer] - array of objects to transfer to worker (object won't be available on this thread anymore)
+     *  @param {boolean} [options.ignoreTimeout] - tells our function to ignore timeout completely. useful for file uploads
+     *  @param {Number} [options.customTimeout] - custom timeout length for this call, in milliseconds
      *  @returns {Promise}
      */
-    function sendToSocket(name, data, ignoreConnectionState, transfer, ignoreTimeout) {
+    function sendToSocket(name, data, options) {
+        var {ignoreConnectionState, transfer, ignoreTimeout, customTimeout} = options || empty;
         if (!connected && !ignoreConnectionState) return Promise.reject(new Error('Not connected.'));
         // unique (within reasonable time frame) promise id
         var id = null;
@@ -177,7 +181,7 @@ Peerio.Net.init = function () {
             });
 
         if (!ignoreTimeout) {
-            promise = promise.timeout(Peerio.Config.serverResponseTimeout);
+            promise = promise.timeout(customTimeout || Peerio.Config.serverResponseTimeout);
         }
 
         return promise
@@ -204,9 +208,7 @@ Peerio.Net.init = function () {
                     cached2FARequest = cached2FARequest || {
                             name: name,
                             data: data,
-                            ignoreConnectionState: ignoreConnectionState,
-                            transfer: transfer,
-                            ignoreTimeout: ignoreTimeout
+                            options: options
                         };
 
                     // for debugging
@@ -215,9 +217,7 @@ Peerio.Net.init = function () {
                             Peerio.Action.twoFactorAuthRequested(nestedResolve, nestedReject);
                         })
                             .then(() => {
-                                return sendToSocket(cached2FARequest.name,
-                                    cached2FARequest.data, cached2FARequest.ignoreConnectionState,
-                                    cached2FARequest.transfer, cached2FARequest.ignoreTimeout);
+                                return sendToSocket(cached2FARequest.name, cached2FARequest.data, cached2FARequest.options);
                             })
                             .finally(() => {
                                 cached2FARequest = null;
@@ -496,7 +496,7 @@ Peerio.Net.init = function () {
     /**
      * Redeem coupon code
      */
-    api.redeemCouponCode = function(code) {
+    api.redeemCouponCode = function (code) {
         return sendToSocket('redeemCouponCode', {code: code});
     };
 
@@ -553,7 +553,7 @@ Peerio.Net.init = function () {
      * Retrieve list of conversations.
      */
     api.getAllConversations = function () {
-        return sendToSocket('getAllConversations', {});
+        return sendToSocket('getAllConversations');
     };
 
     /**
@@ -606,7 +606,7 @@ Peerio.Net.init = function () {
      * @param {string} chunk.clientFileID
      */
     api.uploadFileChunk = function (chunk) {
-        return sendToSocket('uploadFileChunk', chunk, false, [chunk.ciphertext]);
+        return sendToSocket('uploadFileChunk', chunk, {transfer: [chunk.ciphertext]});
     };
 
     /**
@@ -621,7 +621,7 @@ Peerio.Net.init = function () {
      * Retrieve a list of all user files.
      */
     api.getFiles = function () {
-        return sendToSocket('getFiles');
+        return sendToSocket('getFiles', null, {customTimeout: 45000});
     };
 
     /**
