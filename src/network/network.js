@@ -500,6 +500,15 @@ Peerio.Net.init = function () {
         return sendToSocket('redeemCouponCode', {code: code});
     };
 
+    /**
+     * Get invitiation code for the logged in user 
+     * @returns object of type {inviteCode: "ZDFGTK1232KDVN"} 
+     */
+    api.getInviteCode = function () {
+        return sendToSocket('getInviteCode');
+    };
+
+
 
     //------------------------------------------------------------------------------------------------------------------
     //-- MESSAGES API METHODS ------------------------------------------------------------------------------------------

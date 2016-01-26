@@ -88,5 +88,10 @@ var Peerio = this.Peerio || {};
         user.redeemCouponCode = function(code) {
             return Peerio.Net.redeemCouponCode(code);
         };
+
+
+        user.getInviteCode = function() {
+            return Peerio.Net.getInviteCode();
+        };
     };
 })();
