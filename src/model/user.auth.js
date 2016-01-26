@@ -78,14 +78,16 @@ Peerio.User.addAuthModule = function (user) {
     user.setPIN = function (pin, isSystemPin) {
         return Peerio.Auth.setPIN(pin, user.username, user.keyPair, isSystemPin)
             .then(() => {
-                user.PINIsSet = true;
+                // TODO: maybe some nicer way to separate system pin of user pin
+                if(!isSystemPin) user.PINIsSet = true;
                 Peerio.Action.settingsUpdated();
             });
     }.bind(user);
 
     user.removePIN = function (isSystemPin) {
         return Peerio.Auth.removePIN(user.username, isSystemPin).then(()=> {
-            user.PINIsSet = false;
+            // TODO: maybe some nicer way to separate system pin of user pin
+            if(!isSystemPin) user.PINIsSet = false;
             Peerio.Action.settingsUpdated();
         });
     }.bind(user);
