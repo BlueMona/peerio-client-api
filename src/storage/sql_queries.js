@@ -24,11 +24,12 @@ var Peerio = this.Peerio || {};
     //-- CONVERSATIONS WRITE -------------------------------------------------------------------------------------------
     api.createConversation = function (id, seqID, originalMsgID, participants, exParticipants, lastTimestamp) {
         return Peerio.SqlDB.user.executeSql(
-            'INSERT OR IGNORE INTO conversations VALUES(?,?,?,?,?,?,?,?,?,?)',
+            'INSERT OR IGNORE INTO conversations VALUES(?,?,?,?,?,?,?,?,?,?,?)',
             [
                 id,
                 seqID,
                 originalMsgID,
+                null,
                 null,
                 null,
                 serializeArray(participants),
@@ -50,7 +51,7 @@ var Peerio = this.Peerio || {};
             ]);
     };
 
-    api.updateConversationSubject = function (subject, messageID) {
+    api.updateConversationFromFirstMsg = function (subject, messageID) {
         return Peerio.SqlDB.user.executeSql(
             'UPDATE conversations SET subject = ? WHERE subject is null and originalMsgID = ?',
             [subject, messageID]
@@ -138,6 +139,24 @@ var Peerio = this.Peerio || {};
 
     //-- CONVERSATIONS READ --------------------------------------------------------------------------------------------
 
+    api.getConversationsSecurityInfo = function () {
+        return Peerio.SqlDB.user.executeSql('select c.id, m.id as msgID, c.secretConversationID, c.originalMsgID, m.innerIndex, m.timestamp from conversations c left join messages m on c.originalMsgID = m.id')
+            .then(res => {
+                var ret = {};
+                for (var i = 0; i < res.rows.length; i++) {
+                    var item = res.rows.item(i);
+                    ret[item.id] = item;
+                    item.empty = item.msgID == null; // conversation does not have messages (in our cache)
+                    item.innerIndex = item.innerIndex || 0;
+                    item.timestamp = item.timestamp || 0;
+                    // freeing memory
+                    item.id = undefined;
+                    item.msgID = undefined;
+                }
+
+                return ret;
+            });
+    };
     api.getConversationsRange = function (fromSeqID, toSeqID) {
         return Peerio.SqlDB.user.executeSql(
             'SELECT * FROM conversations WHERE seqID>=? and seqID<=? ORDER BY seqID DESC',
@@ -177,19 +196,20 @@ var Peerio = this.Peerio || {};
         return Peerio.SqlDB.user.executeSql('SELECT count(*) AS msgCount FROM messages WHERE conversationID=?', [conversationID]);
     };
 
-    api.getConversationsUnreadState = function(){
-      return Peerio.SqlDB.user.executeSql('SELECT EXISTS(SELECT * FROM conversations WHERE unread=1) AS unread')
-        .then(res=>!!res.rows.item(0).unread);
+    api.getConversationsUnreadState = function () {
+        return Peerio.SqlDB.user.executeSql('SELECT EXISTS(SELECT * FROM conversations WHERE unread=1) AS unread')
+            .then(res=>!!res.rows.item(0).unread);
     };
 
 
     //-- MESSAGES WRITE -------------------------------------------------------------------------------------------------
-    api.createMessage = function (id, seqID, conversationID, sender, timestamp, body, files, receipt) {
+    api.createMessage = function (id, seqID, index, conversationID, sender, timestamp, body, files, receipt) {
         return Peerio.SqlDB.user.executeSql(
-            'INSERT OR IGNORE INTO messages VALUES(?,?,?,?,?,?,?,?)',
+            'INSERT OR IGNORE INTO messages VALUES(?,?,?,?,?,?,?,?,?)',
             [
                 id,
                 seqID,
+                index,
                 conversationID,
                 sender,
                 timestamp,

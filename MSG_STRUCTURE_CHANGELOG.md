@@ -3,12 +3,6 @@
 
 ## current (update every time it evolves)
 
-There is 2 types of messages: 
-    * regular message
-    * system message - read receipts and 'conversation leave' events
-    
-#### common part
-
 ```
 version: "1.1.0",
 metadataVersion: "1.1.0"
@@ -16,26 +10,12 @@ secretConversationID: "string",
 innerIndex: 0,
 timestamp: 0,
 participants: ["username1", "username2"],
-```
-
-#### regular message
-```
 subject: "message subject", // in next versions leave this field for 1st message only
 message: "message body",
 receipt: "random base64 secret string", // deprecated, remove after desktop rewrite
 fileIDs: [],
-sequence: 0 // deprecated, remove in next version
 ```
 
-### system message
-```
-systemMessageType: 0
-```
-
-## V2.0.0
-
-**Removed**
-sequence: 0 // removal of this field breaks compatibility with older Peerio versions 
 
 ## V1.1.0
 This version improves conversation security.
@@ -52,11 +32,7 @@ timestamp: 0  // encrypted timestamp
 **Removed**
 ```
 ack: "deprecated"
-```
-
-**Deprecated**, but not yet removed for backwards compatibility. Remove in next versions.
-```
-sequence: 0  
+sequence: 0 // removal of this field breaks compatibility with older Peerio versions 
 ```
 
 ## V1.0.0 (initial)

@@ -22,6 +22,7 @@ var Peerio = this.Peerio || {};
         this.seqID = data.seqID;
         this.id = data.id;
         this.originalMsgID = data.original;
+        this.version = data.version || '1.0.0';
         this.lastTimestamp = data.lastTimestamp;
         this.participants = _.pull(data.participants, Peerio.user.username);
         if (data.events) {
@@ -155,10 +156,24 @@ var Peerio = this.Peerio || {};
         if (recipients.indexOf(Peerio.user.username) < 0)
             recipients.push(Peerio.user.username);
 
-        return Peerio.Message.encrypt(recipients, typeof(subject) === 'undefined' ? '' : subject, body, fileIDs)
+        var index, secretConversationID;
+        if (this.id) {
+            var sec = Peerio.Sync.securityCache[this.id];
+            if (!sec) return Promise.reject('Conversation not found in security cache.');
+            index = sec.innerIndex;//might be changed while encrypting
+            secretConversationID = sec.secretConversationID;
+        } else {
+            index = 0;
+            secretConversationID = uuid.v4();
+        }
+
+        return Peerio.Message.encrypt(recipients, typeof(subject) === 'undefined' ? '' : subject, body, fileIDs, index, secretConversationID)
             .then(encrypted => {
                 if (!encrypted.header || !encrypted.body) return Promise.reject('Message encryption failed.');
                 var ret = {
+                    version: '1.1.0',
+                    outerIndex: index,
+                    timestamp: Date.now(),
                     recipients: recipients,
                     header: encrypted.header,
                     body: encrypted.body,
@@ -203,7 +218,7 @@ var Peerio = this.Peerio || {};
                         var p = Peerio.Crypto.encryptReceipt(msg.receipt.toString() + Date.now(), msg.sender)
                             .catch(L.error)
                             .then(function (receipt) {
-                                toSend.push({id: msg.id, encryptedReturnReceipt: receipt||'not in contacts'});
+                                toSend.push({id: msg.id, encryptedReturnReceipt: receipt || 'not in contacts'});
                             });
                         promises.push(p);
                     })();
@@ -214,7 +229,7 @@ var Peerio = this.Peerio || {};
                 if (!toSend.length) return;
                 return Peerio.Net.readMessages(toSend);
             })
-            .finally(()=>{
+            .finally(()=> {
                 markingUpTo = null;
             })
 

@@ -13,6 +13,7 @@ Peerio.SqlMigrations = Peerio.SqlMigrations || [];
                 'id TEXT PRIMARY KEY,' +            // conversationID
                 'seqID INTEGER,' +                  // last sequence id for this conversation
                 'originalMsgID TEXT, ' +            // messageID this conversation started with
+                'secretConversationID TEXT, ' +     // generated in original message and shared across all the following ones
                 'subject TEXT,' +                   // subject from original message
                 'createdTimestamp INTEGER,' +       // original message timestamp
                 'participants TEXT,' +              // current participants array ['username','username'] excluding current user
@@ -31,12 +32,13 @@ Peerio.SqlMigrations = Peerio.SqlMigrations || [];
                 'CREATE TABLE messages (' +
                 'id TEXT PRIMARY KEY,' + // messageID
                 'seqID INTEGER,' +       // sequence id for this message
+                'innerIndex INTEGER,' +       // message # in conversation (collisions allowed for different senders)
                 'conversationID TEXT,' + // conversation this message belongs to
-                'sender TEXT,' +           // username
-                'timestamp INTEGER,' +     // timestamp
+                'sender TEXT,' +         // username
+                'timestamp INTEGER,' +   // timestamp
                 'body TEXT,' +
-                'files TEXT, ' +      // file id array ['id', 'id']
-                'receipt TEXT' +           // username
+                'files TEXT, ' +         // file id array ['id', 'id']
+                'receipt TEXT' +         // username
                 ') WITHOUT ROWID'
             );
 
