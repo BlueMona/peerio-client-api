@@ -20,6 +20,8 @@ var Peerio = this.Peerio || {};
         message_read: processMessageReadEntry
     };
 
+    // 20 Feb 2016, aprrox. date at which all clients should be able to speak '1.1.0' protocol
+    var protocolChangeDate = 1458424800000;
 
     // index entries will be loaded and processed in batches
     var batch = 15;
@@ -59,6 +61,99 @@ var Peerio = this.Peerio || {};
 
     resetNotify();
 
+    var securityCache = null;
+
+    function populateSecurityCache() {
+        if (securityCache) return Promise.resolve();
+        return Peerio.SqlQueries.getConversationsSecurityInfo().then(data => Peerio.Sync.securityCache = securityCache = data);
+    }
+
+    function verifyAndAddToSecurityCache(conversation) {
+        securityCache[conversation.id] = {
+            secretConversationID: null,
+            originalMsgID: conversation.originalMsgID,
+            innerIndex: 0,
+            timestamp: 0,
+            empty: true
+        };
+        return true;
+    }
+
+    function verifyAndUpdateSecurityCache(msg) {
+        var sec = securityCache[msg.conversationID];
+        if (!sec) {
+            L.error('Security cache for message id {0} not found', msg.id);
+            return false;
+        }
+        // initializing security cache item
+        if (sec.empty) {
+            if (sec.originalMsgID !== msg.id) {
+                L.error('First received message({0}) for conversation({1}) does not match original message id({2}) ',
+                    msg.id, msg.conversationID, sec.originalMsgID);
+                return false;
+            }
+            sec.empty = false;
+            sec.timestamp = msg.timestamp || 0;
+            sec.innerIndex = msg.innerIndex || 0;
+            sec.secretConversationID = msg.secretConversationID;
+        }
+
+        // validating message
+        if (msg.metadataVersion !== '1.0.0' && msg.metadataVersion !== '1.1.0') {
+            L.error('Unknown message metadata version {0}', msg.metadataVersion);
+            return false;
+        }
+
+        if (msg.metadataVersion === '1.0.0') {
+            if (msg.outerTimestamp > protocolChangeDate) {
+                L.error('Obsolete metadata version');
+                return false;
+            }
+            return true;
+        }
+
+        if (msg.encryptedMetadataVersion && msg.metadataVersion !== msg.encryptedMetadataVersion) {
+            L.error('Message metadata version {0} does not match metadata version in encrypted message {1}',
+                msg.metadataVersion, msg.encryptedMetadataVersion);
+            return false;
+        }
+
+        if (Math.abs(msg.timestamp - msg.outerTimestamp) > 120000) {
+            L.error('Metadata and message timestamps too far from each other.');
+            return false;
+        }
+
+        if (sec.secretConversationID && !msg.secretConversationID) {
+            L.error('secretConversationID missing');
+            return false;
+        }
+
+        if (msg.secretConversationID !== sec.secretConversationID) {
+            L.error('secretConversationID mismatch');
+            return false;
+        }
+
+        if (msg.innerIndex !== msg.outerIndex) {
+            L.error('index mismatch');
+            return false;
+        }
+
+        if (msg.innerIndex - sec.innerIndex > 1) {
+            L.error('index sequence broken');
+            return false;
+        }
+
+        if (msg.timestamp < sec.timestamp && sec.timestamp - msg.timestamp > 120000) {
+            L.error('timestamp smaller then previous message');
+            return false;
+        }
+
+        sec.innerIndex = msg.innerIndex;
+        sec.timestamp = msg.timestamp;
+        return true;
+
+    }
+
     function syncMessages() {
         if (running) {
             runAgain = true;
@@ -72,7 +167,7 @@ var Peerio = this.Peerio || {};
         runAgain = false;
         Peerio.Action.syncProgress(0, 0, progressMsg);
 
-        return Promise.all([Peerio.SqlQueries.getMaxSeqID(), Peerio.Net.getMaxMessageIndexID()])
+        return Promise.all([Peerio.SqlQueries.getMaxSeqID(), Peerio.Net.getMaxMessageIndexID(), populateSecurityCache()])
             .spread((localMax, serverMax)=> {
                 if (localMax === serverMax) return;
                 var progressStartAt = localMax;
@@ -80,7 +175,7 @@ var Peerio = this.Peerio || {};
                 // building a promise that we'll settle manually
                 // we don't want to use chain here, because it might get really long, consuming ram and cpu
                 return new Promise((resolve, reject) => {
-                    // asyc recursive function that executes processing of one page at a time
+                    // async recursive function that executes processing of one page at a time
                     var callProcess = () => {
                         Peerio.Action.syncProgress(localMax - progressStartAt, progressEndAt, progressMsg);
                         if (interruptRequested) {
@@ -88,7 +183,7 @@ var Peerio = this.Peerio || {};
                             reject('Sync interrupted.');
                             return;
                         }
-                        return processPage(localMax + 1, Math.min(serverMax, localMax + batch))
+                        processPage(localMax + 1, Math.min(serverMax, localMax + batch))
                             .then(()=> {
                                 // moving to next page
                                 localMax += batch;
@@ -116,9 +211,6 @@ var Peerio = this.Peerio || {};
             });
     }
 
-    // just to avoid generating 100500 log messages about unknown types in index
-    var unknownTypes = [];
-
     function processPage(from, to) {
         var chain = Promise.resolve();
         // load from server
@@ -129,13 +221,11 @@ var Peerio = this.Peerio || {};
                     var mEntry = entries[id];
                     (function () { // closure to capture mutable vars
                         var entry = mEntry;
-                        // todo: temp hack to ignore wrong index entries
-                        if (entry.type === 'message' && entry.deleted == true) return;
+                        // hack to ignore wrong index entries, happens sometimes
+                        if (entry.deleted === true) return;
                         entry.entity.seqID = id;
                         var processor = entryProcessors[entry.type];
                         if (!processor) {
-                            if (entry.type in unknownTypes) return;
-                            unknownTypes.push(entry.type);
                             L.error('Unknown index type: {0}', entry.type);
                             return;
                         }
@@ -147,9 +237,14 @@ var Peerio = this.Peerio || {};
     }
 
     function processConversationEntry(entry) {
-        L.silly('{0}: Processing new conversation entry.', entry.entity.seqID);
-        addNotify(entry.entity.id, 'updated');
-        return Peerio.Conversation().applyServerData(entry.entity).insert();
+        var data = entry.entity;
+        L.silly('{0}: Processing new conversation entry.', data.seqID);
+        addNotify(data.id, 'updated');
+
+        var c = Peerio.Conversation().applyServerData(data);
+        if (verifyAndAddToSecurityCache(c)) {
+            return c.insert();
+        }
     }
 
     function processConversationParticipantsEntry(entry) {
@@ -170,27 +265,32 @@ var Peerio = this.Peerio || {};
         addNotify(entry.entity.conversationID, 'updated');
         var msg = Peerio.Message();
         return msg.applyServerData(entry.entity)
-            .then(() => msg.insert())
+            .then(() => {
+                if (verifyAndUpdateSecurityCache(msg))
+                    return msg.insert();
+                else
+                    return Promise.reject();
+            })
             .then(() => {
                 msg.receipts.forEach(username => addToReadPositionsCache(msg.conversationID, username, entry.entity.seqID))
                 if (msg.sender == Peerio.user.username)
                     addToReadPositionsCache(msg.conversationID, Peerio.user.username, entry.entity.seqID)
             })
             .then(() => {
-                // 1. old format conversations might not have innerIndex
+                // 1. old format conversations might not have index
                 // but if it's there and > 0 - it's not the original message
                 // 3. sequence is from old format
-                // 4. both innerIndex and sequence can be used to detect first message due to migration transition of old conversation
+                // 4. both index and sequence can be used to detect first message due to migration transition of old conversation
                 // 0 does not mean original message, but > 0 can be trusted t obe NOT the original one
                 if (is.number(msg.innerIndex) && msg.innerIndex > 0 || is.number(msg.sequence) && msg.sequence > 0) return;
-                // todo: trust innerIndex == 0 for new format conversations (start timestamp after migration)
+                // todo: trust index == 0 for new format conversations (start timestamp after migration)
                 if (msg.subject != null)
-                    return Peerio.SqlQueries.updateConversationSubject(msg.subject, msg.id);
+                    return Peerio.SqlQueries.updateConversationFromFirstMsg(msg.id, msg.subject, msg.secretConversationID);
             })
             .catch(err=> {
                 //todo: separate different error processing
                 //todo: detect orphaned messages
-                L.error(err);
+                if (err) L.error(err);
             });
     }
 
@@ -227,11 +327,11 @@ var Peerio = this.Peerio || {};
                 updateReadPositions()
             ])
             .then(()=>Peerio.SqlQueries.updateConversationsRead(Peerio.user.username))
-            .then(()=>{
+            .then(()=> {
                 Peerio.SqlQueries.getConversationsUnreadState()
-                .then(unread=>{
-                   Peerio.user.setConversationsUnreadState(unread);
-                });
+                    .then(unread=> {
+                        Peerio.user.setConversationsUnreadState(unread);
+                    });
             })
             .tap(()=> {
                 L.verbose('Mass-update conversations done.');

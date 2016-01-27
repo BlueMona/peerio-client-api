@@ -22,7 +22,9 @@ var Peerio = this.Peerio || {};
         this.seqID = data.seqID;
         this.conversationID = data.conversationID;
         this.sender = data.sender;
-        this.timestamp = data.timestamp;
+        this.outerTimestamp = data.timestamp;
+        this.outerIndex = data.outerIndex;
+        this.metadataVersion = data.version;
 
         return Peerio.Crypto.decryptMessage(data)
             .then(decrypted => {
@@ -33,6 +35,9 @@ var Peerio = this.Peerio || {};
                 this.receipts = decrypted.receipts;
                 this.innerIndex = decrypted.innerIndex;
                 this.sequence = decrypted.sequence;
+                this.secretConversationID = decrypted.secretConversationID;
+                this.timestamp = decrypted.timestamp || this.outerTimestamp;
+                this.encryptedMetadataVersion = decrypted.metadataVersion;
             })
             .return(this);
     }
@@ -56,6 +61,7 @@ var Peerio = this.Peerio || {};
         return Peerio.SqlQueries.createMessage(
             this.id,
             this.seqID,
+            this.innerIndex,
             this.conversationID,
             this.sender,
             this.timestamp,
@@ -82,13 +88,18 @@ var Peerio = this.Peerio || {};
         return obj;
     };
 
-    Peerio.Message.encrypt = function (recipients, subject, body, fileIDs) {
+    Peerio.Message.encrypt = function (recipients, subject, body, fileIDs, index, secretConversationID) {
         var message = {
+            version: '1.1.0',
+            metadataVersion: '1.1.0',
+            secretConversationID: secretConversationID,
+            innerIndex: index,
             message: body,
             receipt: nacl.util.encodeBase64(nacl.randomBytes(32)),
             fileIDs: fileIDs || [],
             participants: recipients,
-            sequence: 0
+            timestamp: Date.now()
+
         };
         if (subject !== null) message.subject = subject;
         return Peerio.Crypto.encryptMessage(message, recipients);

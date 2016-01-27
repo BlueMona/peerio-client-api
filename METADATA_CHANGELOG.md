@@ -40,6 +40,7 @@
 
 ```
 id: "{string} message id",
+version: "{string}",
 sender: "username",
 // receipts for this message
 recipients: [
