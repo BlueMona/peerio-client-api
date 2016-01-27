@@ -51,10 +51,10 @@ var Peerio = this.Peerio || {};
             ]);
     };
 
-    api.updateConversationFromFirstMsg = function (subject, messageID) {
+    api.updateConversationFromFirstMsg = function (messageID, subject, secretConversationID ) {
         return Peerio.SqlDB.user.executeSql(
-            'UPDATE conversations SET subject = ? WHERE subject is null and originalMsgID = ?',
-            [subject, messageID]
+            'UPDATE conversations SET subject = ?, secretConversationID = ? WHERE subject is null and originalMsgID = ?',
+            [subject, secretConversationID, messageID]
         );
     };
 
