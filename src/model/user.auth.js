@@ -13,11 +13,9 @@ Peerio.User.addAuthModule = function (user) {
         var action = Peerio.Auth.getSavedKeys(user.username, passphraseOrPIN, isSystemPin)
             .then(keys => {
                 if (keys === true || keys === false) {
-                    user.PINIsSet = keys;
                     return Peerio.Auth.generateKeys(user.username, passphraseOrPIN);
                 }
 
-                user.PINIsSet = true;
                 return keys;
             });
         // making sure that the app is already connected
@@ -50,6 +48,10 @@ Peerio.User.addAuthModule = function (user) {
             .then(() => Peerio.SqlDB.openUserDB(user.username, user.localEncryptionKey))
             .then(db => Peerio.SqlMigrator.migrateUp(db))
             .then(() => Peerio.Crypto.setDefaultUserData(user.username, user.keyPair, user.publicKey))
+            .then(() => Peerio.Auth.getPinForUser(user.username))
+            .then((pin) => {
+                user.PINIsSet = !!pin;
+            })
             .then(() => user.reSync())
             .then(()=> {
                 Peerio.Dispatcher.onAuthenticated(function () {
