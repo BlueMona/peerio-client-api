@@ -643,7 +643,7 @@ Peerio.Crypto.init = function () {
         recipients.forEach(function (recipient) {
 
             var contact = sender.contacts[recipient];
-            if (hasProp(contact, 'publicKey') && publicKeys.indexOf(contact.publicKey) < 0)
+            if (contact && hasProp(contact, 'publicKey') && publicKeys.indexOf(contact.publicKey) < 0)
                 publicKeys.push(contact.publicKey);
             else if (recipient != sender.username)
                 failed.push(recipient);

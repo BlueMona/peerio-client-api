@@ -167,6 +167,12 @@ var Peerio = this.Peerio || {};
             secretConversationID = uuid.v4();
         }
 
+        // TODO: strange hack for a conversation where
+        // everybody except the user is deleted from contacts
+        
+        if(index === 'undefined') index = 0;
+        var failed = null;
+
         return Peerio.Message.encrypt(recipients, typeof(subject) === 'undefined' ? '' : subject, body, fileIDs, index, secretConversationID)
             .then(encrypted => {
                 if (!encrypted.header || !encrypted.body) return Promise.reject('Message encryption failed.');
@@ -179,6 +185,7 @@ var Peerio = this.Peerio || {};
                     body: encrypted.body,
                     isDraft: false
                 };
+                failed = encrypted.failed;
                 if (this.id) ret.conversationID = this.id;
                 return ret;
             })
@@ -192,6 +199,10 @@ var Peerio = this.Peerio || {};
             })
             .then(function (messageDTO) {
                 return Peerio.Net.createMessage(messageDTO);
+            })
+            .then( (result) => {
+                result.failed = failed;
+                return result;
             });
     }
 
