@@ -18,9 +18,12 @@ var Peerio = this.Peerio || {};
 
         }.bind(user);
 
-        user.deleteConversation = function () {
+        user.removeConversation = function (id) {
+            return Peerio.Net.removeConversation([id])
+            .then( (resp) => {
+                if( resp.success.indexOf(id) != -1 ) return true;
+                return Promise.reject('Could not delete conversation');
+            });
         }.bind(user);
-
-
-    }
+    };
 })();
