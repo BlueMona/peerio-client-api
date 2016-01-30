@@ -31,7 +31,10 @@ var Peerio = this.Peerio || {};
     var progressMsg = 'downloading message data';
 
     var notify;
+    // to minimize update statements we cache read position data during sync
     var readPositionsCache;
+    // to minimize update statements we cache last messageID in conversation
+    var lastMessagesCache;
 
     function resetNotify() {
         notify = {};
@@ -128,6 +131,9 @@ var Peerio = this.Peerio || {};
             return false;
         }
 
+        // for first 1.1.0 message in pre-protocol 1.1.0 conversations
+        if(!sec.secretConversationID && msg.secretConversationID) sec.secretConversationID = msg.secretConversationID;
+
         if (msg.secretConversationID !== sec.secretConversationID) {
             L.error('secretConversationID mismatch');
             return false;
@@ -163,6 +169,7 @@ var Peerio = this.Peerio || {};
         L.verbose('Starting message sync.');
         resetNotify();
         readPositionsCache = {};
+        lastMessagesCache = {};
         running = true;
         runAgain = false;
         Peerio.Action.syncProgress(0, 0, progressMsg);
@@ -272,6 +279,7 @@ var Peerio = this.Peerio || {};
                     return Promise.reject();
             })
             .then(() => {
+                lastMessagesCache[msg.conversationID] = msg.id;
                 msg.receipts.forEach(username => addToReadPositionsCache(msg.conversationID, username, entry.entity.seqID))
                 if (msg.sender == Peerio.user.username)
                     addToReadPositionsCache(msg.conversationID, Peerio.user.username, entry.entity.seqID)
@@ -285,7 +293,7 @@ var Peerio = this.Peerio || {};
                 if (is.number(msg.innerIndex) && msg.innerIndex > 0 || is.number(msg.sequence) && msg.sequence > 0) return;
                 // todo: trust index == 0 for new format conversations (start timestamp after migration)
                 if (msg.subject != null)
-                    return Peerio.SqlQueries.updateConversationFromFirstMsg(msg.id, msg.subject, msg.secretConversationID);
+                    return Peerio.SqlQueries.updateConversationFromFirstMsg(msg.id, msg.subject, msg.secretConversationID || '');
             })
             .catch(err=> {
                 //todo: separate different error processing
@@ -317,6 +325,12 @@ var Peerio = this.Peerio || {};
         );
     }
 
+    function updateLastMessages(){
+        for(var id in lastMessagesCache){
+            Peerio.SqlQueries.updateConversationLastMsgID(id, lastMessagesCache[id]);
+        }
+    }
+
     function updateConversations() {
         L.B.start('Mass update');
         L.verbose('Mass-updating conversations after sync...');
@@ -324,7 +338,8 @@ var Peerio = this.Peerio || {};
                 Peerio.SqlQueries.setConversationsCreatedTimestamp(),
                 Peerio.SqlQueries.updateConversationsLastTimestamp(),
                 Peerio.SqlQueries.updateConversationsHasFiles(),
-                updateReadPositions()
+                updateReadPositions(),
+                updateLastMessages()
             ])
             .then(()=>Peerio.SqlQueries.updateConversationsRead(Peerio.user.username))
             .then(()=> {

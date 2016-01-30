@@ -35,7 +35,7 @@ var Peerio = this.Peerio || {};
                 this.receipts = decrypted.receipts;
                 this.innerIndex = decrypted.innerIndex;
                 this.sequence = decrypted.sequence;
-                this.secretConversationID = decrypted.secretConversationID;
+                this.secretConversationID = decrypted.secretConversationId; // Id => ID, yeah, fml, too late now
                 this.timestamp = decrypted.timestamp || this.outerTimestamp;
                 this.encryptedMetadataVersion = decrypted.metadataVersion;
             })
