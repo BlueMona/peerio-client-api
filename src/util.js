@@ -209,4 +209,21 @@ Peerio.Util.init = function () {
     api.toInt8Array = function(val) {
         return new Uint8Array(Object.keys(val).map( (key) => val[key] ));
     };
+
+    api.simpleSemverCompare = function(a,b){
+        if(!is.string(a) || !is.string(b)) return false;
+        a = a.split('.').map(i => +i);
+        b = b.split('.').map(i => +i);
+        if(a.length!==3 || b.length !==3) return false;
+        for(var i=0;i<3;i++){
+            if(a[i]===b[i]) continue;
+            // a < b
+            if(a[i]<b[i]) return -1;
+            // a > b
+            return 1;
+        }
+
+        // a == b
+        return 0;
+    }
 };
