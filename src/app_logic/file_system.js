@@ -13,8 +13,6 @@ Peerio.FileSystem = {};
 Peerio.FileSystem.init = function () {
   'use strict';
 
-  L.verbose('Peerio.FileSystem.init() start');
-
   var api = Peerio.FileSystem;
   Peerio.FileSystem.init = undefined;
 
@@ -195,6 +193,5 @@ Peerio.FileSystem.init = function () {
     return name;
   }
 
-  L.verbose('Peerio.FileSystem.init() end');
 
 };

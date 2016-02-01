@@ -9,8 +9,6 @@ Peerio.AppState = {};
 Peerio.AppState.init = function () {
   'use strict';
 
-  L.verbose('Peerio.AppState.init() start');
-
   var api = Peerio.AppState;
   Peerio.AppState.init=undefined;
   var d = Peerio.Dispatcher;
@@ -65,6 +63,5 @@ Peerio.AppState.init = function () {
 
   d.onAuthenticated(setState.bind(api, 'authenticated', true));
 
-  L.verbose('Peerio.AppState.init() end');
 
 };
