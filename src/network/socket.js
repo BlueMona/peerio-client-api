@@ -12,7 +12,7 @@ Peerio.Socket = {};
 Peerio.Socket.init = function () {
     'use strict';
 
-    Peerio.Socket.init=undefined;
+    Peerio.Socket.init = undefined;
     // malicious server safe hasOwnProperty function;
     var hasProp = Function.call.bind(Object.prototype.hasOwnProperty);
     // webworker instance
@@ -21,7 +21,8 @@ Peerio.Socket.init = function () {
     var eventHandler;
     // pending callbacks id:function
     var callbacks = {};
-
+    // in case of client version expiration, app logic can disable networking
+    var netDisabled;
     /**
      *  Subscribes a callback to socket events and server push notifications.
      *  This method exists to provide better layer decoupling
@@ -34,14 +35,7 @@ Peerio.Socket.init = function () {
     };
 
     Peerio.Socket.start = function () {
-        if (worker) {
-            try {
-                worker.onmessage = null;
-                worker.terminate();
-            } catch (err) {
-                L.error("Error terminating socket worker. {0}", err);
-            }
-        }
+        terminateWorker();
         // worker instance holding the actual web socket
         worker = new Worker(Peerio.Config.apiFolder + 'socket_worker_bundle.js');
         // handles messages from web socket containing worker
@@ -50,6 +44,17 @@ Peerio.Socket.init = function () {
         // initializing worker
         worker.postMessage(Peerio.Config);
     };
+
+    function terminateWorker() {
+        if (worker) {
+            try {
+                worker.onmessage = null;
+                worker.terminate();
+            } catch (err) {
+                L.error("Error terminating socket worker. {0}", err);
+            }
+        }
+    }
 
     function messageHandler(message) {
         var data = message.data;
@@ -108,17 +113,27 @@ Peerio.Socket.init = function () {
      * Restarts worker if it has hanged (happens on mobile)
      */
     Peerio.Socket.ensureWorkerAlive = function () {
+        if (netDisabled) return;
         L.info('Pinging socket worker');
         new Promise(function (resolve) {
             Peerio.Socket.send('pingWorker', null, resolve);
         })
-            .then(() =>  L.info('Socket worker is alive!'))
+            .then(() => L.info('Socket worker is alive!'))
             .timeout(2000)
             .catch(function () {
                 L.error('Socket worker not responding. Restarting.');
                 Peerio.Socket.start();
             });
     };
+
+    Peerio.Socket.disableNetworking = function () {
+        netDisabled = true;
+        var s = Peerio.Socket;
+        s.start = s.connect = s.disconnect = s.reconnect = ()=> {};
+        s.send = () => Promise.reject('Networking disabled for this Peerio client version.');
+        terminateWorker();
+        eventHandler && eventHandler('disconnect');
+    }
 
 
 };
