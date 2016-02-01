@@ -53,9 +53,54 @@ Peerio.Net.init = function () {
 
     });
 
+    function checkClientVersion() {
+        if (!Peerio.runtime.platform) {
+            L.error('Could not detect runtime platform, skipping client version check');
+            return Promise.resolve(true);
+        }
+
+        return sendToSocket('getClientVersionInfo', null, {ignoreConnectionState: true})
+            .then(versionData => {
+                var versions = versionData && versionData[Peerio.runtime.platform];
+                if (!versions) {
+                    L.error('Could not find version information for platform {0}', Peerio.runtime.platform);
+                    return true;
+                }
+
+                L.info('Checking client version {0} over server version data {1}', Peerio.runtime.version, versions);
+
+                // Assigning Peerio.runtime variables in here is a bit clumsy
+                // but there is a big chance of UI not being ready to
+                // process the updateAvailable event when app starts,
+                // because networking module starts before UI starts rendering
+                // todo: find more elegant way. AppState ?
+
+                var ltMin = Peerio.Util.simpleSemverCompare(Peerio.runtime.version, versions.min);
+                if (ltMin !== false && ltMin < 0) {
+                    Peerio.runtime.expired = true;
+                    Peerio.Action.updateAvailable(true);
+                    return false;
+                }
+
+                var ltCurr = Peerio.Util.simpleSemverCompare(Peerio.runtime.version, versions.current);
+                if (ltCurr !== false && ltCurr < 0) {
+                    Peerio.runtime.updateAvailable = true;
+                    Peerio.Action.updateAvailable();
+                }
+
+                return true;
+            });
+    }
+
+
     function onConnect() {
         sendToSocket('setApiVersion', {version: API_VERSION}, {ignoreConnectionState: true})
-            .then(function () {
+            .then(checkClientVersion)
+            .then(function (proceed) {
+                if (!proceed) {
+                    Peerio.Socket.disableNetworking();
+                    return;
+                }
                 connected = true;
                 window.setTimeout(Peerio.Action.connected, 0);
                 if (user)
@@ -157,6 +202,7 @@ Peerio.Net.init = function () {
 
     //-- HELPERS -------------------------------------------------------------------------------------------------------
     var empty = {};
+
     /**
      *  generalized DRY function to use from public api functions
      *  @param {string} name - message name
@@ -306,6 +352,7 @@ Peerio.Net.init = function () {
     //------------------------------------------------------------------------------------------------------------------
     //-- ACCOUNT SETTINGS/PREFERENCES API METHODS ----------------------------------------------------------------------
     //------------------------------------------------------------------------------------------------------------------
+
 
     /**
      * Sends back an address confirmation code for the user's email/phone number.
@@ -501,13 +548,12 @@ Peerio.Net.init = function () {
     };
 
     /**
-     * Get invitiation code for the logged in user 
-     * @returns object of type {inviteCode: "ZDFGTK1232KDVN"} 
+     * Get invitiation code for the logged in user
+     * @returns object of type {inviteCode: "ZDFGTK1232KDVN"}
      */
     api.getInviteCode = function () {
         return sendToSocket('getInviteCode');
     };
-
 
 
     //------------------------------------------------------------------------------------------------------------------

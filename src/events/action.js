@@ -82,7 +82,9 @@ Peerio.Action.init = function () {
         'SyncEnded',
 
         'Offline',
-        'Online'
+        'Online',
+
+        'UpdateAvailable'  // param: {expired: boolean} - true if current app version has expired
     ].forEach(function (action) {
         Peerio.Action.add(action);
     });
