@@ -13,6 +13,7 @@ Peerio.SqlMigrations = Peerio.SqlMigrations || [];
                 'id TEXT PRIMARY KEY,' +            // conversationID
                 'seqID INTEGER,' +                  // last sequence id for this conversation
                 'originalMsgID TEXT, ' +            // messageID this conversation started with
+                'lastMsgID TEXT, ' +                // last messageID in this conversation
                 'secretConversationID TEXT, ' +     // generated in original message and shared across all the following ones
                 'subject TEXT,' +                   // subject from original message
                 'createdTimestamp INTEGER,' +       // original message timestamp
