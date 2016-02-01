@@ -28,15 +28,9 @@ Peerio.Config.init = function () {
         cfg.pingTimeout = 30000;
         cfg.serverResponseTimeout = 15000;
 
-        cfg.appVersion = 'n/a';
-
         // Set this dynamically to something related to device where app is currently running.
         // This secret key will be used for low-importance data encryption to store in on device.
         cfg.lowImportanceDeviceKey = '12345';
-
-        // using cordova AppVersion plugin if available
-        if (window.AppVersion && AppVersion.version)
-            cfg.appVersion = AppVersion.version;
 
         // using cordova device plugin if available
         if (window.device && device.uuid) cfg.lowImportanceDeviceKey = device.uuid;
