@@ -130,7 +130,7 @@ gulp.task('build-ext-lib', function () {
         'bower_components/jssha/src/sha256.js',
         'bower_components/identicon/pnglib.js',
         'bower_components/identicon/identicon.js',
-        'bower_components/identicon/is_js/is.js'
+        'bower_components/is_js/is.js'
     ]).pipe(concat('ext_lib_bundle.js'))
         .pipe(gulp.dest(outputDir));
 });
