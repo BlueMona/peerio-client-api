@@ -76,7 +76,7 @@ Peerio.Dispatcher.init = function () {
      * @param arguments - any additional arguments will be passed to subscribers
      */
     api.notify = function (action) {
-        var args = _.rest(arguments);
+        var args = _.tail(arguments);
         var subs = subscribers[action];
         window.setTimeout(function () {
             for (var i = subs.length - 1; i >= 0; i--) {
