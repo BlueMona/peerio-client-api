@@ -89,9 +89,14 @@ var Peerio = this.Peerio || {};
             return Peerio.Net.redeemCouponCode(code);
         };
 
-
         user.getInviteCode = function() {
             return Peerio.Net.getInviteCode();
+        };
+
+        user.enableDataCollection = function(enable) {
+            return Peerio.Net.updateSettings({
+                dataCollectionOptIn: enable
+            });
         };
     };
 })();

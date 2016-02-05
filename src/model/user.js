@@ -95,7 +95,6 @@ var Peerio = this.Peerio || {};
             Peerio.Action.unreadStateChanged();
         };
 
-
         return user;
     };
 
