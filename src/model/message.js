@@ -35,7 +35,10 @@ var Peerio = this.Peerio || {};
                 this.receipts = decrypted.receipts;
                 this.innerIndex = decrypted.innerIndex;
                 this.sequence = decrypted.sequence;
-                this.secretConversationID = decrypted.secretConversationId; // Id => ID, yeah, fml, too late now
+                // Id => ID, yeah, fml, too late now
+                // Id - normal
+                // ID - some old, mostly staging messages, only affects our internal accounts, safe to remove sometimes soon
+                this.secretConversationID = decrypted.secretConversationId || decrypted.secretConversationID;
                 this.timestamp = decrypted.timestamp || this.outerTimestamp;
                 this.encryptedMetadataVersion = decrypted.metadataVersion;
             })
@@ -92,7 +95,8 @@ var Peerio = this.Peerio || {};
         var message = {
             version: '1.1.0',
             metadataVersion: '1.1.0',
-            secretConversationID: secretConversationID,
+            // prod desktop uses 'Id' already, so...
+            secretConversationId: secretConversationID,
             innerIndex: index,
             message: body,
             receipt: nacl.util.encodeBase64(nacl.randomBytes(32)),
