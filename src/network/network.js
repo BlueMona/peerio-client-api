@@ -564,16 +564,10 @@ Peerio.Net.init = function () {
      * Send a Peerio message to contacts.
      * @param {Object} msg
      */
-    Peerio.Net.createMessage = function (msg) {
+    api.createMessage = function (msg) {
         return sendToSocket('createMessage', msg);
     };
 
-    /**
-     * Retrieve a list of all user messages.
-     */
-    api.getAllMessages = function () {
-        return sendToSocket('getAllMessages');
-    };
 
     /**
      * Retrieve a message by its ID.
@@ -584,39 +578,10 @@ Peerio.Net.init = function () {
     };
 
     /**
-     * Retrieve a list of all user message IDs.
-     */
-    api.getMessageIDs = function () {
-        return sendToSocket('getMessageIDs');
-    };
-
-    /**
-     * Retrieve a list of all unopened/modified IDs.
-     */
-    api.getModifiedMessageIDs = function () {
-        return sendToSocket('getModifiedMessageIDs');
-    };
-
-    /**
-     * Retrieve list of conversation IDs only.
-     */
-    api.getConversationIDs = function () {
-        return sendToSocket('getConversationIDs');
-    };
-
-    /**
      * Retrieve list of conversations.
      */
     api.getAllConversations = function () {
         return sendToSocket('getAllConversations');
-    };
-
-    /**
-     * Retrieve entire conversations.
-     * @param {[]} conversations - Contains objects in format {id, page}
-     */
-    api.getConversationPages = function (conversations) {
-        return sendToSocket('getConversationPages', {conversations: conversations});
     };
 
     /**
