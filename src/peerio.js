@@ -40,6 +40,9 @@ Peerio.initAPI = function () {
             Peerio.FileSystem.init();
 
             Peerio.Socket.start();
+
+            return Peerio.AppMigrator.migrateApp();
+
         }).then(() => {
             // todo: find a better place for this code
             // Some users logs contain offline event followed by online event within 0-10 milliseconds.
