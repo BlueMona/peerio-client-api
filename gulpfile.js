@@ -12,17 +12,17 @@ var babelOptions = {
     compact: false,
     presets: [],
     plugins: [
-        "syntax-function-bind",
-        "transform-function-bind",
-        "transform-object-assign",
-        "transform-es2015-arrow-functions",
-        "transform-es2015-block-scoped-functions",
-        "transform-es2015-block-scoping",
-        "transform-es2015-destructuring",
-        "transform-es2015-for-of",
-        "transform-es2015-function-name",
-        "transform-es2015-shorthand-properties",
-        "transform-es2015-spread"
+        'syntax-function-bind',
+        'transform-function-bind',
+        'transform-object-assign',
+        'transform-es2015-arrow-functions',
+        'transform-es2015-block-scoped-functions',
+        'transform-es2015-block-scoping',
+        'transform-es2015-destructuring',
+        'transform-es2015-for-of',
+        'transform-es2015-function-name',
+        'transform-es2015-shorthand-properties',
+        'transform-es2015-spread'
     ],
     ignore: 'bower_components/**/*',
     ast: false
@@ -61,7 +61,7 @@ gulp.task('build-socket', function () {
     // we also concatenate it with dependencies
     return gulp.src([
         'src/worker_shim.js',
-        'bower_components/L.js/L.js',
+        'bower_components/peerio-log/L.js',
         'bower_components/socket.io-client/socket.io.js',
         'src/network/socket_worker.js'
     ]).pipe(babel(babelOptions))
@@ -79,7 +79,7 @@ gulp.task('build-crypto', function () {
     // crypto worker bundle
     return gulp.src([
         'src/worker_shim.js',
-        'bower_components/L.js/L.js',
+        'bower_components/peerio-log/L.js',
         'src/crypto/base58.js',
         'src/crypto/base64shim.js',
         'bower_components/blake2s-js/blake2s.js',
@@ -120,7 +120,7 @@ gulp.task('build-api', function () {
 gulp.task('build-ext-lib', function () {
     // external libraries bundle
     return gulp.src([
-        'bower_components/L.js/L.js',
+        'bower_components/peerio-log/L.js',
         'src/crypto/base58.js',
         'bower_components/lodash/lodash.js',
         'src/linkify.min.js',
@@ -145,5 +145,5 @@ gulp.task('test', ['watch'], function () {
 });
 //----------------------------------------------------------------------------------------------------------------------
 gulp.task('watch', ['build'], function () {
-    gulp.watch(['src/**/*', 'bower_components/L.js/L.js'], ['build']);
+    gulp.watch(['src/**/*', 'bower_components/peerio-log/L.js'], ['build']);
 });
