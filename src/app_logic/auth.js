@@ -48,13 +48,13 @@ var Peerio = this.Peerio || {};
 
     // get pin encrypted keys from system storage
     function getPinForUser(username, isSystemPin) {
-        return Peerio.TinyDB.getObject(username + (isSystemPin ? systemSetPin : userSetPin));
+        return Peerio.TinyDB.getItem(username + (isSystemPin ? systemSetPin : userSetPin));
     }
 
     // get pin encrypted keys from system storage
     function setPinForUser(username, value, isSystemPin) {
         var key = username + (isSystemPin ? systemSetPin : userSetPin);
-        return value ? Peerio.TinyDB.setObject(key, value)
+        return value ? Peerio.TinyDB.saveItem(key, value)
         : Peerio.TinyDB.removeItem(key);
     }
 
@@ -90,7 +90,7 @@ var Peerio = this.Peerio || {};
      */
     function getSavedLogin() {
         L.info('Retrieving last logged in user data.');
-        return Peerio.TinyDB.getObject(lastLoginKey)
+        return Peerio.TinyDB.getItem(lastLoginKey)
             .then(function (data) {
                 L.info('Last login data: {0}', data);
                 return data;
@@ -110,7 +110,7 @@ var Peerio = this.Peerio || {};
         if (!firstName) firstName = username;
         var data = {username: username, firstName: firstName};
         L.info('Saving logged user info. {0}', data);
-        Peerio.TinyDB.setObject(lastLoginKey, data)
+        Peerio.TinyDB.saveItem(lastLoginKey, data)
             .then(function () {
                 L.info('Logged user info saved.');
             })

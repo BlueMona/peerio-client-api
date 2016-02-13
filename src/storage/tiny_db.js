@@ -10,23 +10,14 @@ Peerio.TinyDB = {};
 
     var api = Peerio.TinyDB;
     /**
-     * Saves scalar value to storage.
+     * Saves any value to storage.
+     * Value will be serialized to json string
      * @param {string} key - unique key. Existing value with the same key will be overwritten.
-     * @param {string|number|boolean|null} value - should have toString() function
+     * @param {Object|string|number|boolean|null} value
      * @promise
      */
-    api.setVar = function (key, value) {
-        return Peerio.SqlQueries.setSystemValue(key, value.toString());
-    };
-
-    /**
-     * Saves object or array to storage.
-     * @param {string} key - unique key. Existing value with the same key will be overwritten.
-     * @param {object|Array} value - Will be serialized with JSON.stringify()
-     * @promise
-     */
-    api.setObject = function (key, value) {
-        return Peerio.SqlQueries.setSystemValue(key, JSON.stringify(value));
+    api.saveItem = function (key, value) {
+        return Peerio.SqlQueries.setSystemValue(key, value);
     };
 
     /**
@@ -38,45 +29,13 @@ Peerio.TinyDB = {};
     };
 
     /**
-     * Retrieves value as string
+     * Retrieves value by key.
+     * Value will be JSON parsed before returning.
      * @params {string} key - unique key
-     * @promise {string|null} value
+     * @promise {Object|string|number|boolean|null} value
      */
-    api.getString = function (key) {
+    api.getItem = function (key) {
         return Peerio.SqlQueries.getSystemValue(key);
-    };
-
-    /**
-     * Retrieves value as number
-     * @params {string} key - unique key
-     * @promise {number|null} value
-     */
-    api.getNumber = function (key) {
-        return api.getString(key)
-            .then(function (val) {
-                return val == null ? null : +val;
-            });
-    };
-
-    /**
-     * Retrieves value as boolean
-     * @params {string} key - unique key
-     * @promise {boolean|null} value
-     */
-    api.getBool = function (key) {
-        return api.getString(key)
-            .then(function (val) {
-                return val == null ? null : val === 'true';
-            });
-    };
-
-    /**
-     * Retrieves value as parsed object using JSON.parse()
-     * @params {string} key - unique key
-     * @promise {object|null} value
-     */
-    api.getObject = function (key) {
-        return api.getString(key);
     };
 
 })();
