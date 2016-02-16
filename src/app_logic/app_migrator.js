@@ -31,7 +31,7 @@ var Peerio = this.Peerio || {};
         return Peerio.TinyDB.getItem(key)
             .then(lastVersion => {
                 // if it's less then current running migration for app or user
-                if (Peerio.Util.simpleSemverCompare(lastVersion, Peerio.runtime.version) === -1)
+                if (!lastVersion || Peerio.Util.simpleSemverCompare(lastVersion, Peerio.runtime.version) === -1)
                     return type === 'user' ? doMigrateUser(username) : doMigrateApp();
 
                 L.info('{0} migrator found last run version {1} is up to date with runtime version {2}', type, lastVersion, Peerio.runtime.version);
