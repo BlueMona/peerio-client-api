@@ -25,19 +25,18 @@ var Peerio = this.Peerio || {};
     // universal migration check and runner
     function migrationCheck(type, username) {
         var key = lastVersionKey;
-        if (type === 'user') key += '_' + username;
 
         // retrieving last run version
-        return Peerio.TinyDB.getItem(key)
+        return Peerio.TinyDB.getItem(key, type === 'user' && username )
             .then(lastVersion => {
                 // if it's less then current running migration for app or user
-                if (Peerio.Util.simpleSemverCompare(lastVersion, Peerio.runtime.version) === -1)
+                if (!lastVersion || Peerio.Util.simpleSemverCompare(lastVersion, Peerio.runtime.version) === -1)
                     return type === 'user' ? doMigrateUser(username) : doMigrateApp();
 
                 L.info('{0} migrator found last run version {1} is up to date with runtime version {2}', type, lastVersion, Peerio.runtime.version);
             })
             // saving new version number
-            .then(()=>Peerio.TinyDB.saveItem(key, Peerio.runtime.version))
+            .then(()=>Peerio.TinyDB.saveItem(key, Peerio.runtime.version, type === 'user' && username ))
             .catch(err => L.error("Error migrating app. {0} {1}", type === 'user' ? ' for username ' + username : '', err));
     }
 
@@ -49,7 +48,7 @@ var Peerio = this.Peerio || {};
     // the actual migration code
     function doMigrateUser(username) {
         L.info('Migrating app for user {0}', username);
-        return Peerio.SqlDB.deleteUserDB(username);
+       // return Peerio.SqlDB.deleteUserDB(username);
     }
 
 })();
