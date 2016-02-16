@@ -225,5 +225,37 @@ Peerio.Util.init = function () {
 
         // a == b
         return 0;
-    }
+    };
+
+    /**
+    *  Interpolates string replacing placeholders with arguments
+    *  @param {string} str - template string with placeholders in format {0} {1} {2}
+    *  where number is argument array index.
+    *  Numbers also can be replaced with property names or argument object.
+    *  @param {Array | Object} args - argument array or object
+    *  @returns {string} interpolated string
+    */
+    api.interpolate = function (str, args) {
+        if (!args || !args.length) return str;
+
+        return str.replace(
+            /{([^{}]*)}/g,
+            (a, b) => {
+                return api.stringify(args[b]);
+            }
+        );
+    };
+
+	// Opinionated any-value to string converter
+	api.stringify = function (val) {
+		if (typeof(val) === 'string') return val;
+
+		if (val instanceof Error)
+			return val.message + ' ' + val.stack;
+
+		if (val instanceof Date)
+			return val.toISOString();
+
+		return JSON.stringify(val);
+	};
 };
