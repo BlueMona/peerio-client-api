@@ -48,7 +48,7 @@ var Peerio = this.Peerio || {};
     // the actual migration code
     function doMigrateUser(username) {
         L.info('Migrating app for user {0}', username);
-        return Peerio.SqlDB.deleteUserDB(username);
+       // return Peerio.SqlDB.deleteUserDB(username);
     }
 
 })();
