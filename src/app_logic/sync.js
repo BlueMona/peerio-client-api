@@ -132,7 +132,7 @@ var Peerio = this.Peerio || {};
         }
 
         // for first 1.1.0 message in pre-protocol 1.1.0 conversations
-        if(!sec.secretConversationID && msg.secretConversationID) sec.secretConversationID = msg.secretConversationID;
+        if (!sec.secretConversationID && msg.secretConversationID) sec.secretConversationID = msg.secretConversationID;
 
         if (msg.secretConversationID !== sec.secretConversationID) {
             L.error('secretConversationID mismatch');
@@ -174,8 +174,21 @@ var Peerio = this.Peerio || {};
         runAgain = false;
         Peerio.Action.syncProgress(0, 0, progressMsg);
 
-        return Promise.all([Peerio.SqlQueries.getMaxSeqID(), Peerio.Net.getMaxMessageIndexID(), populateSecurityCache()])
-            .spread((localMax, serverMax)=> {
+        return Peerio.TinyDB.getItem('syncInProgress', Peerio.user.username)
+            .then(inProgress => {
+                // if true - lasr sync was interrupted
+                if (inProgress)
+                    return recoverDatabase();
+
+            })
+            .then(() => Promise.all([
+                    Peerio.SqlQueries.getMaxSeqID(),
+                    Peerio.Net.getMaxMessageIndexID(),
+                    Peerio.TinyDB.saveItem('syncInProgress', true, Peerio.user.username),
+                    populateSecurityCache()
+                ])
+            )
+            .spread((localMax, serverMax) => {
                 if (localMax === serverMax) return;
                 var progressStartAt = localMax;
                 var progressEndAt = serverMax - localMax;
@@ -208,7 +221,8 @@ var Peerio = this.Peerio || {};
                     callProcess();
                 });
             })
-            .finally(()=> {
+            .then(() => Peerio.TinyDB.removeItem('syncInProgress', Peerio.user.username))
+            .finally(() => {
                 L.verbose('Message sync stopped.');
                 doNotify();
                 Peerio.Action.syncProgress(1, 1, progressMsg);
@@ -325,8 +339,8 @@ var Peerio = this.Peerio || {};
         );
     }
 
-    function updateLastMessages(){
-        for(var id in lastMessagesCache){
+    function updateLastMessages() {
+        for (var id in lastMessagesCache) {
             Peerio.SqlQueries.updateConversationLastMsgID(id, lastMessagesCache[id]);
         }
     }
@@ -361,6 +375,10 @@ var Peerio = this.Peerio || {};
 
     function interrupt() {
         interruptRequested = running;
+    }
+
+    function recoverDatabase(){
+        
     }
 
 
