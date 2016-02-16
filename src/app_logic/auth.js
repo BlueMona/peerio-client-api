@@ -44,18 +44,19 @@ var Peerio = this.Peerio || {};
     var userSetPin = 'PIN';
 
     // tinyDB postfix for user-stored pins
-    var systemSetPin = '_systemPIN';
+    var systemSetPin = 'systemPIN';
 
     // get pin encrypted keys from system storage
     function getPinForUser(username, isSystemPin) {
-        return Peerio.TinyDB.getItem(username + (isSystemPin ? systemSetPin : userSetPin));
+        return Peerio.TinyDB.getItem(isSystemPin ? systemSetPin : userSetPin, username);
     }
 
     // get pin encrypted keys from system storage
     function setPinForUser(username, value, isSystemPin) {
-        var key = username + (isSystemPin ? systemSetPin : userSetPin);
-        return value ? Peerio.TinyDB.saveItem(key, value)
-        : Peerio.TinyDB.removeItem(key);
+        var key = isSystemPin ? systemSetPin : userSetPin;
+        return value
+            ? Peerio.TinyDB.saveItem(key, value, username)
+            : Peerio.TinyDB.removeItem(key, username);
     }
 
     /**
@@ -228,20 +229,20 @@ var Peerio = this.Peerio || {};
     function decryptKeysAndGetObject(username, PIN, encryptedKeys) {
         var keys = null;
         return decryptKeys(username, PIN, encryptedKeys)
-        .then(k=> {
-            keys = {
-                keyPair: {
-                    publicKey: Base58.decode(k.publicKey),
-                    secretKey: Base58.decode(k.secretKey)
-                }
-            };
-            // publicKey contains extra char for hash
-            return Peerio.Crypto.getPublicKeyString(keys.keyPair.publicKey);
-        })
-        .then(pk => {
-            keys.publicKey = pk;
-            return keys;
-        });
+            .then(k=> {
+                keys = {
+                    keyPair: {
+                        publicKey: Base58.decode(k.publicKey),
+                        secretKey: Base58.decode(k.secretKey)
+                    }
+                };
+                // publicKey contains extra char for hash
+                return Peerio.Crypto.getPublicKeyString(keys.keyPair.publicKey);
+            })
+            .then(pk => {
+                keys.publicKey = pk;
+                return keys;
+            });
     }
 
 
