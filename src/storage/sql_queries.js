@@ -108,6 +108,13 @@ var Peerio = this.Peerio || {};
         );
     };
 
+    api.recoverLastMsgIDsOnConversations = function(){
+       return Peerio.SqlDB.user.executeSql(
+           'UPDATE conversations SET ' +
+           'lastMsgID = (SELECT id FROM messages WHERE conversationID=conversations.id ORDER BY seqID DESC LIMIT 1)'
+       );
+    };
+
     //-- READ POSITION -------------------------------------------------------------------------------------------------
     api.updateReadPosition = function (conversationID, username, seqID) {
         // first trying to update an existing record (only in case if seqID is > then when already have)
