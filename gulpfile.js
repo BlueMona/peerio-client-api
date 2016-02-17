@@ -123,7 +123,6 @@ gulp.task('build-ext-lib', function () {
         'bower_components/peerio-log/L.js',
         'src/crypto/base58.js',
         'bower_components/lodash/lodash.js',
-        'bower_components/sprintf/dist/sprintf.min.js',
         'src/linkify.min.js',
         'bower_components/moment/min/moment-with-locales.min.js',
         'bower_components/bluebird/js/browser/bluebird.js',
