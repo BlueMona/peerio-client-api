@@ -304,7 +304,7 @@ var Peerio = this.Peerio || {};
 
     api.setSystemValue = function (key, value) {
         return Peerio.SqlDB.system.executeSql(
-            'INSERT OR REPLACE INTO system_values(key, value) VALUES(?, ?)', [key, JSON.stringify(value)]
+            'INSERT OR REPLACE INTO system_values(key, value) VALUES(?, ?)', [key, serializeObject(value)]
         );
     };
 
