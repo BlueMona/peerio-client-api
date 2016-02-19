@@ -31,8 +31,6 @@ var Peerio = this.Peerio || {};
     var progressMsg = 'downloading message data';
 
     var notify;
-    // to minimize update statements we cache read position data during sync
-    var readPositionsCache;
     // to minimize update statements we cache last messageID in conversation
     var lastMessagesCache;
 
@@ -132,7 +130,7 @@ var Peerio = this.Peerio || {};
         }
 
         // for first 1.1.0 message in pre-protocol 1.1.0 conversations
-        if(!sec.secretConversationID && msg.secretConversationID) sec.secretConversationID = msg.secretConversationID;
+        if (!sec.secretConversationID && msg.secretConversationID) sec.secretConversationID = msg.secretConversationID;
 
         if (msg.secretConversationID !== sec.secretConversationID) {
             L.error('secretConversationID mismatch');
@@ -168,14 +166,26 @@ var Peerio = this.Peerio || {};
         }
         L.verbose('Starting message sync.');
         resetNotify();
-        readPositionsCache = {};
         lastMessagesCache = {};
         running = true;
         runAgain = false;
         Peerio.Action.syncProgress(0, 0, progressMsg);
 
-        return Promise.all([Peerio.SqlQueries.getMaxSeqID(), Peerio.Net.getMaxMessageIndexID(), populateSecurityCache()])
-            .spread((localMax, serverMax)=> {
+        return Peerio.TinyDB.getItem('syncInProgress', Peerio.user.username)
+            .then(inProgress => {
+                // if true - last sync was interrupted
+                if (inProgress)
+                    return recoverDatabase();
+
+            })
+            .then(() => Promise.all([
+                    Peerio.SqlQueries.getMaxSeqID(),
+                    Peerio.Net.getMaxMessageIndexID(),
+                    Peerio.TinyDB.saveItem('syncInProgress', true, Peerio.user.username),
+                    populateSecurityCache()
+                ])
+            )
+            .spread((localMax, serverMax) => {
                 if (localMax === serverMax) return;
                 var progressStartAt = localMax;
                 var progressEndAt = serverMax - localMax;
@@ -208,7 +218,8 @@ var Peerio = this.Peerio || {};
                     callProcess();
                 });
             })
-            .finally(()=> {
+            .then(() => Peerio.TinyDB.removeItem('syncInProgress', Peerio.user.username))
+            .finally(() => {
                 L.verbose('Message sync stopped.');
                 doNotify();
                 Peerio.Action.syncProgress(1, 1, progressMsg);
@@ -280,9 +291,11 @@ var Peerio = this.Peerio || {};
             })
             .then(() => {
                 lastMessagesCache[msg.conversationID] = msg.id;
-                msg.receipts.forEach(username => addToReadPositionsCache(msg.conversationID, username, entry.entity.seqID))
+
+                msg.receipts.forEach(username =>  Peerio.SqlQueries.updateReadPosition(msg.conversationID, username, entry.entity.seqID));
+
                 if (msg.sender == Peerio.user.username)
-                    addToReadPositionsCache(msg.conversationID, Peerio.user.username, entry.entity.seqID)
+                    Peerio.SqlQueries.updateReadPosition(msg.conversationID, Peerio.user.username, entry.entity.seqID)
             })
             .then(() => {
                 // 1. old format conversations might not have index
@@ -305,28 +318,11 @@ var Peerio = this.Peerio || {};
     function processMessageReadEntry(entry) {
         L.silly('{0}: Processing message read entry.', entry.entity.seqID);
         addNotify(entry.entity.conversationID, 'updated');
-        return addToReadPositionsCache(entry.entity.conversationID, entry.entity.username, entry.entity.seqID);
+        return Peerio.SqlQueries.updateReadPosition(entry.entity.conversationID, entry.entity.username, entry.entity.seqID);
     }
 
-    function addToReadPositionsCache(conversationID, username, seqID) {
-        var c = readPositionsCache[conversationID] || (readPositionsCache[conversationID] = {});
-        if (c[username] < seqID || !c[username]) c[username] = seqID;
-    }
-
-    // todo: read positions cache should have a limit, after which sync should pause until cache is saved to db
-    function updateReadPositions() {
-        return Promise.each(Object.keys(readPositionsCache),
-            conversationID =>
-                Promise.each(Object.keys(readPositionsCache[conversationID]),
-                    username =>
-                        Peerio.SqlQueries.updateReadPosition(conversationID, username,
-                            readPositionsCache[conversationID][username])
-                )
-        );
-    }
-
-    function updateLastMessages(){
-        for(var id in lastMessagesCache){
+    function updateLastMessages() {
+        for (var id in lastMessagesCache) {
             Peerio.SqlQueries.updateConversationLastMsgID(id, lastMessagesCache[id]);
         }
     }
@@ -338,7 +334,6 @@ var Peerio = this.Peerio || {};
                 Peerio.SqlQueries.setConversationsCreatedTimestamp(),
                 Peerio.SqlQueries.updateConversationsLastTimestamp(),
                 Peerio.SqlQueries.updateConversationsHasFiles(),
-                updateReadPositions(),
                 updateLastMessages()
             ])
             .then(()=>Peerio.SqlQueries.updateConversationsRead(Peerio.user.username))
@@ -361,6 +356,10 @@ var Peerio = this.Peerio || {};
 
     function interrupt() {
         interruptRequested = running;
+    }
+
+    function recoverDatabase(){
+        return Peerio.SqlQueries.recoverLastMsgIDsOnConversations();
     }
 
 
