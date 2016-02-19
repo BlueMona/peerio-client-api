@@ -22,13 +22,13 @@ Peerio.SqlMigrations = Peerio.SqlMigrations || [];
 
 
             tx.executeSql(
-                'CREATE TABLE contacts ('   +
-                'username TEXT,'            +
-                'publicKey TEXT,'           +
-                'firstName TEXT,'           +
-                'lastName TEXT,'            +
-                'address TEXT,'             +
-                'isDeleted BOOLEAN'        +
+                'CREATE TABLE contacts ('       +
+                'username TEXT PRIMARY KEY,'    +
+                'publicKey TEXT,'               +
+                'firstName TEXT,'               +
+                'lastName TEXT,'                +
+                'address TEXT,'                 +
+                'isDeleted BOOLEAN'             +
                 ') WITHOUT ROWID'
             );
 
