@@ -500,8 +500,8 @@ Peerio.Net.init = function () {
      * Send a Peerio invitation to an address.
      * @param {Object} address
      */
-    api.inviteUserAddress = function (address) {
-        return sendToSocket('inviteUserAddress', {address: address});
+    api.inviteByEmail = function (address) {
+        return sendToSocket('addOrInviteContacts', {invite: [{ email: address }] });
     };
 
     /**
