@@ -20,13 +20,13 @@ var Peerio = this.Peerio || {};
     api.getSystemValue = function (key) {
         return Peerio.SqlDB.system.executeSql('SELECT value FROM system_values WHERE key=?', [key])
             .then((res) => {
-                return res && res.rows.length ? JSON.parse(res.rows.item(0)['value']) : null;
+                return res && res.rows.length ? res.rows.item(0)['value'] : null;
             });
     };
 
     api.setSystemValue = function (key, value) {
         return Peerio.SqlDB.system.executeSql(
-            'INSERT OR REPLACE INTO system_values(key, value) VALUES(?, ?)', [key, api.serializeObject(value)]
+            'INSERT OR REPLACE INTO system_values(key, value) VALUES(?, ?)', [key, value]
         );
     };
 

@@ -15,10 +15,17 @@ Peerio.TinyDB = {};
      * @param {string} key - unique key. Existing value with the same key will be overwritten.
      * @param {Object|string|number|boolean|null} value
      * @param {string} [keyPrefix] - for scoped values specify this argument and it will be automatically added to the key
+     * @param {Uint8Array} [encryptionKey] - if specified, will be used to encrypt saved value
      * @promise
      */
-    api.saveItem = function (key, value, keyPrefix) {
-        return Peerio.SqlQueries.setSystemValue(getKey(key, keyPrefix), value);
+    api.saveItem = function (key, value, keyPrefix, encryptionKey) {
+        key = getKey(key, keyPrefix);
+        value = Peerio.SqlQueries.serializeObject(value);
+
+        if (!encryptionKey) return Peerio.SqlQueries.setSystemValue(key, value);
+
+        return Peerio.Crypto.secretBoxEncrypt(value, encryptionKey)
+            .then(encrypted => Peerio.SqlQueries.setSystemValue(key, JSON.stringify(encrypted)));
     };
 
     /**
@@ -36,14 +43,21 @@ Peerio.TinyDB = {};
      * Value will be JSON parsed before returning.
      * @params {string} key - unique key
      * @param {string} [keyPrefix] - for scoped values specify this argument and it will be automatically added to the key
+     * @param {Uint8Array} [decryptionKey] - if specified, will be used to decrypt saved value
      * @promise {Object|string|number|boolean|null} value
      */
-    api.getItem = function (key, keyPrefix) {
-        return Peerio.SqlQueries.getSystemValue(getKey(key, keyPrefix));
+    api.getItem = function (key, keyPrefix, decryptionKey) {
+        return Peerio.SqlQueries.getSystemValue(getKey(key, keyPrefix))
+            .then(value => {
+                value = JSON.parse(value);
+                if (!decryptionKey) return value;
+                return Peerio.Crypto.secretBoxDecrypt(value.ciphertext, value.nonce, decryptionKey)
+                    .then(decrypted => JSON.parse(decrypted));
+            });
     };
 
     function getKey(key, prefix) {
-        return is.string(prefix) && prefix !=='' ? (prefix + '_' + key) : key;
+        return is.string(prefix) && prefix !== '' ? (prefix + '_' + key) : key;
     }
 
 })();
