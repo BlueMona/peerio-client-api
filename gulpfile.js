@@ -60,6 +60,7 @@ gulp.task('build-socket', function () {
     // socket worker should reside in separate script,
     // we also concatenate it with dependencies
     return gulp.src([
+        'src/polyfill.js',
         'src/worker_shim.js',
         'bower_components/peerio-log/L.js',
         'bower_components/socket.io-client/socket.io.js',
@@ -78,6 +79,7 @@ gulp.task('build-dict', function () {
 gulp.task('build-crypto', function () {
     // crypto worker bundle
     return gulp.src([
+        'src/polyfill.js',
         'src/worker_shim.js',
         'bower_components/peerio-log/L.js',
         'src/crypto/base58.js',
@@ -98,6 +100,7 @@ gulp.task('build-api', function () {
     // all other scripts are concatenated, excluding external libraries
     return gulp.src([
         '!src/network/socket_worker.js',
+        'src/polyfill.js',
         'src/collection.js',
         'src/queue.js',
         'src/crypto/base64shim.js',
