@@ -41,6 +41,7 @@ function initialize(cfg) {
         'seqIDUpdated',
 
         'fileAdded',
+        'fileShared',
         'fileRemoved',
 
         'settingsUpdated',
@@ -185,5 +186,5 @@ function initialize(cfg) {
                 data: response
             });
         });
-    }
+    };
 }
