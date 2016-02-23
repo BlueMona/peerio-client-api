@@ -40,8 +40,7 @@ Peerio.User.addFilesModule = function (user) {
     }
 
     function onFileShared(data) {
-        return onFileAdded(data)
-        .then(data => Peerio.Action.fileShared(data));
+        return onFileAdded(data);
     }
 
     function onFileAdded(data) {
