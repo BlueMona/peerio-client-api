@@ -76,7 +76,6 @@ Peerio.Action.init = function () {
 
         'FilesUpdated',
         'FileUpdated',         // ({file})
-        'FileShared',
 
         'SyncStarted',
         'SyncProgress',
