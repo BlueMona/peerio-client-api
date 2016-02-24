@@ -137,9 +137,10 @@ Peerio.SqlDB.init = function () {
 
         plugin.openDatabase = (name, key) => {
             return new Promise((resolve, reject) => {
-                var db = originalOpen({name: name, key: key, location: 2}, null, reject);
-                promisifyDb(db);
-                resolve(db);
+                var db = originalOpen({name: name, key: key, location: 2}, function () {
+                    promisifyDb(db);
+                    resolve(db);
+                }, reject);
             }).catch(function (err) {
                 return Promise.reject(err && err.message || err);
             });
