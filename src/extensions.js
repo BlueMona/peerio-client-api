@@ -10,5 +10,6 @@
   };
 
   window.logfn = console.log.bind(console);
+  window.noop = function(){};
 
 }());
