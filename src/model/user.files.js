@@ -27,6 +27,7 @@ Peerio.User.addFilesModule = function (user) {
 
     //subscribing to server events
     net.subscribe('fileAdded', queue.add.bind(queue, onFileAdded));
+    net.subscribe('fileShared', queue.add.bind(queue, onFileShared));
     net.subscribe('fileRemoved', queue.add.bind(queue, onFileRemoved));
 
     function updateCollectionVersion(version) {
@@ -38,11 +39,16 @@ Peerio.User.addFilesModule = function (user) {
         Peerio.Action.filesUpdated();
     }
 
+    function onFileShared(data) {
+        return onFileAdded(data);
+    }
+
     function onFileAdded(data) {
-        Peerio.File.fromServerData(data)
+        return Peerio.File.fromServerData(data)
             .then(file => {
                 user.files.addOrReplace(file);
                 updateCollectionVersion(data.collectionVersion);
+                return file;
             })
             .catch(err => {
                 L.error('Failed to process fileAdded event. {0}', err);
