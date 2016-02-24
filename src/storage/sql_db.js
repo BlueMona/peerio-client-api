@@ -17,7 +17,7 @@ Peerio.SqlDB.init = function () {
     // mockup for debugging in browser
     if (!plugin && window.PeerioDebug) {
         plugin = {
-            openDatabase: function (params) {
+            openDatabase: function (params, success, fail) {
                 var ret = window.openDatabase(params.name, '1', params.name, 5 * 1024 * 1024);
                 var origTran = ret.transaction.bind(ret);
                 ret.executeSql = function (statement, values, resolve, reject) {
@@ -37,7 +37,7 @@ Peerio.SqlDB.init = function () {
                 ret.abortAllPendingTransactions = function () {
                     console.log('DB abortAllPendingTransactions MOCK');
                 };
-
+                window.setTimeout(()=>success(ret), 0);
                 return ret;
 
             },
@@ -104,7 +104,7 @@ Peerio.SqlDB.init = function () {
 
     function closeAllUserDatabases() {
         var tmpdbName = '___peerio__tmp__system__db___';
-        plugin.openDatabase(tmpdbName, '')
+        return plugin.openDatabase(tmpdbName, '')
             .then(tmpdb => {
                 var dblist = tmpdb.openDBs;
                 setTimeout(()=> {
