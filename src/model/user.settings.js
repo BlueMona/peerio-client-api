@@ -25,6 +25,15 @@ var Peerio = this.Peerio || {};
             Peerio.Action.settingsUpdated();
         };
 
+
+        user.loadSettingsCache = function(){
+            return Peerio.TinyDB.getItem('settings', Peerio.user.username, Peerio.user.keyPair.secretKey)
+                .then(settings =>{
+                    if(!settings) return Promise.reject();
+                    user.processSettings(settings);
+                })
+        }.bind(user);
+
         user.loadSettings = function () {
             //todo attempt cache first and then call for net update
             return Peerio.Net.getSettings()
@@ -32,6 +41,7 @@ var Peerio = this.Peerio || {};
                     L.info('get settings in');
                     L.info(settings);
                     user.processSettings(settings);
+                    return Peerio.TinyDB.saveItem('settings', Peerio.user.username, Peerio.user.keyPair.secretKey);
                 });
         }.bind(user);
 
