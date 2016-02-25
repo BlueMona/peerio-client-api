@@ -215,24 +215,16 @@ var Peerio = this.Peerio || {};
 
         markingUpTo = endSeqID;
 
-        var toSend = [];
         return Peerio.SqlQueries.getReceipts(this.id, startSeqID + 1, endSeqID, Peerio.user.username)
             .then(res => {
-                var promises = [];
+                var toSend = [];
                 for (var i = 0; i < res.rows.length; i++) {
-                    (function () {
                         var msg = res.rows.item(i);
-                        var p = Peerio.Crypto.encryptReceipt(msg.receipt.toString() + Date.now(), msg.sender)
-                            .catch(L.error)
-                            .then(function (receipt) {
-                                toSend.push({id: msg.id, encryptedReturnReceipt: receipt || 'not in contacts'});
-                            });
-                        promises.push(p);
-                    })();
+                        toSend.push({id: msg.id, encryptedReturnReceipt: 'deprecated'});
                 }
-                return Promise.all(promises);
+                return toSend;
             })
-            .then(function () {
+            .then(function (toSend) {
                 if (!toSend.length) return;
                 return Peerio.Net.readMessages(toSend);
             })
