@@ -9,44 +9,67 @@ Peerio.User = Peerio.User || {};
 
 Peerio.User.addAuthModule = function (user) {
     'use strict';
+
+    function tryOfflineLogin(){
+        return
+    }
+
     user.login = function (passphraseOrPIN, isSystemPin) {
-        var action = Peerio.Auth.getSavedKeys(user.username, passphraseOrPIN, isSystemPin)
+        var offlineLoginPossible = true;
+
+        var promise = Peerio.Auth.getSavedKeys(user.username, passphraseOrPIN, isSystemPin)
             .then(keys => {
                 if (keys === true || keys === false) {
                     return Peerio.Auth.generateKeys(user.username, passphraseOrPIN);
                 }
 
                 return keys;
-            });
-        // making sure that the app is already connected
-        action = action.then( (keys) => {
-            return new Promise( (resolve, reject) => {
-                var maxTries = 5;
-                var currentTry = 0;
-                var timeoutCheck = function() {
-                    if( !Peerio.AppState.connected && (++currentTry < maxTries) ) {
-                        L.info('Not connected. Waiting');
-                        window.setTimeout(timeoutCheck, 1000);
-                        return;
-                    }
-                    resolve(keys);
-                };
-                timeoutCheck();
-            });
-        });
-        return action
-            .then((keys) => {
+            })
+            .then(keys => {
                 user.publicKey = keys.publicKey;
                 user.keyPair = keys.keyPair;
                 user.localEncryptionKey = Base58.encode(user.keyPair.secretKey);
             })
+            .then(()=>{
+                tryOfflineLogin()
+            });
+
+            //.then(()=> user.loadSettingsCache().catch(()=>offlineLoginPossible = false))
+            //.then(()=> {
+            //    if (!offlineLoginPossible) return;
+            //    return Peerio.user.loadContactsCache().catch(()=>offlineLoginPossible = false);
+            //})
+            //.then(()=> {
+            //    if (!offlineLoginPossible) return;
+            //    return Peerio.user.loadFileCache().catch(()=>offlineLoginPossible = false);
+            //})
+
+
+        // making sure that the app is already connected
+        promise = promise.then(() => {
+            return new Promise((resolve, reject) => {
+                var maxTries = 5;
+                var currentTry = 0;
+                var timeoutCheck = function () {
+                    if (!Peerio.AppState.connected && (++currentTry < maxTries)) {
+                        L.info('Not connected. Waiting');
+                        window.setTimeout(timeoutCheck, 1000);
+                        return;
+                    }
+                    resolve();
+                };
+                timeoutCheck();
+            });
+        });
+
+        return promise
             .then(() => Peerio.Net.login({
                 username: user.username,
                 publicKey: user.publicKey,
                 keyPair: user.keyPair
             }))
-            .then(() => Peerio.AppMigrator.migrateUser(user.username))
             .then(() => Peerio.SqlDB.openUserDB(user.username, user.localEncryptionKey))
+            .then(() => Peerio.AppMigrator.migrateUser(user.username))
             .then(db => Peerio.SqlMigrator.migrateUp(db))
             .then(() => Peerio.Crypto.setDefaultUserData(user.username, user.keyPair, user.publicKey))
             .then(() => Peerio.Auth.getPinForUser(user.username))
@@ -82,7 +105,7 @@ Peerio.User.addAuthModule = function (user) {
         return Peerio.Auth.setPIN(pin, user.username, user.keyPair, isSystemPin)
             .then(() => {
                 // TODO: maybe some nicer way to separate system pin of user pin
-                if(!isSystemPin) user.PINIsSet = true;
+                if (!isSystemPin) user.PINIsSet = true;
                 Peerio.Action.settingsUpdated();
             });
     }.bind(user);
@@ -90,7 +113,7 @@ Peerio.User.addAuthModule = function (user) {
     user.removePIN = function (isSystemPin) {
         return Peerio.Auth.removePIN(user.username, isSystemPin).then(()=> {
             // TODO: maybe some nicer way to separate system pin of user pin
-            if(!isSystemPin) user.PINIsSet = false;
+            if (!isSystemPin) user.PINIsSet = false;
             Peerio.Action.settingsUpdated();
         });
     }.bind(user);
