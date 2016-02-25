@@ -45,8 +45,8 @@ Peerio.User.addAuthModule = function (user) {
                 publicKey: user.publicKey,
                 keyPair: user.keyPair
             }))
-            .then(() => Peerio.AppMigrator.migrateUser(user.username))
             .then(() => Peerio.SqlDB.openUserDB(user.username, user.localEncryptionKey))
+            .then(() => Peerio.AppMigrator.migrateUser(user.username))
             .then(db => Peerio.SqlMigrator.migrateUp(db))
             .then(() => Peerio.Crypto.setDefaultUserData(user.username, user.keyPair, user.publicKey))
             .then(() => Peerio.Auth.getPinForUser(user.username))

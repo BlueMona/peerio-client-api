@@ -10,9 +10,9 @@ var Peerio = this.Peerio || {};
     var api = Peerio.SqlQueries = Peerio.SqlQueries || {};
 
     //-- MESSAGES WRITE -------------------------------------------------------------------------------------------------
-    api.createMessage = function (id, seqID, index, conversationID, sender, timestamp, body, files, receipt) {
+    api.createMessage = function (id, seqID, index, conversationID, sender, timestamp, body, files) {
         return Peerio.SqlDB.user.executeSql(
-            'INSERT OR IGNORE INTO messages VALUES(?,?,?,?,?,?,?,?,?)',
+            'INSERT OR IGNORE INTO messages VALUES(?,?,?,?,?,?,?,?)',
             [
                 id,
                 seqID,
@@ -21,8 +21,7 @@ var Peerio = this.Peerio || {};
                 sender,
                 timestamp,
                 body || '',
-                api.serializeArray(files),
-                receipt
+                api.serializeArray(files)
             ]);
     };
 
@@ -64,9 +63,9 @@ var Peerio = this.Peerio || {};
             ]);
     };
 
-    api.getReceipts = function (conversationID, fromSeqID, toSeqID, username) {
+    api.getUnreceiptedMessages = function (conversationID, fromSeqID, toSeqID, username) {
         return Peerio.SqlDB.user.executeSql(
-            'SELECT id, receipt, sender FROM messages WHERE conversationID=? AND seqID>=? AND seqID<=? AND sender!=? ORDER BY seqID ASC',
+            'SELECT id FROM messages WHERE conversationID=? AND seqID>=? AND seqID<=? AND sender!=? ORDER BY seqID ASC',
             [
                 conversationID,
                 fromSeqID,

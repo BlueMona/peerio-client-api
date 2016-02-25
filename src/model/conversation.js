@@ -215,7 +215,7 @@ var Peerio = this.Peerio || {};
 
         markingUpTo = endSeqID;
 
-        return Peerio.SqlQueries.getReceipts(this.id, startSeqID + 1, endSeqID, Peerio.user.username)
+        return Peerio.SqlQueries.getUnreceiptedMessages(this.id, startSeqID + 1, endSeqID, Peerio.user.username)
             .then(res => {
                 var toSend = [];
                 for (var i = 0; i < res.rows.length; i++) {

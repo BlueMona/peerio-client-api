@@ -130,8 +130,6 @@ Peerio.Crypto.init = function () {
         'encryptFile',
         'decryptFile',
         'decryptFileName',
-        'encryptReceipt',
-        'decryptReceipt',
         'recreateHeader'
     ].forEach(function (fnName) {
         var transfer = null;

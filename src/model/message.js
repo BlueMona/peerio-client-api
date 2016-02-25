@@ -31,7 +31,6 @@ var Peerio = this.Peerio || {};
                 this.files = decrypted.fileIDs;
                 this.body = decrypted.message;
                 this.subject = decrypted.subject;
-                this.receipt = decrypted.receipt;
                 this.receipts = decrypted.receipts;
                 this.innerIndex = decrypted.innerIndex;
                 this.sequence = decrypted.sequence;
@@ -69,8 +68,7 @@ var Peerio = this.Peerio || {};
             this.sender,
             this.timestamp,
             this.body,
-            this.files,
-            this.receipt
+            this.files
         );
     }
 
