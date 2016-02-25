@@ -320,8 +320,6 @@ Peerio.Crypto.init = function () {
      */
     api.encryptMessage = function (message, recipients, sender) {
         sender = sender || defaultUser;
-        // recipients should send this back
-        message.receipt = encodeB64(nacl.randomBytes(32));
         return new Promise(function (resolve, reject) {
 
             var validatedRecipients = validateRecipients(recipients, sender);
@@ -544,61 +542,6 @@ Peerio.Crypto.init = function () {
         return Promise.resolve(decrypted);
     };
 
-    /**
-     * Encrypts read receipt to send it as acknowledgement
-     * @param {string} receipt - utf8 receipt string
-     * @param {string} recipientUsername
-     * @param [user]
-     * @promise {string} encrypted and base64 encoded receipt and nonce in 'receipt:nonce' format
-     */
-    api.encryptReceipt = function (receipt, recipientUsername, user) {
-        user = user || defaultUser;
-
-        var recipient = getContact(recipientUsername, user);
-        if (!recipient) return Promise.reject('recipient ' + recipientUsername + ' not found');
-
-        var nonce = nacl.randomBytes(decryptInfoNonceSize);
-
-        var encReceipt = nacl.box(
-            decodeUTF8(receipt),
-            nonce,
-            recipient.publicKeyBytes,
-            user.keyPair.secretKey
-        );
-
-        encReceipt = encodeB64(encReceipt) + ':' + encodeB64(nonce);
-        return Promise.resolve(encReceipt);
-    };
-
-    /**
-     * Decrypts received read receipt
-     * @param {string} username - receipt sender
-     * @param {string} receipt
-     * @param [user]
-     * @promise
-     */
-    api.decryptReceipt = function (username, receipt, user) {
-        user = user || defaultUser;
-        var receiptParts;
-
-        if (typeof(receipt) !== 'string' || (receiptParts = receipt.split(':')).length !== 2)
-            return Promise.reject('Invalid receipt value.');
-
-        var sender = getContact(username, user);
-        if (!sender) return Promise.reject('Receipt sender ' + username + ' not found.');
-
-        var decrypted = nacl.box.open(
-            decodeB64(receiptParts[0]),
-            decodeB64(receiptParts[1]),
-            sender.publicKeyBytes,
-            user.keyPair.secretKey
-        );
-
-        if (!decrypted) return Promise.reject('Failed to decrypt receipt.');
-
-        decrypted = encodeUTF8(decrypted).substring(0, decrypted.length - timestampLength);
-        return Promise.resolve(decrypted);
-    };
 
     api.recreateHeader = function (publicKeys, header) {
         return new Promise(function (resolve) {

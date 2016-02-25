@@ -31,7 +31,6 @@ var Peerio = this.Peerio || {};
                 this.files = decrypted.fileIDs;
                 this.body = decrypted.message;
                 this.subject = decrypted.subject;
-                this.receipt = decrypted.receipt;
                 this.receipts = decrypted.receipts;
                 this.innerIndex = decrypted.innerIndex;
                 this.sequence = decrypted.sequence;
@@ -69,8 +68,7 @@ var Peerio = this.Peerio || {};
             this.sender,
             this.timestamp,
             this.body,
-            this.files,
-            this.receipt
+            this.files
         );
     }
 
@@ -99,7 +97,7 @@ var Peerio = this.Peerio || {};
             secretConversationId: secretConversationID,
             innerIndex: index,
             message: body,
-            receipt: nacl.util.encodeBase64(nacl.randomBytes(32)),
+            receipt: 'deprecated',
             fileIDs: fileIDs || [],
             participants: recipients,
             timestamp: Date.now()

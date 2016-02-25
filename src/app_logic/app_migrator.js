@@ -48,7 +48,13 @@ var Peerio = this.Peerio || {};
     // the actual migration code
     function doMigrateUser(username) {
         L.info('Migrating app for user {0}', username);
-       // return Peerio.SqlDB.deleteUserDB(username);
+        Peerio.SqlDB.user.executeSql('DROP TABLE IF EXISTS versions');
+        Peerio.SqlDB.user.executeSql('DROP TABLE IF EXISTS messages');
+        Peerio.SqlDB.user.executeSql('DROP TABLE IF EXISTS conversations');
+        Peerio.SqlDB.user.executeSql('DROP TABLE IF EXISTS contacts');
+        Peerio.SqlDB.user.executeSql('DROP TABLE IF EXISTS files');
+        Peerio.SqlDB.user.executeSql('DROP TABLE IF EXISTS read_positions');
+        // return Peerio.SqlDB.deleteUserDB(username);
     }
 
 })();
