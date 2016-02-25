@@ -99,7 +99,7 @@ var Peerio = this.Peerio || {};
             secretConversationId: secretConversationID,
             innerIndex: index,
             message: body,
-            receipt: nacl.util.encodeBase64(nacl.randomBytes(32)),
+            receipt: 'deprecated',
             fileIDs: fileIDs || [],
             participants: recipients,
             timestamp: Date.now()
