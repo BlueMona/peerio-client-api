@@ -183,8 +183,9 @@ Peerio.Util.init = function () {
      * @returns {string} dot-less extension
      */
     api.getFileExtension = function (fileName) {
-        var dotInd = fileName.lastIndexOf('.');
-        return dotInd >= 0 ? fileName.substring(dotInd + 1) : '';
+        var extension = fileName.toLowerCase().match(/\.\w+$/);
+        extension = extension ? extension[0].substring(1) : '';
+        return extension;
     };
 
     /**
