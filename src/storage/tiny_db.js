@@ -25,7 +25,11 @@ Peerio.TinyDB = {};
         if (!encryptionKey) return Peerio.SqlQueries.setSystemValue(key, value);
 
         return Peerio.Crypto.secretBoxEncrypt(value, encryptionKey)
-            .then(encrypted => Peerio.SqlQueries.setSystemValue(key, JSON.stringify(encrypted)));
+            .then(encrypted =>{
+                encrypted.ciphertext = nacl.util.encodeBase64(encrypted.ciphertext);
+                encrypted.nonce = nacl.util.encodeBase64(encrypted.nonce);
+                return Peerio.SqlQueries.setSystemValue(key, JSON.stringify(encrypted));
+            });
     };
 
     /**
@@ -50,7 +54,10 @@ Peerio.TinyDB = {};
         return Peerio.SqlQueries.getSystemValue(getKey(key, keyPrefix))
             .then(value => {
                 value = JSON.parse(value);
-                if (!decryptionKey) return value;
+                if (!decryptionKey || value == null) return value;
+                value.ciphertext = nacl.util.decodeBase64(value.ciphertext);
+                value.nonce = nacl.util.decodeBase64(value.nonce);
+
                 return Peerio.Crypto.secretBoxDecrypt(value.ciphertext, value.nonce, decryptionKey)
                     .then(decrypted => JSON.parse(decrypted));
             });
