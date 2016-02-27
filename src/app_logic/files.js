@@ -9,7 +9,8 @@ var Peerio = this.Peerio || {};
 
     //-- PUBLIC API ------------------------------------------------------------------------------------------------------
     Peerio.Files = {
-        getFiles: getFiles
+        getFiles: getFiles,
+        getFilesCache: getFilesCache
     };
     //--------------------------------------------------------------------------------------------------------------------
 
@@ -19,7 +20,9 @@ var Peerio = this.Peerio || {};
         var counter = 0, max = keys.length;
         return Promise.map(keys, function (fileID) {
                 Peerio.Action.syncProgress(counter++, max, 'synchronizing files');
-                return Peerio.File.fromServerData(data[fileID])
+                var existingName = Peerio.user.files && Peerio.user.files.dict[fileID];
+                existingName = existingName && existingName.name || false;
+                return Peerio.File.fromServerData(data[fileID], existingName)
                     .then(file => files.add(file, true))
                     .catch(function (e) {
                         L.error('Failed to create file from server data {0}. {1}', fileID, e);
@@ -33,31 +36,29 @@ var Peerio = this.Peerio || {};
 
     var loadingPromise = null;
 
-    /**
-     * Retrieves and build file list from server
-     * @return {Promise<Collection<File>>}
-     */
-    function getFiles() {
-        if (loadingPromise) return loadingPromise;
-        var ret;
-        loadingPromise = Peerio.Net.getFiles()
-            .then(function (response) {
-                return createFilesFromServerData(response.files);
-            })
-            .then(function (files) {
-                L.info('Mapping file list to cached files.');
-                ret = files;
+    function getFilesCache() {
+        var files = Collection('id', 'shortID', 'timestamp', false);
+        return Peerio.SqlQueries.getFiles()
+            .then(data=> data.forEach(
+                f=>files.add(Peerio.File.fromLocalData(f), true)
+            ))
+            .then(()=> files.sort())
+            .then(()=> mapDownloadedFiles(files));
+    }
 
-                return Peerio.FileSystem.getCachedFileNames()
-                    .catch(function (e) {
-                        L.error('Failed reading cached files. {0}', e);
-                        return Promise.resolve([]);
-                    });
+    // replace this with sql table column
+    function mapDownloadedFiles(files) {
+        L.info('Mapping file list to downloaded files.');
+
+        return Peerio.FileSystem.getCachedFileNames()
+            .catch(function (e) {
+                L.error('Failed reading cached files. {0}', e);
+                return Promise.resolve([]);
             })
             .then(function (cachedNames) {
                 cachedNames.forEach(function (name) {
                     L.verbose('Mapping cached file {0}', name);
-                    var file = ret[Peerio.Util.getFileName(name)];
+                    var file = files[Peerio.Util.getFileName(name)];
                     if (!file) {
                         // todo: remove file?
                         L.error('Match for locally cached file {0} not found.', name);
@@ -66,15 +67,28 @@ var Peerio = this.Peerio || {};
                     file.cached = true;
                 });
 
-                return ret;
+                return files;
+            });
+    }
+
+    /**
+     * Retrieves and build file list from server
+     * @return {Promise<Collection<File>>}
+     */
+    function getFiles() {
+        if (loadingPromise) return loadingPromise;
+
+        loadingPromise = Peerio.Net.getFiles()
+            .then(function (response) {
+                return createFilesFromServerData(response.files);
             })
+            .then(mapDownloadedFiles)
             .catch(function (e) {
                 L.error('Failed loading files. {0}', e);
                 return Promise.reject();
             })
-            .finally(function () {
-                loadingPromise = null;
-            });
+            .finally(() => loadingPromise = null);
+
         return loadingPromise;
     }
 

@@ -31,9 +31,10 @@ Peerio.User.addAuthModule = function (user) {
             .then(()=> {
                 return user.loadSettingsCache()
                     .then(()=>offlineLoginPossible = true)
-                    .catch(noop);
+                    .catch(L.error);
             })
             .then(()=> {
+                L.info("Offline login is {0}", offlineLoginPossible ? 'possible!' : 'not possible!');
                 // making sure that the app is already connected
                 if (offlineLoginPossible) return;
 
@@ -67,9 +68,11 @@ Peerio.User.addAuthModule = function (user) {
                 user.PINIsSet = !!pin;
             })
             .then(() => {
-                if(offlineLoginPossible) {
-                 return user.loadContactsCache().then(user.loadFilesCache);
+                if (offlineLoginPossible) {
+                    L.info('Loading offline caches');
+                    return user.loadContactsCache().then(user.loadFilesCache);
                 }
+                user.loadSettings();
                 return user.reSync();
             })
             .then(()=> {

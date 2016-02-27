@@ -21,28 +21,43 @@ var Peerio = this.Peerio || {};
                 return files;
             });
     };
-
-    //-- WRITE ----------------------------------------------------------------------------------------------------------
-    api.createFile = function (id, shortId, header, name, creator, sender, timestamp, size) {
+    api.getAllFilesShortIDs = function(){
         return Peerio.SqlDB.user.executeSql(
-            'INSERT OR IGNORE INTO files VALUES(?,?,?,?,?,?,?,?)',
+            'SELECT shortID FROM files')
+            .then(res => {
+                var IDs = [];
+                for (var i = 0; i < res.rows.length; i++) {
+                    IDs.push(res.rows.item(i).shortID);
+                }
+                return IDs;
+            });
+    };
+    //-- WRITE ----------------------------------------------------------------------------------------------------------
+    api.createOrUpdateFile = function (id, shortID, header, name, creator, sender, timestamp, size) {
+        return Peerio.SqlDB.user.executeSql(
+            'REPLACE INTO files VALUES(?,?,?,?,?,?,?,?)',
             [
                 id,
-                shortId,
+                shortID,
                 header,
                 name,
-                creator,
-                sender,
+                api.prepareString(creator),
+                api.prepareString(sender),
                 timestamp,
-                size]
+                size
+            ]
         );
     };
 
     api.deleteFile = function (id) {
         return Peerio.SqlDB.user.executeSql(
-            'DELETE FROM files WHERE id=?'
-        );
-    }
+            'DELETE FROM files WHERE id=?', [id]);
+    };
+
+    api.deleteFileByShortID = function (id) {
+        return Peerio.SqlDB.user.executeSql(
+            'DELETE FROM files WHERE shortID=?', [id]);
+    };
 
 
 })();

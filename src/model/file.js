@@ -26,7 +26,7 @@ var Peerio = this.Peerio || {};
      * @param data - file data in server format
      * @returns {Promise} resolves with 'this'
      */
-    function applyServerData(data) {
+    function applyServerData(data, existingName) {
         if (!data) {
             L.error('loadServerData: can\'t load from undefined object');
             return Promise.reject();
@@ -39,6 +39,10 @@ var Peerio = this.Peerio || {};
         this.timestamp = data.timestamp;
         this.header = data.header;
         // decrypting file name
+        if(existingName) {
+            this.name = existingName;
+            return Promise.resolve(this);
+        }
         return Peerio.Crypto.decryptFileName(data.id, data.header)
             .then(name => {
                 this.name = name;
@@ -83,6 +87,11 @@ var Peerio = this.Peerio || {};
         Peerio.FileSystem.removeCachedFile(this);
         this.cached = false;
         Peerio.Action.filesUpdated();
+    }
+
+    function save(){
+        return Peerio.SqlQueries.createOrUpdateFile(this.id, this.shortID, JSON.stringify(this.header), this.name,
+            this.creator, this.sender, this.timestamp, this.size);
     }
 
     function download() {
@@ -252,7 +261,8 @@ var Peerio = this.Peerio || {};
             deleteFromCache: deleteFromCache,
             download: download,
             upload: upload,
-            generateHeader: generateHeader
+            generateHeader: generateHeader,
+            save: save
         };
 
         obj.self = obj;
@@ -266,12 +276,21 @@ var Peerio = this.Peerio || {};
     /**
      * Call to create and fully build File instance from server data
      * @param {Object} data
+     * @param {string} [existingName]
      * @returns {Promise<File>}
      */
-    Peerio.File.fromServerData = function (data) {
+    Peerio.File.fromServerData = function (data, existingName) {
         return Peerio.File()
-            .applyServerData(data)
+            .applyServerData(data, existingName)
             .then(file => file.buildProperties());
+    };
+
+    Peerio.File.fromLocalData = function (data) {
+        var f = Peerio.File();
+        _.assign(f, data);
+        f.header = JSON.parse(f.header);
+        f.buildProperties();
+        return f;
     };
 
 })();

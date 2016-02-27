@@ -36,6 +36,7 @@ Peerio.User.addFilesModule = function (user) {
         }
 
         user.filesVersion = Math.max(user.filesVersion, version);
+        Peerio.TinyDB.saveItem('filesVersion', user.filesVersion, user.username, user.keyPair.secretKey)
         Peerio.Action.filesUpdated();
     }
 
@@ -46,6 +47,7 @@ Peerio.User.addFilesModule = function (user) {
     function onFileAdded(data) {
         return Peerio.File.fromServerData(data)
             .then(file => {
+                file.save();
                 user.files.addOrReplace(file);
                 updateCollectionVersion(data.collectionVersion);
                 return file;
@@ -57,6 +59,7 @@ Peerio.User.addFilesModule = function (user) {
 
     function onFileRemoved(data) {
         try {
+            Peerio.SqlQueries.deleteFile(data.id);
             user.files.removeByKey(data.id);
             updateCollectionVersion(data.collectionVersion);
         } catch (err) {
@@ -64,6 +67,12 @@ Peerio.User.addFilesModule = function (user) {
         }
     }
 
+    user.loadFilesCache = function () {
+        return Peerio.Files.getFilesCache()
+            .then(files => user.files = files)
+            .then(() => Peerio.TinyDB.getItem('filesVersion', user.username, user.keyPair.secretKey))
+            .then(filesVersion => user.filesVersion = filesVersion == null ? -1 : filesVersion);
+    };
     /**
      * Reloads and rebuilds file collection from server, unless already up to date
      * @returns Peerio.user
@@ -80,13 +89,27 @@ Peerio.User.addFilesModule = function (user) {
                 return Peerio.Files.getFiles()
                     .then(files => {
                         user.files = files;
-                        updateCollectionVersion(response.versions.files);
-                        return user;
+
+                        Promise.each(files.arr, f => f.save())
+                            .then(()=>removeDeletedFiles(files))
+                            .then(()=>updateCollectionVersion(response.versions.files))
+                            .return(user);
                     });
             }).finally(()=>Peerio.Action.syncProgress(1, 1, 'synchronizing files'));
 
     }.bind(user);
 
+    function removeDeletedFiles(files) {
+        return Peerio.SqlQueries.getAllFilesShortIDs()
+            .then(IDs=> {
+                var toDelete = [];
+                IDs.forEach(id => {
+                    if (files.dict[id]) return;
+                    toDelete.push(id);
+                });
+                return Promise.each(toDelete, id => Peerio.SqlQueries.deleteFileByShortID(id));
+            });
+    }
 
     user.uploadFile = function (fileData) {
         var file = Peerio.File();
