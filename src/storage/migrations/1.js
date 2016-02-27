@@ -28,7 +28,9 @@ Peerio.SqlMigrations = Peerio.SqlMigrations || [];
                 'firstName TEXT,'               +
                 'lastName TEXT,'                +
                 'address TEXT,'                 +
-                'isDeleted BOOLEAN'             +
+                'isDeleted BOOLEAN,'            +
+                'isRequest BOOLEAN,'            +
+                'isReceivedRequest BOOLEAN'     +
                 ') WITHOUT ROWID'
             );
 
