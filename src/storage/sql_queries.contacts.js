@@ -48,9 +48,9 @@ var Peerio = this.Peerio || {};
                 api.prepareString(firstName),
                 api.prepareString(lastName),
                 api.prepareString(address),
-                !!isDeleted,
-                !!isRequest,
-                !!isReceivedRequest
+                isDeleted?1:0,
+                isRequest?1:0,
+                isReceivedRequest?1:0
             ]
         );
     };
