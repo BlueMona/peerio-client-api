@@ -20,7 +20,7 @@ var Peerio = this.Peerio || {};
                 conversationID,
                 sender,
                 timestamp,
-                body || '',
+                api.prepareString(body),
                 api.serializeArray(files)
             ]);
     };

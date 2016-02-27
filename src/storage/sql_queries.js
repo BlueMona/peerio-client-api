@@ -29,6 +29,10 @@ var Peerio = this.Peerio || {};
 
     api.serializeObject = function(obj) {
         return (is.object(obj) && Object.keys(obj).length===0) ? null : JSON.stringify(obj);
-    }
+    };
+
+    api.prepareString=function(value){
+      return value == null ? '' : value;
+    };
 
 })();

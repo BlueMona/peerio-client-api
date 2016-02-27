@@ -45,9 +45,9 @@ var Peerio = this.Peerio || {};
             [
                 username,
                 publicKey,
-                firstName,
-                lastName,
-                address,
+                api.prepareString(firstName),
+                api.prepareString(lastName),
+                api.prepareString(address),
                 isDeleted,
                 isRequest,
                 isReceivedRequest
