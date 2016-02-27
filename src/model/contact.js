@@ -52,6 +52,8 @@ var Peerio = this.Peerio || {};
      * @returns {Promise} - resolves with 'this' when done
      */
     function buildIdenticon() {
+        // todo: when passphrase feature will be ready, this need to check if PK was changed
+        if (this.icon12) return Promise.resolve(this);
         if (!this.publicKey) return Promise.reject();
 
         var header = 'data:image/png;base64,';
@@ -141,6 +143,10 @@ var Peerio = this.Peerio || {};
             .finally(resetState.bind(this, this.state));
     }
 
+    function saveToDB() {
+        return Peerio.SqlQueries.createOrUpdateContact()
+    }
+
     //-- PUBLIC API ------------------------------------------------------------------------------------------------------
     /**
      * Call Peerio.Contact() to create empty contact object
@@ -156,7 +162,8 @@ var Peerio = this.Peerio || {};
             accept: accept,
             reject: reject,
             cancelRequest: cancelRequest,
-            remove: remove
+            remove: remove,
+            saveToDB: saveToDB
         };
 
         obj.self = obj;
@@ -178,6 +185,12 @@ var Peerio = this.Peerio || {};
             .applyServerData(data)
             .buildProperties()
             .buildIdenticon();
+    };
+
+    Peerio.Contact.fromLocalData = function (data) {
+        var c = Peerio.Contact();
+        _.assign(c, data);
+        return c.buildProperties().buildIdenticon();
     };
 
     // Exposing functions for User object,

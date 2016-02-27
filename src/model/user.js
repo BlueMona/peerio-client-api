@@ -49,10 +49,7 @@ var Peerio = this.Peerio || {};
             running = true;
             Peerio.Action.syncStarted();
 
-            runningPromise = user.loadSettings()
-                .then(user.buildProperties)
-                .then(user.buildIdenticon)
-                .then(user.loadContacts)
+            runningPromise = user.loadContacts()
                 .then(user.resumeContactEvents)
                 .then(user.loadFiles)
                 .then(user.resumeFileEvents)

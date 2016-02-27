@@ -130,7 +130,7 @@ Peerio.Net.init = function () {
      * Authenticates current socket session.
      * Stores user object to re-login automatically in case of reconnection.
      * @param {{username: string, publicKey: string, keyPair: KeyPair}} userData
-     * @param {bool} [isThisAutoLogin] - true when login was called automatically after reconnect
+     * @param {boolean} [isThisAutoLogin] - true when login was called automatically after reconnect
      * @returns {Promise}
      */
     api.login = function (userData, isThisAutoLogin) {

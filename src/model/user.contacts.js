@@ -15,12 +15,12 @@ Peerio.User.addContactsModule = function (user) {
     // todo from base
     user.contactsVersion = -1;
 
-    user.pauseContactEvents = function(){
-      queue.pause();
+    user.pauseContactEvents = function () {
+        queue.pause();
     }.bind(user);
 
-    user.resumeContactEvents = function(){
-      queue.resume();
+    user.resumeContactEvents = function () {
+        queue.resume();
     }.bind(user);
 
     //subscribing to server events
@@ -56,6 +56,7 @@ Peerio.User.addContactsModule = function (user) {
     function onAdded(data) {
         Peerio.Contact.fromServerData(data)
             .then(contact=> {
+                contact.save();
                 user.contacts.addOrReplace(contact);
                 user.sentContactRequests.removeByKey(contact.username);
                 user.receivedContactRequests.removeByKey(contact.username);
@@ -69,6 +70,7 @@ Peerio.User.addContactsModule = function (user) {
 
     function onRemoved(data) {
         try {
+            Peerio.SqlQueries.deleteContact(data.username);
             user.contacts.removeByKey(data.username);
             setCryptoContacts();
             updateCollectionVersion(data.collectionVersion);
@@ -82,6 +84,7 @@ Peerio.User.addContactsModule = function (user) {
             .then(contact=> {
                 // todo: legacy flags, refactor and remove
                 contact.isRequest = true;
+                contact.save();
                 user.sentContactRequests.addOrReplace(contact);
                 updateCollectionVersion(data.collectionVersion);
             })
@@ -92,6 +95,7 @@ Peerio.User.addContactsModule = function (user) {
 
     function onSentRequestRemoved(data) {
         try {
+            Peerio.SqlQueries.deleteContact(data.username);
             user.sentContactRequests.removeByKey(data.username);
             updateCollectionVersion(data.collectionVersion);
         } catch (err) {
@@ -103,6 +107,7 @@ Peerio.User.addContactsModule = function (user) {
         Peerio.Contact.fromServerData(data)
             .then(contact=> {
                 contact.isRequest = contact.isReceivedRequest = true;
+                contact.save();
                 user.receivedContactRequests.addOrReplace(contact);
                 updateCollectionVersion(data.collectionVersion);
             })
@@ -114,12 +119,23 @@ Peerio.User.addContactsModule = function (user) {
 
     function onReceivedRequestRemoved(data) {
         try {
+            Peerio.SqlQueries.deleteContact(data.username);
             user.receivedContactRequests.removeByKey(data.username);
             updateCollectionVersion(data.collectionVersion);
         } catch (err) {
             L.error('Failed to process receivedContactRequestRemoved event. {0}', err);
         }
     }
+
+    user.loadContactsCache = function () {
+        return Peerio.Contacts.getContactsCache(user.username)
+            .then(data => {
+                user.contacts = data.contacts;
+                user.receivedContactRequests = data.receivedRequests;
+                user.sentContactRequests = data.sentRequests;
+                setCryptoContacts();
+            })
+    };
 
     /**
      * Reloads contact collection from server.
@@ -153,12 +169,30 @@ Peerio.User.addContactsModule = function (user) {
                         sent.arr.forEach(item => item.isRequest = true);
                         user.sentContactRequests = sent;
 
-                        // if version changed while we were retrieving data it will be updated when event queue resumes
-                        updateCollectionVersion(currentVersion);
+                        Promise.all([
+                                Promise.each(contacts.arr, c => c.save()),
+                                Promise.each(received.arr, c => c.save()),
+                                Promise.each(sent.arr, c => c.save())
+                            ])
+                            .then(()=>removeDeletedContacts(contacts, received, sent))
+                            .then(()=>updateCollectionVersion(currentVersion))
+
                     });
             })
             .finally(() => Peerio.Action.syncProgress(1, 1, msg));
 
     }.bind(user);
+
+    function removeDeletedContacts(contacts, received, sent) {
+        return Peerio.SqlQueries.getAllContactsUsernames()
+            .then(usernames=> {
+                var toDelete = [];
+                usernames.forEach(u => {
+                    if (contacts.dict[u] || received.dict[u] || sent.dict[u]) return;
+                    toDelete.push(u);
+                });
+                return Promise.each(toDelete, u => Peerio.SqlQueries.deleteContact(u));
+            });
+    }
 
 };
