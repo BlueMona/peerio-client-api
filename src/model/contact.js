@@ -143,8 +143,9 @@ var Peerio = this.Peerio || {};
             .finally(resetState.bind(this, this.state));
     }
 
-    function saveToDB() {
-        return Peerio.SqlQueries.createOrUpdateContact()
+    function save() {
+        return Peerio.SqlQueries.createOrUpdateContact(this.username, this.publicKey, this.firstName, this.lastName,
+            this.address, this.isDeleted, this.isRequest, this.isReceivedRequest);
     }
 
     //-- PUBLIC API ------------------------------------------------------------------------------------------------------
@@ -163,7 +164,7 @@ var Peerio = this.Peerio || {};
             reject: reject,
             cancelRequest: cancelRequest,
             remove: remove,
-            saveToDB: saveToDB
+            save: save
         };
 
         obj.self = obj;

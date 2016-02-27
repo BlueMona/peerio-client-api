@@ -45,12 +45,14 @@ var Peerio = this.Peerio || {};
 
     function getContactsCache(username) {
         var ret = {};
+        var rawData;
         return Peerio.SqlQueries.getContacts()
-            .then(data => createContacts(data.filter(c=>!c.isRequest), username, false))
+            .then(data => rawData = data)
+            .then(() => createContacts(rawData.filter(c=>!c.isRequest), username, false))
             .then(contacts => ret.contacts = contacts)
-            .then(data => createContacts(data.filter(c=>c.isRequest && !c.isReceivedRequest), null, false))
+            .then(() => createContacts(rawData.filter(c=>c.isRequest && !c.isReceivedRequest), null, false))
             .then(sentRequests => ret.sentRequests = sentRequests)
-            .then(data => createContacts(data.filter(c=>c.isReceivedRequest), null, false))
+            .then(() => createContacts(rawData.filter(c=>c.isReceivedRequest), null, false))
             .then(receivedRequests => ret.receivedRequests = receivedRequests)
             .return(ret);
     }

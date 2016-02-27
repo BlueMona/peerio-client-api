@@ -38,6 +38,7 @@ Peerio.User.addContactsModule = function (user) {
             Peerio.user.setContactsUnreadState(true);
         }
         user.contactsVersion = Math.max(user.contactsVersion, version);
+        Peerio.TinyDB.saveItem('contactsVersion', user.contactsVersion,  user.username, user.keyPair.secretKey);
         Peerio.Action.contactsUpdated();
     }
 
@@ -134,7 +135,9 @@ Peerio.User.addContactsModule = function (user) {
                 user.receivedContactRequests = data.receivedRequests;
                 user.sentContactRequests = data.sentRequests;
                 setCryptoContacts();
+                return Peerio.TinyDB.getItem('contactsVersion', user.username, user.keyPair.secretKey)
             })
+            .then(contactsVersion => user.contactsVersion = contactsVersion == null ? -1 : contactsVersion)
     };
 
     /**
