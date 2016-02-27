@@ -22,26 +22,27 @@ var Peerio = this.Peerio || {};
             user.lastName = settings.lastName;
             user.paymentPlan = settings.paymentPlan;
             user.quota = settings.quota;
-            Peerio.Action.settingsUpdated();
+            user.buildProperties();
+            return user.buildIdenticon().then(Peerio.Action.settingsUpdated);
         };
 
 
-        user.loadSettingsCache = function(){
+        user.loadSettingsCache = function () {
             return Peerio.TinyDB.getItem('settings', Peerio.user.username, Peerio.user.keyPair.secretKey)
-                .then(settings =>{
-                    if(!settings) return Promise.reject();
+                .then(settings => {
+                    if (!settings) return Promise.reject();
                     user.processSettings(settings);
                 })
         }.bind(user);
 
         user.loadSettings = function () {
-            //todo attempt cache first and then call for net update
             return Peerio.Net.getSettings()
                 .then(settings => {
                     L.info('get settings in');
                     L.info(settings);
-                    user.processSettings(settings);
-                    return Peerio.TinyDB.saveItem('settings', Peerio.user.username, Peerio.user.keyPair.secretKey);
+                    return Promise.all([
+                        user.processSettings(settings),
+                        Peerio.TinyDB.saveItem('settings', settings, Peerio.user.username, Peerio.user.keyPair.secretKey)]);
                 });
         }.bind(user);
 
@@ -61,26 +62,20 @@ var Peerio = this.Peerio || {};
 
         user.addAddress = function (address) {
             address = Peerio.Util.parseAddress(address);
-            return Peerio.Net.addAddress(
-                {
-                    address: {type: address.type, value: address.value}
-                }).then(user.loadSettings);
+            return Peerio.Net.addAddress({
+                address: {type: address.type, value: address.value}});
         }.bind(user);
 
         user.confirmAddress = function (address, code) {
-            return Peerio.Net.confirmAddress(address, code)
-                .then(user.loadSettings);
+            return Peerio.Net.confirmAddress(address, code);
         }.bind(user);
 
         user.removeAddress = function (address) {
-            return Peerio.Net.removeAddress(address)
-                .then(user.loadSettings);
-
+            return Peerio.Net.removeAddress(address);
         }.bind(user);
 
         user.setPrimaryAddress = function (address) {
-            return Peerio.Net.setPrimaryAddress(address)
-                .then(user.loadSettings);
+            return Peerio.Net.setPrimaryAddress(address);
         }.bind(user);
 
         user.closeAccount = function () {
@@ -95,24 +90,24 @@ var Peerio = this.Peerio || {};
             });
         };
 
-        user.redeemCouponCode = function(code) {
+        user.redeemCouponCode = function (code) {
             return Peerio.Net.redeemCouponCode(code);
         };
 
-        user.getInviteCode = function() {
+        user.getInviteCode = function () {
             return Peerio.Net.getInviteCode();
         };
 
-        user.enableDataCollection = function(enable) {
+        user.enableDataCollection = function (enable) {
             Peerio.user.settings.dataCollectionOptIn = enable;
             return Peerio.Net.updateSettings({
                 dataCollectionOptIn: enable
             });
         };
 
-        user.pinEntropyCheck = function(pin) {
-            if(pin.match(/0{6}|1{6}|2{6}|3{6}|4{6}|5{6}|6{6}|7{6}|8{6}|9{6}/)
-            || pin.match(/012345|123456|234567|345678|456789|543210|654321|765432|876543|98765/)) return false;
+        user.pinEntropyCheck = function (pin) {
+            if (pin.match(/0{6}|1{6}|2{6}|3{6}|4{6}|5{6}|6{6}|7{6}|8{6}|9{6}/)
+                || pin.match(/012345|123456|234567|345678|456789|543210|654321|765432|876543|98765/)) return false;
             return true;
         };
     };
