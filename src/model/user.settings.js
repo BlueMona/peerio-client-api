@@ -28,9 +28,10 @@ var Peerio = this.Peerio || {};
 
 
         user.loadSettingsCache = function () {
+            L.info('Loading settings cache');
             return Peerio.TinyDB.getItem('settings', Peerio.user.username, Peerio.user.keyPair.secretKey)
                 .then(settings => {
-                    if (!settings) return Promise.reject();
+                    if (!settings) return Promise.reject('Failed to retrieve settings cache');
                     user.processSettings(settings);
                 })
         }.bind(user);
