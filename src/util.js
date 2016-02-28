@@ -259,4 +259,20 @@ Peerio.Util.init = function () {
 
 		return JSON.stringify(val);
 	};
+
+    // this is not ideal and won't work in all cases, but does the job for what it was originally created
+    api.tryCatchAllFunctions = function(obj){
+        for(var prop in obj){
+            var fn = obj[prop];
+            if(is.function(fn)){
+                obj[prop] = function(){
+                    try{
+                        fn.apply(null, arguments);
+                    }catch(ex){
+                        L.error(ex);
+                    }
+                }
+            }
+        }
+    };
 };
