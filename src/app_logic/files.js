@@ -58,7 +58,7 @@ var Peerio = this.Peerio || {};
             .then(function (cachedNames) {
                 cachedNames.forEach(function (name) {
                     L.verbose('Mapping cached file {0}', name);
-                    var file = files[Peerio.Util.getFileName(name)];
+                    var file = files.dict[Peerio.Util.getFileName(name)];
                     if (!file) {
                         // todo: remove file?
                         L.error('Match for locally cached file {0} not found.', name);
