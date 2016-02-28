@@ -153,6 +153,7 @@ var Peerio = this.Peerio || {};
     }
 
     function reply(recipients, body, fileIDs, subject) {
+        recipients = recipients.slice();
         if (recipients.indexOf(Peerio.user.username) < 0)
             recipients.push(Peerio.user.username);
 
