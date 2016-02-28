@@ -89,12 +89,15 @@ Peerio.User.addAuthModule = function (user) {
             })
             .then(() => {
                 // if it's 'offline' login, we just call this to enable auto-relogins
-                if (offlineLoginPossible)
-                    Peerio.Net.login({
-                        username: user.username,
-                        publicKey: user.publicKey,
-                        keyPair: user.keyPair
-                    }, true);
+                if (offlineLoginPossible) {
+                    Peerio.Socket.connect();
+                    window.setTimeout(() => { 
+                        Peerio.Net.login({
+                            username: user.username,
+                            publicKey: user.publicKey,
+                            keyPair: user.keyPair
+                        }, true); }, 1000);
+                }
             })
             .catch((e)=> {
                 L.error('Peerio.user.login error. {0}', e);
