@@ -240,7 +240,7 @@ Peerio.Net.init = function () {
                 // if we got response, let's check it for 'error' property and reject promise if it exists
                 if (!hasProp(response, 'error')) return Promise.resolve(response);
 
-                var err = new PeerioServerError(response.error);
+                var err = new PeerioServerError(response.error, response.message);
                 L.error(err);
                 // 2fa requested
                 // TODO: add constraints, for which functions

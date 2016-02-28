@@ -3,9 +3,9 @@
  * Network layer creates this object on server errors.
  */
 
-function PeerioServerError(code) {
+function PeerioServerError(code, message) {
     this.code = +code;
-    this.message = this.getMessage(code);
+    this.message = message ? message : this.getMessage(code);
     this.timestamp = Date.now();
     this.isOperational = true; // bluebird wants this
 }

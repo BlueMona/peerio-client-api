@@ -30,11 +30,11 @@ Peerio.User.addAuthModule = function (user) {
             .then(() => Peerio.Crypto.setDefaultUserData(user.username, user.keyPair, user.publicKey))
             .then(()=> {
                 return user.loadSettingsCache()
-                    .then(()=>offlineLoginPossible = true)
+                    .then(()=>offlineLoginPossible = !user.settings.twoFactorAuth)
                     .catch(L.error);
             })
             .then(()=> {
-                L.info("Offline login is {0}", offlineLoginPossible ? 'possible!' : 'not possible!');
+                L.info('Offline login is {0}', offlineLoginPossible ? 'possible!' : 'not possible!');
                 // making sure that the app is already connected
                 if (offlineLoginPossible) return;
 
@@ -56,7 +56,7 @@ Peerio.User.addAuthModule = function (user) {
                         username: user.username,
                         publicKey: user.publicKey,
                         keyPair: user.keyPair
-                    })
+                    });
                 });
 
             })
