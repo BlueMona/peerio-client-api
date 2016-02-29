@@ -59,7 +59,7 @@ Peerio.Net.init = function () {
             return Promise.resolve(true);
         }
 
-        return sendToSocket('getClientVersionInfo', null, {ignoreConnectionState: true})
+        return sendToSocket('getClientVersionInfo', null, {ignoreConnectionState: true, ignoreAuthState: true})
             .then(versionData => {
                 var versions = versionData && versionData[Peerio.runtime.platform];
                 if (!versions) {
@@ -94,13 +94,15 @@ Peerio.Net.init = function () {
 
 
     function onConnect() {
-        sendToSocket('setApiVersion', {version: API_VERSION}, {ignoreConnectionState: true})
+        L.verbose("Network layer got connect event from socket");
+        sendToSocket('setApiVersion', {version: API_VERSION}, {ignoreConnectionState: true, ignoreAuthState: true})
             .then(checkClientVersion)
             .then(function (proceed) {
                 if (!proceed) {
                     Peerio.Socket.disableNetworking();
                     return;
                 }
+                L.info("Network layer set to connected state.");
                 connected = true;
                 window.setTimeout(Peerio.Action.connected, 0);
                 if (user)
@@ -123,6 +125,7 @@ Peerio.Net.init = function () {
         rejectAllPromises('Disconnected');
         connected = false;
         authenticated = false;
+        L.info("Network layer set to disconnected state.");
         Peerio.Action.disconnected();
     }
 
@@ -130,36 +133,34 @@ Peerio.Net.init = function () {
      * Authenticates current socket session.
      * Stores user object to re-login automatically in case of reconnection.
      * @param {{username: string, publicKey: string, keyPair: KeyPair}} userData
-     * @param {boolean} [isThisAutoLogin] - true when login was called automatically after reconnect
+     * @param {boolean} [keepCredentials] - remember user credentials even if login fails
      * @returns {Promise}
      */
-    api.login = function (userData, isThisAutoLogin) {
+    api.login = function (userData, keepCredentials) {
         if (!userData) return Promise.reject();
         user = userData;
+
+        if (!connected) return Promise.reject('Not Connected');
 
         return sendToSocket('getAuthenticationToken', {
             username: user.username,
             publicKeyString: user.publicKey
-        })
+        }, {ignoreAuthState: true})
             .then(encryptedAuthToken => Peerio.Crypto.decryptAuthToken(encryptedAuthToken, user.keyPair))
-            .then(authToken => sendToSocket('login', {authToken: authToken}))
+            .then(authToken => sendToSocket('login', {authToken: authToken}, {ignoreAuthState: true}))
             .then(() => {
-                authenticated = true;
                 L.info('connection authenticated');
-                if (isThisAutoLogin)
-                    Peerio.Action.authenticated();
+                authenticated = true;
+                Peerio.Action.authenticated();
             })
-            .catch(function (error) {
-                // if it was a call from login page, we don't want to use wrong credentials upon reconnect
-                console.log('authentication failed.', error);
-                if (!isThisAutoLogin) {
-                    user = null;
-                } else {
-                    Peerio.Action.authFail();
-                }
+            .catch(error=> {
+                    console.log('authentication failed.', error);
+                    if (!keepCredentials)
+                        user = null;
 
-                return Promise.reject(error);
-            });
+                    return Promise.reject(error);
+                }
+            );
     };
 
     api.signOut = function () {
@@ -209,14 +210,18 @@ Peerio.Net.init = function () {
      *  @param {Object} [data] - object to send
      *  @param {Object} [options]
      *  @param {boolean} [options.ignoreConnectionState] - only setApiVersion needs it, couldn't find more elegant way
+     *  @param {boolean} [options.ignoreAuthState] - some functions do not need an authenticated connection
      *  @param {Array} [options.transfer] - array of objects to transfer to worker (object won't be available on this thread anymore)
      *  @param {boolean} [options.ignoreTimeout] - tells our function to ignore timeout completely. useful for file uploads
      *  @param {Number} [options.customTimeout] - custom timeout length for this call, in milliseconds
      *  @returns {Promise}
      */
     function sendToSocket(name, data, options) {
-        var {ignoreConnectionState, transfer, ignoreTimeout, customTimeout} = options || empty;
+        var {ignoreConnectionState, ignoreAuthState,transfer, ignoreTimeout, customTimeout} = options || empty;
+
         if (!connected && !ignoreConnectionState) return Promise.reject(new Error('Not connected.'));
+        if (!authenticated && !ignoreAuthState) return Promise.reject(new Error(name + ' requires authenticated connection.'));
+
         // unique (within reasonable time frame) promise id
         var id = null;
         var promise = new Promise(
@@ -290,7 +295,7 @@ Peerio.Net.init = function () {
         if (!username) {
             return Promise.resolve(false);
         }
-        return sendToSocket('validateUsername', {username: username})
+        return sendToSocket('validateUsername', {username: username}, {ignoreAuthState: true})
             .then(function (response) {
                 return response.available;
             });
@@ -304,7 +309,7 @@ Peerio.Net.init = function () {
     api.validateAddress = function (address) {
         var parsed = Peerio.Util.parseAddress(address);
         if (!parsed) return Promise.resolve(false);
-        return sendToSocket('validateAddress', {address: parsed})
+        return sendToSocket('validateAddress', {address: parsed}, {ignoreAuthState: true})
             .then(function (response) {
                 return response.available;
             });
@@ -328,7 +333,7 @@ Peerio.Net.init = function () {
      *          }} - server response
      */
     api.registerAccount = function (accountInfo) {
-        return sendToSocket('register', accountInfo);
+        return sendToSocket('register', accountInfo, {ignoreAuthState: true});
     };
 
     /**
@@ -445,7 +450,7 @@ Peerio.Net.init = function () {
      * @param {Object} address
      */
     api.addressLookup = function (address) {
-        return sendToSocket('addressLookup', address);
+        return sendToSocket('addressLookup', address, {ignoreAuthState: true});
     };
 
     /**
@@ -501,7 +506,7 @@ Peerio.Net.init = function () {
      * @param {Object} address
      */
     api.inviteByEmail = function (address) {
-        return sendToSocket('addOrInviteContacts', {invite: [{ email: address }] });
+        return sendToSocket('addOrInviteContacts', {invite: [{email: address}]});
     };
 
     /**
@@ -530,7 +535,7 @@ Peerio.Net.init = function () {
             twoFACode: code,
             username: username,
             publicKeyString: publicKey
-        });
+        }, {ignoreAuthState: true});
     };
 
     /**
@@ -548,7 +553,7 @@ Peerio.Net.init = function () {
     };
 
     /**
-     * Get invitiation code for the logged in user
+     * Get invitation code for the logged in user
      * @returns object of type {inviteCode: "ZDFGTK1232KDVN"}
      */
     api.getInviteCode = function () {
