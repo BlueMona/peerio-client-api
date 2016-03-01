@@ -82,7 +82,7 @@ Peerio.Socket.init = function () {
      * @param {Object} [transfer] - data member object to transfer ownership to
      */
     Peerio.Socket.send = function (name, data, callback, transfer) {
-
+        L.silly('Socket.Send: {0}', name);
         // registering the callback, if provided
         var callbackID = null;
         if (typeof(callback) === 'function') {

@@ -44,6 +44,7 @@ Peerio.Net.init = function () {
 
     // this starts listening to socket.io events
     Peerio.Socket.injectEventHandler(function (eventName, data) {
+        L.silly('Server event: {0}, data: {1}', eventName, data);
         var handler = socketEventHandlers[eventName];
         if (handler) {
             handler(data);

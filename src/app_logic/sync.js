@@ -6,7 +6,7 @@ var Peerio = this.Peerio || {};
     //-- PUBLIC API ------------------------------------------------------------------------------------------------------
     Peerio.Sync = {
         syncMessages: syncMessages,
-        syncMessagesThrottled: _.throttle(syncMessages, 3000),
+        syncMessagesThrottled: _.throttle(syncMessages, 2000),
         interrupt: interrupt
     };
 
@@ -170,9 +170,10 @@ var Peerio = this.Peerio || {};
         running = true;
         runAgain = false;
         Peerio.Action.syncProgress(0, 0, progressMsg);
-
+        L.silly('Checking if last sync was interrupted.');
         return Peerio.TinyDB.getItem('syncInProgress', Peerio.user.username)
             .then(inProgress => {
+                L.silly(inProgress ? 'Last sync was interrupted! Recovering database.' : 'Last sync was not interrupted');
                 // if true - last sync was interrupted
                 if (inProgress)
                     return recoverDatabase();
@@ -186,6 +187,7 @@ var Peerio = this.Peerio || {};
                 ])
             )
             .spread((localMax, serverMax) => {
+                L.silly('Local max seqid: {0}, server max seqid: {1}', localMax, serverMax);
                 if (localMax === serverMax) return;
                 var progressStartAt = localMax;
                 var progressEndAt = serverMax - localMax;
@@ -194,8 +196,10 @@ var Peerio = this.Peerio || {};
                 return new Promise((resolve, reject) => {
                     // async recursive function that executes processing of one page at a time
                     var callProcess = () => {
+                        L.silly('{0} {1}/{2}', progressMsg, localMax - progressStartAt, progressEndAt)
                         Peerio.Action.syncProgress(localMax - progressStartAt, progressEndAt, progressMsg);
                         if (interruptRequested) {
+                            L.info('Sync interrupt was requested, stopping.');
                             interruptRequested = false;
                             reject('Sync interrupted.');
                             return;
@@ -206,6 +210,7 @@ var Peerio = this.Peerio || {};
                                 localMax += batch;
                                 // if all range was processed
                                 if (localMax > serverMax) {
+                                    L.silly('All sequences processed. Proceeding to mass-update');
                                     updateConversations().then(resolve).catch(reject);
                                     return;
                                 }
@@ -292,7 +297,7 @@ var Peerio = this.Peerio || {};
             .then(() => {
                 lastMessagesCache[msg.conversationID] = msg.id;
 
-                msg.receipts.forEach(username =>  Peerio.SqlQueries.updateReadPosition(msg.conversationID, username, entry.entity.seqID));
+                msg.receipts.forEach(username => Peerio.SqlQueries.updateReadPosition(msg.conversationID, username, entry.entity.seqID));
 
                 if (msg.sender == Peerio.user.username)
                     Peerio.SqlQueries.updateReadPosition(msg.conversationID, Peerio.user.username, entry.entity.seqID)
@@ -358,8 +363,10 @@ var Peerio = this.Peerio || {};
         interruptRequested = running;
     }
 
-    function recoverDatabase(){
-        return Peerio.SqlQueries.recoverLastMsgIDsOnConversations();
+    function recoverDatabase() {
+        L.B.start('DB recovery');
+        return Peerio.SqlQueries.recoverLastMsgIDsOnConversations()
+            .finally(() => L.B.stop('DB recovery'));
     }
 
 
