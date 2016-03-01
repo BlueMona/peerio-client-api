@@ -265,13 +265,16 @@ Peerio.Util.init = function () {
         for(var prop in obj){
             var fn = obj[prop];
             if(is.function(fn)){
-                obj[prop] = function(){
-                    try{
-                        fn.apply(null, arguments);
-                    }catch(ex){
-                        L.error(ex);
-                    }
-                }
+                (function(f, o, p){
+                    o[p] = (function(){
+                        try {
+                            return f.apply(o, arguments);
+                        } catch(ex) {
+                            L.error(ex);
+                            return Promise.resolve(false);
+                        }
+                    });
+                })(fn, obj, prop);
             }
         }
     };
