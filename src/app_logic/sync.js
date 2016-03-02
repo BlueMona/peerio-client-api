@@ -6,7 +6,7 @@ var Peerio = this.Peerio || {};
     //-- PUBLIC API ------------------------------------------------------------------------------------------------------
     Peerio.Sync = {
         syncMessages: syncMessages,
-        syncMessagesThrottled: _.throttle(syncMessages, 2000),
+        syncMessagesThrottled: _.throttle(syncMessages, 0),
         interrupt: interrupt
     };
 
@@ -175,8 +175,10 @@ var Peerio = this.Peerio || {};
             .then(inProgress => {
                 L.silly(inProgress ? 'Last sync was interrupted! Recovering database.' : 'Last sync was not interrupted');
                 // if true - last sync was interrupted
-                if (inProgress)
+                if (inProgress) {
+                    securityCache = null;
                     return recoverDatabase();
+                }
 
             })
             .then(() => Promise.all([

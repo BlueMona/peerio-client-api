@@ -144,7 +144,7 @@ var Peerio = this.Peerio || {};
 
     api.getConversationsSecurityInfo = function () {
         return Peerio.SqlDB.user.executeSql(
-            'select c.id, mFirst.id as msgID, c.secretConversationID, mLast.innerIndex as innerIndex, mLast.timestamp as timestamp ' +
+            'select c.id, c.originalMsgId, mFirst.id as msgID, c.secretConversationID, mLast.innerIndex as innerIndex, mLast.timestamp as timestamp ' +
             'from conversations c ' +
             'left join messages mFirst on c.originalMsgID = mFirst.id ' +
             'left join messages mLast on c.lastMsgID = mLast.id '
