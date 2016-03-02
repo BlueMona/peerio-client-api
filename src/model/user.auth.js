@@ -123,6 +123,9 @@ Peerio.User.addAuthModule = function (user) {
                 Peerio.Dispatcher.onDisconnected(user.stopAllServerEvents);
             })
             .then(()=> {
+                Peerio.TinyDB.getItem('outOfSync', user.username)
+                    .then(res => Peerio.Action.outOfSync(!!res));
+
                 if (isOfflineLogin) return;
                 // if this is online login, we need to sync first, since we logged in already and missed first 'onAuthenticated'
                 user.loadSettings();

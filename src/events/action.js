@@ -84,7 +84,9 @@ Peerio.Action.init = function () {
         'Offline',
         'Online',
 
-        'UpdateAvailable'  // param: {expired: boolean} - true if current app version has expired
+        'UpdateAvailable',  // param: {expired: boolean} - true if current app version has expired
+
+        'OutOfSync' // param: true/false
     ].forEach(function (action) {
         Peerio.Action.add(action);
     });

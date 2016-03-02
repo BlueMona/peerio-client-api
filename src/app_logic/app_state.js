@@ -17,7 +17,7 @@ Peerio.AppState.init = function () {
   api.loading = false;     // is app currently transferring/waiting for data
   api.connected = false;   // is app connected to peerio server socket
   api.authenticated = false; // is current connection authenticated
-
+  api.outOfSync = false; // was last sync interrupted
   /**
    * Adds a custom state rule to AppState.
    * You can provide your own logic of how AppState properties change on Dispatcher events.
