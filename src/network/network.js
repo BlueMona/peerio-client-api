@@ -343,7 +343,7 @@ Peerio.Net.init = function () {
      * @returns {Promise<Boolean>} - always returns true or throws a PeerioServerError
      */
     api.activateAccount = function (decryptedToken) {
-        return sendToSocket('activateAccount', {accountCreationToken: decryptedToken})
+        return sendToSocket('activateAccount', {accountCreationToken: decryptedToken}, {ignoreAuthState: true})
             .return(true);
     };
 
