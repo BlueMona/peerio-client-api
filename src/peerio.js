@@ -26,6 +26,7 @@ Peerio.initAPI = function () {
             window.peerioApiFolder = undefined;
             Peerio.SqlDB.init();
         })
+        .then( () => Peerio.SqlDB.closeAll() )
         .then( () => Peerio.SqlDB.openSystemDB() )
         .then( () => {
             Peerio.Util.init();

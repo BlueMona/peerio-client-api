@@ -58,8 +58,9 @@ Peerio.SqlDB.init = function () {
     //------------------------------------------------------------------------------------------------------------------
 
     promisifyStatic();
+    // TODO: commenting out because closeAll is called from Peerio.initAPI and IS ASYNC 
     // security measure, to make sure previous database is closed after app reload
-    closeAllUserDatabases();
+    // closeAllUserDatabases();
 
     // '_' prefix is important to 100% avoid collisions with user databases
     var systemDbName = '_peerio_system';
@@ -103,6 +104,14 @@ Peerio.SqlDB.init = function () {
     }
 
     function closeAllUserDatabases() {
+        if(plugin.closeAll) {
+            var result = plugin.closeAll();
+            // if closeAll function works in the implementation
+            if(result !== false) {
+                L.info('Using plugin capabilities to close databases');
+                return result;
+            }
+        }
         var tmpdbName = '___peerio__tmp__system__db___';
         return plugin.openDatabase(tmpdbName, '')
             .then(tmpdb => {
