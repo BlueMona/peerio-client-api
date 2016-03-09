@@ -104,16 +104,14 @@ Peerio.SqlDB.init = function () {
     }
 
     function closeAllUserDatabases() {
-        if(plugin.closeAll) {
-            var result = plugin.closeAll();
-            // if closeAll function works in the implementation
-            if(result !== false) {
-                L.info('Using plugin capabilities to close databases');
-                return result;
-            }
-        }
-        var tmpdbName = '___peerio__tmp__system__db___';
-        return plugin.openDatabase(tmpdbName, '')
+        if (Peerio.runtime.platform == 'ios') {
+            L.info('Using plugin capabilities to close databases');
+            return plugin.closeAll();
+        } else {
+            // TODO: implement for all platforms
+            L.info('Using manual db closing');
+            var tmpdbName = '___peerio__tmp__system__db___';
+            return plugin.openDatabase(tmpdbName, '')
             .then(tmpdb => {
                 var dblist = tmpdb.openDBs;
                 setTimeout(()=> {
@@ -128,13 +126,14 @@ Peerio.SqlDB.init = function () {
                 Promise.each(Object.keys(dblist), dbname => {
                     if (dbname === tmpdbName || dbname === systemDbName) return;
                     plugin.openDatabase(dbname)
-                        .then(db => {
-                            db.abortAllPendingTransactions();
-                            return db.close();
-                        });
+                    .then(db => {
+                        db.abortAllPendingTransactions();
+                        return db.close();
+                    });
                 });
             });
-    }
+        }
+   }
 
     //-- PROMISIFICATORS -----------------------------------------------------------------------------------------------
     // we are not afraid of anything now. replace the functions with what suits us the best
