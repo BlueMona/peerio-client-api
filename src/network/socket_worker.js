@@ -33,6 +33,7 @@ function initialize(cfg) {
     var serverEvents = [
         'contactAdded',
         'contactRemoved',
+        'contactUpdated',
         'contactRequestSent',
         'contactRequestReceived',
         'sentContactRequestRemoved',

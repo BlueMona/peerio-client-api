@@ -95,7 +95,7 @@ Peerio.Net.init = function () {
 
 
     function onConnect() {
-        L.verbose("Network layer got connect event from socket");
+        L.verbose('Network layer got connect event from socket');
         sendToSocket('setApiVersion', {version: API_VERSION}, {ignoreConnectionState: true, ignoreAuthState: true})
             .then(checkClientVersion)
             .then(function (proceed) {
@@ -103,7 +103,7 @@ Peerio.Net.init = function () {
                     Peerio.Socket.disableNetworking();
                     return;
                 }
-                L.info("Network layer set to connected state.");
+                L.info('Network layer set to connected state.');
                 connected = true;
                 window.setTimeout(Peerio.Action.connected, 0);
                 if (user)
@@ -126,7 +126,7 @@ Peerio.Net.init = function () {
         rejectAllPromises('Disconnected');
         connected = false;
         authenticated = false;
-        L.info("Network layer set to disconnected state.");
+        L.info('Network layer set to disconnected state.');
         Peerio.Action.disconnected();
     }
 
@@ -204,6 +204,8 @@ Peerio.Net.init = function () {
 
     //-- HELPERS -------------------------------------------------------------------------------------------------------
     var empty = {};
+
+    api.sendToSocket = sendToSocket;
 
     /**
      *  generalized DRY function to use from public api functions

@@ -26,6 +26,7 @@ Peerio.User.addContactsModule = function (user) {
     //subscribing to server events
     net.subscribe('contactAdded', data=>queue.add(onAdded, data));
     net.subscribe('contactRemoved', data=>queue.add(onRemoved, data));
+    net.subscribe('contactUpdated', data=>queue.add(onUpdated, data));
 
     net.subscribe('contactRequestSent', data=>queue.add(onRequestSent, data));
     net.subscribe('sentContactRequestRemoved', data=>queue.add(onSentRequestRemoved, data));
@@ -48,7 +49,7 @@ Peerio.User.addContactsModule = function (user) {
             cryptoContacts[item.username] = {
                 username: item.username,
                 publicKey: item.publicKey
-            }
+            };
         });
 
         Peerio.Crypto.setDefaultContacts(cryptoContacts);
@@ -77,6 +78,14 @@ Peerio.User.addContactsModule = function (user) {
             updateCollectionVersion(data.collectionVersion);
         } catch (err) {
             L.error('Failed to process contactRemoved event. {0}', err);
+        }
+    }
+
+    function onUpdated(data) {
+        try {
+            user.loadContacts();
+        } catch (err) {
+            L.error('Failed to process contactUpdated event. {0}', err);
         }
     }
 
@@ -135,9 +144,9 @@ Peerio.User.addContactsModule = function (user) {
                 user.receivedContactRequests = data.receivedRequests;
                 user.sentContactRequests = data.sentRequests;
                 setCryptoContacts();
-                return Peerio.TinyDB.getItem('contactsVersion', user.username, user.keyPair.secretKey)
+                return Peerio.TinyDB.getItem('contactsVersion', user.username, user.keyPair.secretKey);
             })
-            .then(contactsVersion => user.contactsVersion = contactsVersion == null ? -1 : contactsVersion)
+            .then(contactsVersion => user.contactsVersion = contactsVersion == null ? -1 : contactsVersion);
     };
 
     /**
@@ -178,7 +187,7 @@ Peerio.User.addContactsModule = function (user) {
                                 Promise.each(sent.arr, c => c.save())
                             ])
                             .then(()=>removeDeletedContacts(contacts, received, sent))
-                            .then(()=>updateCollectionVersion(currentVersion))
+                            .then(()=>updateCollectionVersion(currentVersion));
 
                     });
             })
