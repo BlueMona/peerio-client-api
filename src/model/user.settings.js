@@ -23,6 +23,14 @@ var Peerio = this.Peerio || {};
             user.paymentPlan = settings.paymentPlan;
             user.quota = settings.quota;
             user.buildProperties();
+            var thisUser = user.contacts && user.contacts.arr 
+                && user.contacts.arr.filter(u => u.username == user.username);
+            if(thisUser && thisUser.length) {
+                thisUser = thisUser[0];
+                thisUser.firstName = user.firstName;
+                thisUser.lastName = user.lastName;
+                thisUser.buildProperties();
+            }
             return user.buildIdenticon().then(Peerio.Action.settingsUpdated);
         };
 
@@ -33,7 +41,7 @@ var Peerio = this.Peerio || {};
                 .then(settings => {
                     if (!settings) return Promise.reject('Failed to retrieve settings cache');
                     user.processSettings(settings);
-                })
+                });
         }.bind(user);
 
         user.loadSettings = function () {
