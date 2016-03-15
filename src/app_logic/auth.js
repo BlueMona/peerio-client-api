@@ -255,6 +255,7 @@ var Peerio = this.Peerio || {};
      * @returns {Promise<Keys>}
      */
     function signup(username, passphrase, firstName, lastName) {
+        username = username.toLowerCase();
         L.info('Peerio.Auth.signup(username:{0}, firstName:{1}, lastName:{2})', username, firstName, lastName);
         var keys;
         return generateKeys(username, passphrase)

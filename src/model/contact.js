@@ -170,6 +170,7 @@ var Peerio = this.Peerio || {};
         obj.self = obj;
 
         if (username) {
+            username = username.toLowerCase();
             obj.username = username;
             obj.buildProperties();
         }
