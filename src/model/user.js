@@ -18,7 +18,8 @@ var Peerio = this.Peerio || {};
      * @returns {object}
      */
     Peerio.User.create = function (username) {
-
+        username = username.toLowerCase();
+        
         var user = {
             username: username,
             PINIsSet: false
