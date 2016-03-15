@@ -108,7 +108,6 @@ var Peerio = this.Peerio || {};
         };
 
         user.enableDataCollection = function (enable) {
-            Peerio.user.settings.dataCollectionOptIn = enable;
             return Peerio.Net.updateSettings({
                 dataCollectionOptIn: enable
             });
