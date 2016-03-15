@@ -35,7 +35,7 @@ var Peerio = this.Peerio || {};
             [
                 seqID,
                 api.serializeArray(participants),
-                api.serializeArray(exParticipants),
+                api.serializeObject(exParticipants),
                 id
             ]);
     };
