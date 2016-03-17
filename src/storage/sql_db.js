@@ -104,10 +104,10 @@ Peerio.SqlDB.init = function () {
     }
 
     function closeAllUserDatabases() {
-        if (Peerio.runtime.platform == 'ios') {
-            L.info('Using plugin capabilities to close databases');
-            return plugin.closeAll();
-        } else {
+        //if (Peerio.runtime.platform == 'ios') {
+        //    L.info('Using plugin capabilities to close databases');
+        //    return plugin.closeAll();
+        //} else {
             // TODO: implement for all platforms
             L.info('Using manual db closing');
             var tmpdbName = '___peerio__tmp__system__db___';
@@ -132,7 +132,7 @@ Peerio.SqlDB.init = function () {
                     });
                 });
             });
-        }
+       // }
    }
 
     //-- PROMISIFICATORS -----------------------------------------------------------------------------------------------
