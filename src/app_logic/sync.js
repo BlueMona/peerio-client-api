@@ -7,7 +7,8 @@ var Peerio = this.Peerio || {};
     Peerio.Sync = {
         syncMessages: syncMessages,
         syncMessagesThrottled: _.throttle(syncMessages, 0),
-        interrupt: interrupt
+        interrupt: interrupt,
+        init: init
     };
 
     //--------------------------------------------------------------------------------------------------------------------
@@ -64,7 +65,7 @@ var Peerio = this.Peerio || {};
 
     var securityCache = null;
 
-    function populateSecurityCache() {
+    function loadSecurityCache() {
         if (securityCache) return Promise.resolve();
         return Peerio.SqlQueries.getConversationsSecurityInfo().then(data => Peerio.Sync.securityCache = securityCache = data);
     }
@@ -158,6 +159,13 @@ var Peerio = this.Peerio || {};
 
     }
 
+    function init() {
+        securityCache = null;
+        return recoverDatabase()
+            .then(loadSecurityCache);
+    }
+
+
     function syncMessages() {
         if (running) {
             runAgain = true;
@@ -170,22 +178,11 @@ var Peerio = this.Peerio || {};
         running = true;
         runAgain = false;
         Peerio.Action.syncProgress(0, 0, progressMsg);
-        L.silly('Checking if last sync was interrupted.');
-        return Peerio.TinyDB.getItem('syncInProgress', Peerio.user.username)
-            .then(inProgress => {
-                L.silly(inProgress ? 'Last sync was interrupted! Recovering database.' : 'Last sync was not interrupted');
-                // if true - last sync was interrupted
-                if (inProgress) {
-                    securityCache = null;
-                    return recoverDatabase();
-                }
-
-            })
+        return recoverDatabase()
             .then(() => Promise.all([
                     Peerio.SqlQueries.getMaxSeqID(),
                     Peerio.Net.getMaxMessageIndexID(),
-                    Peerio.TinyDB.saveItem('syncInProgress', true, Peerio.user.username),
-                    populateSecurityCache()
+                    Peerio.TinyDB.saveItem('syncInProgress', true, Peerio.user.username)
                 ])
             )
             .spread((localMax, serverMax) => {
@@ -366,9 +363,18 @@ var Peerio = this.Peerio || {};
     }
 
     function recoverDatabase() {
-        L.B.start('DB recovery');
-        return Peerio.SqlQueries.recoverLastMsgIDsOnConversations()
-            .finally(() => L.B.stop('DB recovery'));
+        L.silly('Checking if last sync was interrupted.');
+        return Peerio.TinyDB.getItem('syncInProgress', Peerio.user.username)
+            .then(inProgress => {
+                L.silly(inProgress ? 'Last sync was interrupted! Recovering database.' : 'Last sync was not interrupted');
+                // if true - last sync was interrupted
+                if (inProgress) {
+                    securityCache = null;
+                    L.B.start('DB recovery');
+                    return Peerio.SqlQueries.recoverLastMsgIDsOnConversations()
+                        .finally(() => L.B.stop('DB recovery'));
+                }
+            });
     }
 
 

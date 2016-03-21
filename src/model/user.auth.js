@@ -105,10 +105,12 @@ Peerio.User.addAuthModule = function (user) {
             .then(initDatabases)
             .then(() => Peerio.Auth.getPinForUser(user.username).then(pin => user.PINIsSet = !!pin))
             .then(() => {
+
                 if (!cacheAvailable) return;
                 L.info('Loading offline caches');
                 return user.loadContactsCache().then(user.loadFilesCache);
             })
+            .then(Peerio.Sync.init)
             .then(()=> {
                 // both offline and online login paths will execute this code on every authentication and disconnet
                 Peerio.Dispatcher.onAuthenticated(function () {
