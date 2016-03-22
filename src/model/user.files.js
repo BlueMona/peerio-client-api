@@ -48,6 +48,8 @@ Peerio.User.addFilesModule = function (user) {
         return Peerio.File.fromServerData(data)
             .then(file => {
                 file.save();
+                var existing  = user.files[file.shortId];
+                file.cached = existing && existing.cached;
                 user.files.addOrReplace(file);
                 updateCollectionVersion(data.collectionVersion);
                 return file;
@@ -60,6 +62,8 @@ Peerio.User.addFilesModule = function (user) {
     function onFileRemoved(data) {
         try {
             Peerio.SqlQueries.deleteFile(data.id);
+            var existing = user.files.dict[data.id];
+            if(existing) existing.deleteFromCache();
             user.files.removeByKey(data.id);
             updateCollectionVersion(data.collectionVersion);
         } catch (err) {
