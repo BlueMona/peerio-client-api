@@ -23,6 +23,22 @@ Peerio.User.addContactsModule = function (user) {
         queue.resume();
     }.bind(user);
 
+    user.getSortedContacts = function() {
+        if(!user.contacts.sorted) {
+            var i;
+            for(i = 0; i < user.contacts.arr.length; ++i) {
+                var c = user.contacts.arr[i];
+                c.comparer = c.firstName ? c.firstName : c.username;
+                c.comparer = c.comparer.toLowerCase();
+            }
+            user.contacts.sorted = user.contacts.arr
+            .sort( (a, b) => {
+                return a.comparer > b.comparer;
+            });
+        }
+        return user.contacts.sorted;
+    }.bind(user);
+
     //subscribing to server events
     net.subscribe('contactAdded', data=>queue.add(onAdded, data));
     net.subscribe('contactRemoved', data=>queue.add(onRemoved, data));
@@ -38,6 +54,7 @@ Peerio.User.addContactsModule = function (user) {
         if (user.contactsVersion != -1 && user.contactsVersion < version) {
             Peerio.user.setContactsUnreadState(true);
         }
+        user.contacts.sorted = null;
         user.contactsVersion = Math.max(user.contactsVersion, version);
         Peerio.TinyDB.saveItem('contactsVersion', user.contactsVersion,  user.username, user.keyPair.secretKey);
         Peerio.Action.contactsUpdated();
