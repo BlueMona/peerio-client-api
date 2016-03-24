@@ -17,6 +17,12 @@ var Peerio = this.Peerio || {};
             });
     };
 
+    api.wipeUserData = function (username) {
+        return Peerio.SqlDB.system.executeSql(
+            'DELETE FROM system_values WHERE key LIKE ?',
+            [username + '_%']);
+    };
+
     api.getSystemValue = function (key) {
         return Peerio.SqlDB.system.executeSql('SELECT value FROM system_values WHERE key=?', [key])
             .then((res) => {

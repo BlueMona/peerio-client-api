@@ -104,4 +104,21 @@ var Peerio = this.Peerio || {};
         return user;
     };
 
+    var wipeCallbacks = [];
+
+    Peerio.User.addWipeCallback = function(callback) {
+        wipeCallbacks.push(callback);    
+    };
+
+    Peerio.User.wipeLocalData = function(username) {
+        Peerio.SqlDB.deleteUserDB(username)
+        .catch( e => L.error(e) )
+        .then( () => Peerio.TinyDB.removeItem('settings', username) )
+        .then( () => Peerio.Auth.clearSavedLogin() )
+        .then( () => Peerio.SqlQueries.wipeUserData(username) ) 
+        .then( () => Promise.all(wipeCallbacks.map( f => f(username).catch(e => L.error(e)) ) ) )
+        .then( () => L.info('Local data for ' + username + ' removed') )
+        .catch( e => L.error(e) );
+    };
+
 })();
