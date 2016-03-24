@@ -80,11 +80,11 @@
         // todo: non-string values sort
 
         function sortAsc(propName) {
-            (stringSort ? Peerio.Util.sortStringAsc : Peerio.Util.sortAsc)(this.arr, propName || this.sortProp);
+            (stringSort ? Peerio.Util.sortStringAsc : Peerio.Util.sortAsc)(this.arr, propName || this.sortProp, this.sortProp2);
         }
 
         function sortDesc(propName) {
-            (stringSort ? Peerio.Util.sortStringDesc : Peerio.Util.sortDesc)(this.arr, propName || this.sortProp);
+            (stringSort ? Peerio.Util.sortStringDesc : Peerio.Util.sortDesc)(this.arr, propName || this.sortProp, this.sortProp2);
         }
 
         function getPropValByKey(key, propName) {
@@ -99,6 +99,7 @@
             prop: indexPropName,
             prop2: indexPropName2,
             sortProp: defaultSortProp || indexPropName,
+            sortProp2: defaultSortProp2,
             sort: defaultSortAsc === false ? sortDesc : sortAsc,
             arr: [],
             dict: {},
