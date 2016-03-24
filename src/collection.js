@@ -19,11 +19,19 @@
      * @param {string} indexPropName - property value has to be string
      * @param {string} [indexPropName2] - property value has to be string
      * @param {string} [defaultSortProp] - property name to use for sorting by default
+     * @param {string} [defaultSortProp2] - property name to use for sorting is the first one isn't present
      * @param {bool} [defaultSortAsc] - set to false for desc sorting by default
      * @param {bool} [stringSort] - set to true for sorting by default sort prop using locale-aware compare
      * @return {{}}
      */
-    root.Collection = function (indexPropName, indexPropName2, defaultSortProp, defaultSortAsc, stringSort) {
+    root.Collection = function (params) {
+        var indexPropName = params.indexPropName;
+        var indexPropName2 = params.indexPropName2;
+        var defaultSortProp = params.defaultSortProp;
+        var defaultSortProp2 = params.defaultSortProp2;
+        var defaultSortAsc = params.defaultSortAsc;
+        var stringSort = params.stringSort;
+
         function clear() {
             this.arr = [];
             this.dict = {};

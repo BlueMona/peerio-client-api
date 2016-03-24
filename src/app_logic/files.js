@@ -14,8 +14,17 @@ var Peerio = this.Peerio || {};
     };
     //--------------------------------------------------------------------------------------------------------------------
 
+    function createFilesCollection() {
+        return Collection({
+            indexPropName: 'id', 
+            indexPropName2: 'shortID', 
+            defaultSortProp: 'timestamp', 
+            defaultSortAsc: false
+        });
+    }
+
     function createFilesFromServerData(data) {
-        var files = Collection('id', 'shortID', 'timestamp', false);
+        var files = createFilesCollection();
         var keys = Object.keys(data);
         var counter = 0, max = keys.length;
         return Promise.map(keys, function (fileID) {
@@ -37,7 +46,7 @@ var Peerio = this.Peerio || {};
     var loadingPromise = null;
 
     function getFilesCache() {
-        var files = Collection('id', 'shortID', 'timestamp', false);
+        var files = createFilesCollection();
         return Peerio.SqlQueries.getFiles()
             .then(data=> data.forEach(
                 f=>files.add(Peerio.File.fromLocalData(f), true)
