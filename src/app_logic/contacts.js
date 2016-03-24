@@ -27,8 +27,12 @@ var Peerio = this.Peerio || {};
      */
     function createContacts(data, username, isServerData) {
         L.info('Processing {0} contacts data', data.length);
-
-        var contacts = Collection('username', null, 'fullNameAndUsername');
+        var contacts = Collection({
+            indexPropName: 'username', 
+            defaultSortProp: 'fullName',
+            defaultSortProp2: 'username',
+            stringSort: true
+        });
         var counter = 0;
         return Promise.map(data, function (contactData) {
             return (isServerData ? Peerio.Contact.fromServerData(contactData) : Peerio.Contact.fromLocalData(contactData))

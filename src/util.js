@@ -135,17 +135,21 @@ Peerio.Util.init = function () {
         return hash.getHash('HEX');
     };
 
-    api.sortAsc = function (arr, prop) {
+    api.sortAsc = function (arr, prop, prop2) {
         return arr.sort(function (a, b) {
-            if (a[prop] > b[prop]) return 1;
-            if (a[prop] < b[prop]) return -1;
+            var p1 = (a[prop] || !prop2) ? a[prop] : a[prop2];
+            var p2 = (b[prop] || !prop2) ? b[prop] : b[prop2];
+            if (p1 > p2) return 1;
+            if (p2 < p1) return -1;
             return 0;
         });
     };
-    api.sortDesc = function (arr, prop) {
+    api.sortDesc = function (arr, prop, prop2) {
         return arr.sort(function (a, b) {
-            if (a[prop] > b[prop]) return -1;
-            if (a[prop] < b[prop]) return 1;
+            var p1 = (a[prop] || !prop2) ? a[prop] : a[prop2];
+            var p2 = (b[prop] || !prop2) ? b[prop] : b[prop2];
+            if (p1 > p2) return -1;
+            if (p2 < p1) return 1;
             return 0;
         });
     };
@@ -166,14 +170,18 @@ Peerio.Util.init = function () {
             b.localeCompare(a, undefined, {sensitivity: 'base'});
         };
     }
-    api.sortStringAsc = function (arr, prop) {
+    api.sortStringAsc = function (arr, prop, prop2) {
         return arr.sort(function (a, b) {
-            return ascCompare(a[prop], b[prop]);
+            var p1 = (a[prop] || !prop2) ? a[prop] : a[prop2];
+            var p2 = (b[prop] || !prop2) ? b[prop] : b[prop2];
+            return ascCompare(p1, p2);
         });
     };
-    api.sortStringDesc = function (arr, prop) {
+    api.sortStringDesc = function (arr, prop, prop2) {
         return arr.sort(function (a, b) {
-            return descCompare(a[prop], b[prop]);
+            var p1 = (a[prop] || !prop2) ? a[prop] : a[prop2];
+            var p2 = (b[prop] || !prop2) ? b[prop] : b[prop2];
+            return descCompare(p1, p2);
         });
     };
 
