@@ -634,7 +634,7 @@ Peerio.Net.init = function () {
      * @param {string} chunk.clientFileID
      */
     api.uploadFileChunk = function (chunk) {
-        return sendToSocket('uploadFileChunk', chunk, {transfer: [chunk.ciphertext]});
+        return sendToSocket('uploadFileChunk', chunk, {transfer: [chunk.ciphertext], customTimeout: 150000});
     };
 
     /**
@@ -649,7 +649,7 @@ Peerio.Net.init = function () {
      * Retrieve a list of all user files.
      */
     api.getFiles = function () {
-        return sendToSocket('getFiles', null, {customTimeout: 45000});
+        return sendToSocket('getFiles', null, {customTimeout: 60000});
     };
 
     /**
