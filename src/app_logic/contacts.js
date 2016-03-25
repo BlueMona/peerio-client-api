@@ -29,9 +29,7 @@ var Peerio = this.Peerio || {};
         L.info('Processing {0} contacts data', data.length);
         var contacts = Collection({
             indexPropName: 'username', 
-            defaultSortProp: 'fullName',
-            defaultSortProp2: 'username',
-            stringSort: true
+            defaultSortProp: 'fullNameAndUsername'
         });
         var counter = 0;
         return Promise.map(data, function (contactData) {
