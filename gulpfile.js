@@ -86,6 +86,7 @@ gulp.task('build-crypto', function () {
         'src/crypto/base64shim.js',
         'bower_components/blake2s-js/blake2s.js',
         'bower_components/scrypt-async/scrypt-async.js',
+        'bower_components/tweetnacl-util/nacl-util.js',
         'bower_components/tweetnacl/nacl-fast.js',
         'bower_components/nacl-stream/nacl-stream.js',
         'bower_components/bluebird/js/browser/bluebird.js',
@@ -104,6 +105,7 @@ gulp.task('build-api', function () {
         'src/collection.js',
         'src/queue.js',
         'src/crypto/base64shim.js',
+        'bower_components/tweetnacl-util/nacl-util.js',
         'bower_components/tweetnacl/nacl-fast.js', // todo: can we move it to ext lib?
         'src/crypto/phrase_generator.js',
         'src/crypto/crypto_hub.js',

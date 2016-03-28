@@ -15,6 +15,12 @@
         + letters[Math.trunc(Math.random() * 10)];
     L.switchToWorkerMode('W_CRPT_' + self.peerioWorkerID + ': ');
 
+    var crypto = typeof self !== 'undefined' ? (self.crypto || self.msCrypto || self.cryptoShim) : null;
+
+    if(crypto && !crypto.getRandomValues && self.cryptoShim){
+        crypto = self.cryptoShim;
+    }
+
     Peerio.Crypto.init();
 
     // service functions are there for performance reasons and they don't provide response
@@ -85,7 +91,7 @@
         }
     };
 
-    var randomBytesNeeded = !self.crypto;
+    var randomBytesNeeded = !!self.cryptoShim;
     if (randomBytesNeeded) {
         var nativePostFn = self.postMessage;
         // overriding postMessage to attach stock report

@@ -25,6 +25,7 @@
   ],
   "devDependencies": {
     "tweetnacl": "git@github.com:PeerioTechnologies/tweetnacl-js.git#master",
+    "tweetnacl-util": "0.13.3",
     "axios": "*",
     "blake2s-js": "~1.0.3",
     "bluebird": "^3.2.1",
