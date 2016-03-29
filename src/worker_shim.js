@@ -3,6 +3,9 @@
  * Everything you put here will be included into worker bundles.
  */
 
+if(!this.window)
+    this.window = self;
+
 if(!self.crypto || !self.crypto.getRandomValues) {
     self.cryptoShim = {getRandomValues: function(){}};
 }
