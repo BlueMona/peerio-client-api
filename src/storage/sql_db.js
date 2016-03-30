@@ -66,12 +66,13 @@ Peerio.SqlDB.init = function () {
 
         plugin.openDatabase = function (params, success, fail) {
             try {
+                var db = db || L.error('db is undefined');
                 var setupDb = function () {
                     // sql params do not work with pragma, but it is safe to construct sql string here
                     // because key is a generated hash and user input is never passed here
-                    db.run("PRAGMA KEY = '" + params.key + "'");
-                    db.run("PRAGMA CIPHER = 'aes-256-cbc'");
-                    db.run("PRAGMA cipher_page_size = 2048");
+                    db.run('PRAGMA KEY = \'' + params.key + '\'');
+                    db.run('PRAGMA CIPHER = \'aes-256-cbc\'');
+                    db.run('PRAGMA cipher_page_size = 2048');
 
                     // todo
                     db.transaction = function (fn, fail, win) {
@@ -91,7 +92,7 @@ Peerio.SqlDB.init = function () {
                                 return data[i];
                             };
                             win({rows: data});
-                        })
+                        });
                     };
                     //todo
                     db.abortAllPendingTransactions = function(){};
@@ -114,11 +115,11 @@ Peerio.SqlDB.init = function () {
         plugin.deleteDatabase = function (name, resolve) {
             // todo delete db file
             resolve();
-        }
+        };
     }
 
     // deciding on plugin
-    if (window.PeerioDebug) {
+    if (Peerio.runtime.platform === 'browser') {
         enableWebSqlPlugin();
     } else if (window.sqlitePlugin) {
         enableCordovaPlugin();
