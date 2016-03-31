@@ -66,7 +66,7 @@ Peerio.SqlDB.init = function () {
 
         plugin.openDatabase = function (params, success, fail) {
             try {
-                var db = db || L.error('db is undefined');
+                var db = null;
                 var setupDb = function () {
                     // sql params do not work with pragma, but it is safe to construct sql string here
                     // because key is a generated hash and user input is never passed here
@@ -100,7 +100,7 @@ Peerio.SqlDB.init = function () {
                     setTimeout(()=>success(db), 0);
                 };
 
-                var db = new plugin.Database(params.name, plugin.OPEN_READWRITE | plugin.OPEN_CREATE, function (error) {
+                db = new plugin.Database(params.name, plugin.OPEN_READWRITE | plugin.OPEN_CREATE, function (error) {
                     if (error)
                         setTimeout(()=>fail(error), 0);
                     else
