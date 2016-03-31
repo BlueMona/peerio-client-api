@@ -99,6 +99,10 @@ var Peerio = this.Peerio || {};
             });
         };
 
+        user.acceptTOS = function () {
+            Peerio.Net.updateSettings({acceptedLatestTOS: true});
+        };
+
         user.redeemCouponCode = function (code) {
             return Peerio.Net.redeemCouponCode(code);
         };
