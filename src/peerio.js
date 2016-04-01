@@ -21,14 +21,14 @@ Peerio.initAPI = function () {
 
     return Peerio.Config.init()
         .then(() => {
-            Peerio.initAPI=undefined;
+            Peerio.initAPI = undefined;
             Peerio.Config.apiFolder = window.peerioApiFolder;
             window.peerioApiFolder = undefined;
             Peerio.SqlDB.init();
         })
-        .then( () => Peerio.SqlDB.closeAll() )
-        .then( () => Peerio.SqlDB.openSystemDB() )
-        .then( () => {
+        .then(() => Peerio.SqlDB.closeAll())
+        .then(() => Peerio.SqlDB.openSystemDB())
+        .then(() => {
             Peerio.Util.init();
             Peerio.Crypto.init();
             Peerio.PhraseGenerator.init();
@@ -44,7 +44,13 @@ Peerio.initAPI = function () {
 
             return Peerio.AppMigrator.migrateApp();
 
-        }).then(() => {
+        })
+        .then(()=>{
+            return Peerio.Translator
+                .loadLocale(Peerio.Config.defaultLocale)
+                .catch(err => L.error('Failed to load locale'));
+        })
+        .then(() => {
             // todo: find a better place for this code
             // Some users logs contain offline event followed by online event within 0-10 milliseconds.
             // Since it's out of our control, we choose to react on on/offline events only if offline state persists for a few seconds.

@@ -14,6 +14,8 @@ Peerio.Config.init = function () {
         var cfg = Peerio.Config;
         Peerio.Config.init=undefined;
 
+        cfg.defaultLocale = 'en';
+        
         cfg.webSocketServer = 'wss://app.peerio.com:443';
 
         cfg.dbPrefix = /\/\/(.*)\.peerio\.com/.exec(cfg.webSocketServer)[1];
