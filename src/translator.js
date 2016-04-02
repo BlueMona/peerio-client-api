@@ -15,7 +15,7 @@ Peerio.Translator = {};
         return loadTranslationFile(locale)
             .then(text => {
                 translation = JSON.parse(text);
-            });s
+            });
     };
 
     api.t = api.translate = function (id) {
