@@ -22,29 +22,66 @@ Peerio.Translator = {};
             });
     };
 
-    api.t = api.translate = function (id, params) {
+    api.t = api.translate = function (id, params, segmentParams) {
         var ret = translation[id] || id;
+
+        // processing segments
+        if (ret.forEach) {
+            var original = ret;
+            ret = [];
+            original.forEach(segment=> {
+                // simple string segment
+                if (typeof segment === 'string') {
+                    ret.push(segment);
+                    return;
+                }
+                // segment with placeholders
+                var segmentProcessor = segmentParams && segmentParams[segment.name] || null;
+                if (typeof segmentProcessor === 'function') {
+                    ret.push(segmentProcessor(segment.text));
+                } else {
+                    // this should not happen normally, but in case there is mistake in locale
+                    // or in code - we'll show unprocessed segment text
+                    ret.push(segment.text);
+                }
+            });
+        }
+        // attempt to make a fail-safe logic, by providing the client code with return type it expects
+        // even if there is a mixup with locales
+        if(segmentParams && !ret.forEach){
+            ret = [ret];
+        }
+        if(!segmentParams && ret.forEach){
+            ret = ret.join('');
+        }
+
+        // processing variables
         if (params) {
             for (var varName in params) {
                 var regex = regexpCache[varName];
                 if (!regex) continue;
-                ret = ret.replace(regex, params[varName]);
+                ret = segmentParams
+                    ? ret.map(segment => segment.replace(regex, params[varName]))
+                    : ret.replace(regex, params[varName]);
             }
         }
         return ret;
     };
 
     function compileTranslation() {
+        //iterating here because substituteReferences needs to be recursive
         for (var key in translation) {
             substituteReferences(key);
         }
         buildRegexpCache();
+        parseSegments();
     }
 
     // for specified key, finds if there are any references to other keys
     // and replaces original references with referenced strings, recursively
     function substituteReferences(key) {
-        var str = api.t(key);
+        // fallback is needed, because key might be a wrong reference from the string
+        var str = translation[key] || key;
         var match, replacements = {};
         var refExp = /\{#([a-zA-Z0-9]+)\}/g;
 
@@ -69,13 +106,43 @@ Peerio.Translator = {};
         var varExp = /\{([a-zA-Z0-9]+)\}/g;
         var match;
         for (var key in translation) {
-            var str = api.t(key);
+            var str = translation[key];
             while ((match = varExp.exec(str)) !== null) {
                 // found variable name for future substitutions
                 var varName = match[1];
                 if (regexpCache[varName]) continue;
                 // generating replacement regexp
                 regexpCache[varName] = new RegExp('\{' + varName + '\}', 'g');
+            }
+        }
+    }
+
+    function parseSegments() {
+        var segmentExp = /<([a-zA-Z0-9_]+)>(.*?)<\/>/g;
+        var match;
+        for (var key in translation) {
+            var str = translation[key];
+            var segments = null;
+            var position = 0;
+
+            while ((match = segmentExp.exec(str)) !== null) {
+                segments = segments || [];
+                var segmentName = match[1];
+                var segmentText = match[2];
+                // check if we need to push a plain text segment
+                if (match.index > position) {
+                    segments.push(str.substr(position, match.index));
+                }
+                segments.push({name: segmentName, text: segmentText});
+                position = segmentExp.lastIndex;
+            }
+
+            if (segments) {
+                // tail, if any
+                if (position != 0 && position < str.length) {
+                    segments.push(str.substr(position));
+                }
+                translation[key] = segments;
             }
         }
     }
