@@ -61,7 +61,7 @@ If you are updating peerio-client-api and already have `config.js`, look at the 
 ### style guide
 Please follow this simple style guide:
 
-1. Indentation: `2 spaces`
+1. Indentation: `4 spaces`
 2. File names: `lower_cased_and_underscored`
 3. Variables and function names: `camelCased`
 4. Constructor functions and namespaces: `PascalCased`
