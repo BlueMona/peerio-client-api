@@ -48,7 +48,7 @@ Peerio.initAPI = function () {
         .then(()=>{
             return Peerio.Translator
                 .loadLocale(Peerio.Config.defaultLocale)
-                .catch(err => L.error('Failed to load locale'));
+                .catch(err => L.error('Failed to load locale. {0}', err));
         })
         .then(() => {
             // todo: find a better place for this code

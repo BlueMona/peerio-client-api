@@ -83,7 +83,7 @@ Peerio.Translator = {};
         // fallback is needed, because key might be a wrong reference from the string
         var str = translation[key] || key;
         var match, replacements = {};
-        var refExp = /\{#([a-zA-Z0-9]+)\}/g;
+        var refExp = /\{#([a-zA-Z0-9_]+)\}/g;
 
         while ((match = refExp.exec(str)) !== null) {
             // found reference key
@@ -103,7 +103,7 @@ Peerio.Translator = {};
     }
 
     function buildRegexpCache() {
-        var varExp = /\{([a-zA-Z0-9]+)\}/g;
+        var varExp = /\{([a-zA-Z0-9_]+)\}/g;
         var match;
         for (var key in translation) {
             var str = translation[key];
