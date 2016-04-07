@@ -245,7 +245,7 @@ var Peerio = this.Peerio || {};
     var DL_STATE = {DOWNLOADING: 0, DECRYPTING: 1, SAVING: 2};
     var DLStateNames = {0: 'Downloading', 1: 'Decrypting', 2: 'Saving'};
     var UL_STATE = {READING: 0, ENCRYPTING: 1, UPLOADING_META: 2, UPLOADING_CHUNKS: 3};
-    var ULStateNames = {0: 'Reading', 1: 'Encrypting', 2: 'Uploading encrypted metadata', 3: 'Uploading chunks'};
+    var ULStateNames = {0: 'Reading', 1: 'Encrypting', 2: 'Uploading encrypted metadata', 3: 'Uploading file'};
     //-- PUBLIC API ------------------------------------------------------------------------------------------------------
     /**
      * Call Peerio.File() to create empty file object
