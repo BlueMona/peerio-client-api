@@ -29,7 +29,7 @@ var Peerio = this.Peerio || {};
     var running = false;
     var runAgain = false;
     var interruptRequested = false;
-    var progressMsg = t('sync_messages');
+
 
     var notify;
     // to minimize update statements we cache last messageID in conversation
@@ -167,6 +167,7 @@ var Peerio = this.Peerio || {};
 
 
     function syncMessages() {
+        var progressMsg = Peerio.Translator.t('sync_messages');
         if (running) {
             runAgain = true;
             L.verbose('Message sync already running.');

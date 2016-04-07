@@ -154,7 +154,7 @@ Peerio.User.addContactsModule = function (user) {
      * Skips reload if cached collection version is the same as on server.
      */
     user.loadContacts = function () {
-        var msg = t('sync_contacts');
+        var msg =Peerio.Translator.t('sync_contacts');
         // todo cache to db
         Peerio.Action.syncProgress(0, 0, msg);
 

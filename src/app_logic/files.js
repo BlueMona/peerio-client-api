@@ -28,7 +28,7 @@ var Peerio = this.Peerio || {};
         var keys = Object.keys(data);
         var counter = 0, max = keys.length;
         return Promise.map(keys, function (fileID) {
-                Peerio.Action.syncProgress(counter++, max, t('sync_files'));
+                Peerio.Action.syncProgress(counter++, max,Peerio.Translator.t('sync_files'));
                 var existingName = Peerio.user.files && Peerio.user.files.dict[fileID];
                 existingName = existingName && existingName.name || false;
                 return Peerio.File.fromServerData(data[fileID], existingName)
