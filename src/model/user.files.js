@@ -82,7 +82,7 @@ Peerio.User.addFilesModule = function (user) {
      * @returns Peerio.user
      */
     user.loadFiles = function () {
-        Peerio.Action.syncProgress(0, 0, 'synchronizing files');
+        Peerio.Action.syncProgress(0, 0, t('sync_files'));
 
         return Peerio.Net.getCollectionsVersion()
             .then(response => {
@@ -99,7 +99,7 @@ Peerio.User.addFilesModule = function (user) {
                             .then(()=>updateCollectionVersion(response.versions.files))
                             .return(user);
                     });
-            }).finally(()=>Peerio.Action.syncProgress(1, 1, 'synchronizing files'));
+            }).finally(()=>Peerio.Action.syncProgress(1, 1, t('sync_files')));
 
     }.bind(user);
 

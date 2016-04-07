@@ -29,7 +29,7 @@ var Peerio = this.Peerio || {};
     var running = false;
     var runAgain = false;
     var interruptRequested = false;
-    var progressMsg = 'downloading message data';
+    var progressMsg = t('sync_messages');
 
     var notify;
     // to minimize update statements we cache last messageID in conversation

@@ -36,7 +36,7 @@ var Peerio = this.Peerio || {};
         return Promise.map(data, function (contactData) {
             return (isServerData ? Peerio.Contact.fromServerData(contactData) : Peerio.Contact.fromLocalData(contactData))
                 .then(function (contact) {
-                    isServerData && Peerio.Action.syncProgress(counter++, data.length, 'synchronizing contacts');
+                    isServerData && Peerio.Action.syncProgress(counter++, data.length, t('sync_contacts'));
                     if (contact.username === username) contact.isMe = true;
                     contacts.add(contact, true);
                 });
