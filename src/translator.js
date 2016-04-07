@@ -12,7 +12,10 @@ Peerio.Translator = {};
     var regexpCache = {};
     var base = '/locales/';
 
+    api.locale = 'en';
+
     api.loadLocale = function (locale) {
+        api.locale = locale;
         translation = null;
         regexpCache = {};
         return loadTranslationFile(locale)
