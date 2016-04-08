@@ -19,6 +19,7 @@ Peerio.Config.init = function () {
         Peerio.Config.init=undefined;
 
         cfg.defaultLocale = 'en';
+        cfg.locales = [{code:'en', name:'English'}];
 
         cfg.webSocketServer = 'wss://app.peerio.com:443';
 

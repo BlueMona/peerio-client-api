@@ -86,7 +86,9 @@ Peerio.Action.init = function () {
 
         'UpdateAvailable',  // param: {expired: boolean} - true if current app version has expired
 
-        'OutOfSync' // param: true/false
+        'OutOfSync', // param: true/false
+
+        'LocaleChanged'
     ].forEach(function (action) {
         Peerio.Action.add(action);
     });

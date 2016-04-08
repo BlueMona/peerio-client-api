@@ -10,18 +10,22 @@ Peerio.Translator = {};
     var translation = null;
     // regexps cache for substituting variables in translation strings
     var regexpCache = {};
-    var base = '/locales/';
 
-    api.locale = 'en';
+    api.locale = null;
 
     api.loadLocale = function (locale) {
-        api.locale = locale;
-        translation = null;
-        regexpCache = {};
+        if(api.locale === locale) return Promise.resolve();
+        L.info("Loading {0} locale", locale);
         return loadTranslationFile(locale)
             .then(text => {
                 translation = JSON.parse(text);
                 compileTranslation();
+                api.locale = locale;
+                L.info("Locale {0} loaded", locale);
+                Peerio.Action.localeChanged();
+            }).catch(err => {
+                L.error("Failed to load locale {0}. {1}", locale, err);
+                return Promise.reject(err);
             });
     };
 
@@ -51,10 +55,10 @@ Peerio.Translator = {};
         }
         // attempt to make a fail-safe logic, by providing the client code with return type it expects
         // even if there is a mixup with locales
-        if(segmentParams && !ret.forEach){
+        if (segmentParams && !ret.forEach) {
             ret = [ret];
         }
-        if(!segmentParams && ret.forEach){
+        if (!segmentParams && ret.forEach) {
             ret = ret.join('');
         }
 
@@ -106,6 +110,7 @@ Peerio.Translator = {};
     }
 
     function buildRegexpCache() {
+        regexpCache = {};
         var varExp = /\{([a-zA-Z0-9_]+)\}/g;
         var match;
         for (var key in translation) {
@@ -151,7 +156,7 @@ Peerio.Translator = {};
     }
 
     function loadTranslationFile(locale) {
-        var url = base + locale + '.json';
+        var url = 'locales/' + locale + '.json';
         return new Promise(function (resolve, reject) {
             var xhr = new XMLHttpRequest();
 
