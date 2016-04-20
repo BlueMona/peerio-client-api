@@ -182,7 +182,8 @@ var Peerio = this.Peerio || {};
             .then(() => Promise.all([
                     Peerio.SqlQueries.getMaxSeqID(),
                     Peerio.Net.getMaxMessageIndexID(),
-                    Peerio.TinyDB.saveItem('syncInProgress', true, Peerio.user.username)
+                    Peerio.TinyDB.saveItem('syncInProgress', true, Peerio.user.username),
+                    loadSecurityCache()
                 ])
             )
             .spread((localMax, serverMax) => {
