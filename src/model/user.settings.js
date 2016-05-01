@@ -122,5 +122,11 @@ var Peerio = this.Peerio || {};
                 || pin.match(/012345|123456|234567|345678|456789|543210|654321|765432|876543|98765/)) return false;
             return true;
         };
+
+        user.setLocale = function (locale) {
+            return Peerio.Net.updateSettings({
+                localeCode: locale
+            });
+        };
     };
 })();
