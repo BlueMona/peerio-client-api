@@ -184,7 +184,7 @@ var Peerio = this.Peerio || {};
             })
             .catch(function (e) {
                 L.error('Upload failed. {0}', e);
-                return Promise.reject();
+                return Promise.reject(e);
             });
 
     }
