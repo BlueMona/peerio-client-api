@@ -47,7 +47,8 @@ function initialize(cfg) {
 
         'settingsUpdated',
 
-        'twoFactorAuthRequested'
+        'twoFactorAuthRequested',
+        'serverWarning'
     ];
 
     function killSocketClient() {

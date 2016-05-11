@@ -88,7 +88,9 @@ Peerio.Action.init = function () {
 
         'OutOfSync', // param: true/false
 
-        'LocaleChanged'
+        'LocaleChanged',
+
+        'ServerWarning'
     ].forEach(function (action) {
         Peerio.Action.add(action);
     });

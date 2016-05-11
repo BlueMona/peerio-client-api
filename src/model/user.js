@@ -30,7 +30,7 @@ var Peerio = this.Peerio || {};
         Peerio.User.addContactsModule(user);
         Peerio.User.addFilesModule(user);
         Peerio.User.addMessagesModule(user);
-
+        Peerio.User.addServerWarningsModule(user);
 
         user.buildProperties = Peerio.Contact.buildProperties.bind(user);
         user.buildIdenticon = Peerio.Contact.buildIdenticon.bind(user);

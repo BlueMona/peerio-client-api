@@ -703,4 +703,11 @@ Peerio.Net.init = function () {
         return sendToSocket('getCollectionsVersion');
     };
 
+    /**
+     * Marks warning as read on the server
+     */
+    api.clearWarning = function (token) {
+        Peerio.Net.sendToSocket('clearWarning', {token: token});
+    };
+
 };
