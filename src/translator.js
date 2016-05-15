@@ -15,22 +15,34 @@ Peerio.Translator = {};
 
     api.loadLocale = function (locale) {
         if(api.locale === locale) return Promise.resolve();
-        L.info("Loading {0} locale", locale);
+        L.info('Loading {0} locale', locale);
         return loadTranslationFile(locale)
             .then(text => {
                 translation = JSON.parse(text);
                 compileTranslation();
                 api.locale = locale;
-                L.info("Locale {0} loaded", locale);
+                L.info('Locale {0} loaded', locale);
                 Peerio.Action.localeChanged();
             }).catch(err => {
-                L.error("Failed to load locale {0}. {1}", locale, err);
+                L.error('Failed to load locale {0}. {1}', locale, err);
                 return Promise.reject(err);
             });
     };
 
     api.t = api.translate = function (id, params, segmentParams) {
         var ret = translation[id] || id;
+
+        // processing variables
+        var interpolateParams = function (s) {
+            if (params) {
+                for (var varName in params) {
+                    var regex = regexpCache[varName];
+                    if (!regex) continue;
+                    s = s.replace(regex, params[varName]);
+                }
+            }
+            return s;
+        };
 
         // processing segments
         if (ret.forEach) {
@@ -45,7 +57,7 @@ Peerio.Translator = {};
                 // segment with placeholders
                 var segmentProcessor = segmentParams && segmentParams[segment.name] || null;
                 if (typeof segmentProcessor === 'function') {
-                    ret.push(segmentProcessor(segment.text));
+                    ret.push(segmentProcessor(interpolateParams(segment.text)));
                 } else {
                     // this should not happen normally, but in case there is mistake in locale
                     // or in code - we'll show unprocessed segment text
@@ -68,7 +80,7 @@ Peerio.Translator = {};
                 var regex = regexpCache[varName];
                 if (!regex) continue;
                 ret = segmentParams
-                    ? ret.map(segment => segment.replace(regex, params[varName]))
+                    ? ret.map(segment => (_.isObject(segment) ? segment : segment.replace(regex, params[varName])))
                     : ret.replace(regex, params[varName]);
             }
         }
