@@ -31,6 +31,7 @@ var Peerio = this.Peerio || {};
         Peerio.User.addFilesModule(user);
         Peerio.User.addMessagesModule(user);
         Peerio.User.addServerWarningsModule(user);
+        Peerio.User.addPaymentsModule(user);
 
         user.buildProperties = Peerio.Contact.buildProperties.bind(user);
         user.buildIdenticon = Peerio.Contact.buildIdenticon.bind(user);
