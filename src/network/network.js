@@ -707,7 +707,13 @@ Peerio.Net.init = function () {
      * Marks warning as read on the server
      */
     api.clearWarning = function (token) {
-        Peerio.Net.sendToSocket('clearWarning', {token: token});
+        return sendToSocket('clearWarning', {token: token});
     };
 
+    /**
+     * Sends Apple advertisement id to link with Google AdWords
+     */
+    api.trackAppleInstall = function (idfa) {
+        return sendToSocket('trackAppleInstall', {idfa: idfa}, {ignoreAuthState: true});
+    };
 };

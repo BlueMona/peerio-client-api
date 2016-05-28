@@ -143,6 +143,8 @@ Peerio.SqlDB.init = function () {
             .catch(err => {
                 L.error('Failed to open system database {0}. {1}', systemDbName, err);
                 L.info('Recreating system database');
+                // informing everyone that we do the fresh install
+                Peerio.runtime.firstRun = true;
                 return Peerio.SqlDB.system.close()
                     .catch(()=> false)
                     .then(() => plugin.deleteDatabase(systemDbName))
