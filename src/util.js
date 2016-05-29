@@ -160,10 +160,10 @@ Peerio.Util.init = function () {
         };
     } else {
         ascCompare = function (a, b) {
-            a.localeCompare(b, undefined, {sensitivity: 'base'});
+            return a.localeCompare(b, undefined, {sensitivity: 'base'});
         };
         descCompare = function (a, b) {
-            b.localeCompare(a, undefined, {sensitivity: 'base'});
+            return b.localeCompare(a, undefined, {sensitivity: 'base'});
         };
     }
     api.sortStringAsc = function (arr, prop) {
