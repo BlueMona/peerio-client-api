@@ -138,15 +138,15 @@ var Peerio = this.Peerio || {};
             return false;
         }
 
-        if (msg.innerIndex !== msg.outerIndex) {
-            L.error('index mismatch');
-            return false;
-        }
-
-        if (msg.innerIndex - sec.innerIndex > 1) {
-            L.error('index sequence broken');
-            return false;
-        }
+        // if (msg.innerIndex !== msg.outerIndex) {
+        //     L.error('index mismatch');
+        //     return false;
+        // }
+        //
+        // if (msg.innerIndex - sec.innerIndex > 1) {
+        //     L.error('index sequence broken');
+        //     return false;
+        // }
 
         if (msg.timestamp < sec.timestamp && sec.timestamp - msg.timestamp > 120000) {
             L.error('timestamp smaller then previous message');
