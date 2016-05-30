@@ -161,7 +161,7 @@ var Peerio = this.Peerio || {};
         if (this.id) {
             var sec = Peerio.Sync.securityCache[this.id];
             if (!sec) return Promise.reject('Conversation not found in security cache.');
-            index = sec.innerIndex || 0;//might be changed while encrypting
+            index = sec.innerIndex == null ? 0 : sec.innerIndex + 1 ;//might be changed while encrypting
             secretConversationID = sec.secretConversationID || uuid.v4();
         } else {
             index = 0;
