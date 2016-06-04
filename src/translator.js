@@ -29,6 +29,10 @@ Peerio.Translator = {};
             });
     };
 
+    api.has = function (id) {
+        return !!translation[id];
+    };
+
     api.t = api.translate = function (id, params, segmentParams) {
         var ret = translation[id] || id;
 
