@@ -716,4 +716,12 @@ Peerio.Net.init = function () {
     api.trackAppleInstall = function (idfa) {
         return sendToSocket('trackAppleInstall', {idfa: idfa}, {ignoreAuthState: true});
     };
+
+    api.listPaidPlans = function () {
+        return sendToSocket('listPaidPlans');
+    };
+
+    api.registerMobilePurchase = function (data) {
+        return sendToSocket('registerMobilePurchase', data);
+    };
 };
