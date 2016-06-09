@@ -11,10 +11,12 @@ var Peerio = this.Peerio || {};
     Peerio.User.addServerWarningsModule = function (user) {
         Peerio.Net.subscribe('serverWarning', (warning) => {
             L.info('server warning received {0}', warning);
-            if(Peerio.Translator.has(warning))
+            if(Peerio.Translator.has(warning.msg))
                 Peerio.Action.serverWarning(warning);
-            else
+            else {
                 L.error('warning string locale not found');
+                Peerio.Net.clearWarning(warning.token);
+            }
         });
 
         user.clearWarning = function (warning) {
