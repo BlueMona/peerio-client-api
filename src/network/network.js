@@ -722,6 +722,6 @@ Peerio.Net.init = function () {
     };
 
     api.registerMobilePurchase = function (data) {
-        return sendToSocket('registerMobilePurchase', data);
+        return Peerio.NetQueue.pushToSocket('registerMobilePurchase', data);
     };
 };

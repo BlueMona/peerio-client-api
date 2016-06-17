@@ -39,7 +39,7 @@ Peerio.initAPI = function () {
             Peerio.ActionOverrides.init();
             Peerio.AppState.init();
             Peerio.FileSystem.init();
-
+            Peerio.NetQueue.init();
             Peerio.Socket.start();
 
             return Peerio.AppMigrator.migrateApp();
