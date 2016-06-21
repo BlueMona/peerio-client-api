@@ -16,6 +16,7 @@ var Peerio = this.Peerio || {};
         });
 
         user.processSettings = function (settings) {
+            user.runtime = settings.runtime;
             user.settings = settings.settings;
             user.addresses = settings.addresses;
             user.firstName = settings.firstName;
