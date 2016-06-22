@@ -314,7 +314,7 @@ Peerio.Crypto.init = function () {
     /**
      * Encrypt a message to recipients, return header JSON and body.
      * @param {object} message - message object.
-     * @param {string[]} recipients - Array of usernames of recipients.
+     * @param {string[]} recipients - Array of usernames of recipients or a public key string (for Ghost)
      * @param {User} [sender]
      * @promise {object}  With header, body parameters, and array of failed recipients.
      */
@@ -572,7 +572,7 @@ Peerio.Crypto.init = function () {
 
     /**
      * Validates and builds a list of recipient public keys
-     * @param {string[]} recipients - recipient usernames
+     * @param {string[]} recipients - recipient usernames OR a public key string (for Ghost)
      * @param {User} sender - username
      * @returns { { publicKeys:string[], failed:string[] } } - list of qualified public keys and usernames list
      *                                                         that failed to qualify as recipients
@@ -581,15 +581,17 @@ Peerio.Crypto.init = function () {
         var publicKeys = [sender.publicKey];
         var failed = [];
 
-        recipients.forEach(function (recipient) {
-
-            var contact = sender.contacts[recipient];
-            if (contact && hasProp(contact, 'publicKey') && publicKeys.indexOf(contact.publicKey) < 0)
+        if(!Array.isArray(recipients)) {
+            publicKeys.push(recipients);
+        } else {
+            recipients.forEach(function (recipient) {
+                var contact = sender.contacts[recipient];
+                if (contact && hasProp(contact, 'publicKey') && publicKeys.indexOf(contact.publicKey) < 0)
                 publicKeys.push(contact.publicKey);
-            else if (recipient != sender.username)
-                failed.push(recipient);
-        });
-
+                else if (recipient != sender.username)
+                    failed.push(recipient);
+            });
+        }
         return {publicKeys: publicKeys, failed: failed};
     }
 
@@ -1048,6 +1050,4 @@ Peerio.Crypto.init = function () {
     function getCachedPublicKey() {
         return (defaultUser && defaultUser.publicKey) || null;
     }
-
-
 };

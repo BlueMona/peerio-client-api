@@ -41,6 +41,7 @@ Peerio.initAPI = function () {
             Peerio.FileSystem.init();
             Peerio.NetQueue.init();
             Peerio.Socket.start();
+            Peerio.Ghost.init();
 
             return Peerio.AppMigrator.migrateApp();
 
