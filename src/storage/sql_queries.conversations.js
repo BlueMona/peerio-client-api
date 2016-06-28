@@ -10,22 +10,23 @@ var Peerio = this.Peerio || {};
     var api = Peerio.SqlQueries = Peerio.SqlQueries || {};
 
     //-- CONVERSATIONS WRITE -------------------------------------------------------------------------------------------
-    api.createConversation = function (id, seqID, originalMsgID, participants, exParticipants, lastTimestamp) {
+    api.createConversation = function (id, seqID, originalMsgID, participants, exParticipants, lastTimestamp, isGhost) {
         return Peerio.SqlDB.user.executeSql(
-            'INSERT OR IGNORE INTO conversations VALUES(?,?,?,?,?,?,?,?,?,?,?,?)',
+            'INSERT OR IGNORE INTO conversations VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)',
             [
-                id,
-                seqID,
-                originalMsgID,
-                originalMsgID,
-                null,
-                null,
-                null,
-                api.serializeArray(participants),
-                api.serializeObject(exParticipants),
-                lastTimestamp,
-                null,
-                null
+                id,                                     // conversationID
+                seqID,                                  // last sequence id for this conversation
+                originalMsgID,                          // messageID this conversation started with
+                originalMsgID,                          // last messageID in this conversation
+                null,                                   // generated in original message and shared across all the following ones
+                null,                                   // subject from original message
+                null,                                   // original message timestamp
+                api.serializeArray(participants),       // current participants array ['username','username'] excluding current user
+                api.serializeObject(exParticipants),    // same but for the ones who left
+                lastTimestamp,                          // timestamp of last time this conversation or messages inside it got updated
+                null,                                   // there was at least one file shared in this conversation
+                null,                                   // is there new messages in this conversation
+                !!isGhost ? 1 : 0                       // is the conversation of ghost format
             ]);
     };
 
@@ -93,6 +94,13 @@ var Peerio = this.Peerio || {};
             'UPDATE conversations SET ' +
             'hasFiles = EXISTS (SELECT * FROM messages WHERE conversationID=conversations.id AND files IS NOT NULL LIMIT 1) ' +
             'WHERE hasFiles IS NULL'
+        );
+    };
+
+    api.updateConversationIsGhost = function (messageID, secretConversationID, isGhost) {
+        return Peerio.SqlDB.user.executeSql(
+            'UPDATE conversations SET isGhost = ?, secretConversationID = ? WHERE subject is null and originalMsgID = ?',
+            [isGhost ? 1 : 0, secretConversationID, messageID]
         );
     };
 

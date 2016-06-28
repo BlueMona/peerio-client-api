@@ -37,7 +37,7 @@ Peerio.Ghost.init = function () {
         return {
             ghostID: g.id,
             publicKey: g.publicKey,
-            //lifeSpanInSeconds: 60*60*24,
+            lifeSpanInSeconds: 60*60*24,
             recipients: [g.recipient],
             version: '1.0.0',
             files: [],

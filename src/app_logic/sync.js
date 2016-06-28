@@ -197,7 +197,7 @@ var Peerio = this.Peerio || {};
                 return new Promise((resolve, reject) => {
                     // async recursive function that executes processing of one page at a time
                     var callProcess = () => {
-                        L.silly('{0} {1}/{2}', progressMsg, localMax - progressStartAt, progressEndAt)
+                        L.silly('{0} {1}/{2}', progressMsg, localMax - progressStartAt, progressEndAt);
                         Peerio.Action.syncProgress(localMax - progressStartAt, progressEndAt, progressMsg);
                         if (interruptRequested) {
                             L.info('Sync interrupt was requested, stopping.');
@@ -257,7 +257,7 @@ var Peerio = this.Peerio || {};
                     })();
                 }
                 return chain;
-            })
+            });
     }
 
     function processConversationEntry(entry) {
@@ -290,6 +290,10 @@ var Peerio = this.Peerio || {};
         var msg = Peerio.Message();
         return msg.applyServerData(entry.entity)
             .then(() => {
+                return msg.isGhost && 
+                    Peerio.SqlQueries.updateConversationIsGhost(msg.id, msg.secretConversationID, true);
+            })
+            .then(() => {
                 if (verifyAndUpdateSecurityCache(msg))
                     return msg.insert();
                 else
@@ -301,7 +305,7 @@ var Peerio = this.Peerio || {};
                 msg.receipts.forEach(username => Peerio.SqlQueries.updateReadPosition(msg.conversationID, username, entry.entity.seqID));
 
                 if (msg.sender == Peerio.user.username)
-                    Peerio.SqlQueries.updateReadPosition(msg.conversationID, Peerio.user.username, entry.entity.seqID)
+                    Peerio.SqlQueries.updateReadPosition(msg.conversationID, Peerio.user.username, entry.entity.seqID);
             })
             .then(() => {
                 // 1. old format conversations might not have index

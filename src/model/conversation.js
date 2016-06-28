@@ -37,8 +37,8 @@ var Peerio = this.Peerio || {};
     }
 
     /**
-     * Fills/replaces current Conversation object properties with data sent by server.
-     * @param data - conversation data in server format
+     * Fills/replaces current Conversation object properties with data in sqlite DB
+     * @param data - conversation data in sqlite
      * @returns {Peerio.Conversation} - this
      */
     function applyLocalData(data) {
@@ -75,7 +75,9 @@ var Peerio = this.Peerio || {};
             this.originalMsgID,
             this.participants,
             this.exParticipants,
-            this.lastTimestamp);
+            this.lastTimestamp,
+            this.isGhost
+        );
     }
 
     /**

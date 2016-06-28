@@ -25,6 +25,7 @@ var Peerio = this.Peerio || {};
         this.outerTimestamp = data.timestamp;
         this.outerIndex = data.outerIndex;
         this.metadataVersion = data.version;
+        this.isGhost = !!data.isGhost ? 1 : 0;
 
         return Peerio.Crypto.decryptMessage(data)
             .then(decrypted => {
