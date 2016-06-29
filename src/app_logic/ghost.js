@@ -52,6 +52,7 @@ Peerio.Ghost.init = function () {
             subject: g.subject,
             message: g.body,
             files: [],
+            id: g.id,
             timestamp: Date.now(),
             passphrase: g.passphrase
         };
