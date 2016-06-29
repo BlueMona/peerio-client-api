@@ -19,7 +19,7 @@ Peerio.Ghost.init = function () {
         g.usePassphrase = function (passphrase) {
             g.passphrase = passphrase;
 
-            return Peerio.Crypto.getKeyPair(g.passphrase, g.id)
+            return Peerio.Crypto.getKeyPair(g.id, g.passphrase)
                 .then(keyPair => Peerio.Crypto.getPublicKeyString(keyPair.publicKey))
                 .then(pk => {
                     g.publicKey = pk;
