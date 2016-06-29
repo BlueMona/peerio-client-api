@@ -30,7 +30,14 @@ var Peerio = this.Peerio || {};
         return Peerio.Crypto.decryptMessage(data)
             .then(decrypted => {
                 this.files = decrypted.fileIDs;
-                this.body = decrypted.message;
+                this.body = this.isGhost ? JSON.stringify({
+                    recipient: decrypted.recipient,
+                    subject: decrypted.subject,
+                    message: decrypted.body,
+                    files: [],
+                    timestamp: decrypted.timestamp,
+                    passphrase: decrypted.passphrase
+                }) : decrypted.message;
                 this.subject = decrypted.subject;
                 this.receipts = decrypted.receipts;
                 this.innerIndex = decrypted.innerIndex;
