@@ -1,8 +1,7 @@
 /**
- * Peerio request offlineable 
+ * Peerio Ghost
  * depends on - Peerio.Net, Peerio.Dispatcher, Peerio.AppState, Peerio.TinyDB
  */
-
 
 var Peerio = this.Peerio || {};
 Peerio.Ghost = {};
@@ -37,7 +36,7 @@ Peerio.Ghost.init = function () {
         return {
             ghostID: g.id,
             publicKey: g.publicKey,
-            lifeSpanInSeconds: 60*60*24,
+            lifeSpanInSeconds: 60*60*24*(g.days ? g.days : 1),
             recipients: [g.recipient],
             version: '1.0.0',
             files: [],
