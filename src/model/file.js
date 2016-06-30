@@ -150,6 +150,7 @@ var Peerio = this.Peerio || {};
             .then(fileEntry => Peerio.FileSystem.plugin.readFile(fileEntry))
             .then(file => {
                 this.name = fileName ? fileName : file.file.name;
+                this.size = file.file.size;
                 setState(UL_STATE.ENCRYPTING);
                 return Peerio.Crypto.encryptFile(file.data, this.name);
             })

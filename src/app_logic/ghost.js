@@ -14,6 +14,7 @@ Peerio.Ghost.init = function () {
     api.create = function () {
         var g = {};
         g.id = Base58.encode(nacl.randomBytes(32));
+        g.files = [];
 
         g.usePassphrase = function (passphrase) {
             g.passphrase = passphrase;
@@ -26,7 +27,9 @@ Peerio.Ghost.init = function () {
                 });
         };
 
-        g.uploadFile = function () {
+        g.addFile = function (file) {
+            // TODO: support video types
+            g.files.push({id: file.id, name: file.name, size: file.size, type: 'image'});
         };
 
         return g;
@@ -39,7 +42,7 @@ Peerio.Ghost.init = function () {
             lifeSpanInSeconds: 60*60*24*(g.days ? g.days : 1),
             recipients: [g.recipient],
             version: '1.0.0',
-            files: [],
+            files: g.files,
             header: encryptedMsg.header,
             body: encryptedMsg.body
         };
@@ -50,7 +53,7 @@ Peerio.Ghost.init = function () {
             recipient: g.recipient,
             subject: g.subject,
             message: g.body,
-            files: [],
+            files: g.files,
             id: g.id,
             timestamp: Date.now(),
             passphrase: g.passphrase
