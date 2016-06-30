@@ -7,6 +7,12 @@ var Peerio = this.Peerio || {};
 (function () {
     'use strict';
 
+    var DL_STATE = {DOWNLOADING: 0, DECRYPTING: 1, SAVING: 2};
+    // locale resource names
+    var DLStateNames = {0: 'fileState_downloading', 1: 'fileState_decrypting', 2: 'fileState_saving'};
+    var UL_STATE = {READING: 0, ENCRYPTING: 1, UPLOADING_META: 2, UPLOADING_CHUNKS: 3, UPLOADED: 4};
+    var ULStateNames = {0: 'fileState_reading', 1: 'fileState_encrypting', 2: 'fileState_uploadingMetadata', 3: 'fileState_uploading', 4: 'fileState_uploaded'};
+
     function getInfo() {
         return {
             sender: this.sender,
@@ -132,7 +138,7 @@ var Peerio = this.Peerio || {};
     }
 
 
-    function upload(fileUrl, fileName) {
+    function upload(fileUrl, fileName, isGhost) {
         var setState = setUploadState.bind(this);
         var encrypted;
         // temporary file id for current upload, helps identifying chunks
@@ -154,7 +160,8 @@ var Peerio = this.Peerio || {};
                 return Peerio.Net.uploadFile({
                     ciphertext: encrypted.chunks[0].buffer,
                     totalChunks: encrypted.chunks.length - 1, // first chunk is for file name
-                    clientFileID: this.id // todo: this is redundant, we have an id already
+                    clientFileID: this.id, // todo: this is redundant, we have an id already
+                    isGhost: !!isGhost
                 });
             })
             .then(function (data) {
@@ -170,7 +177,7 @@ var Peerio = this.Peerio || {};
                     if (index === 0) return;
 
                     setState(UL_STATE.UPLOADING_CHUNKS, index);
-                    L.verbose('Uploading chunk {0}/{1}. Size: {2}', index, encrypted.chunks.length - 1, chunk.buffer.length);
+                    L.verbose('Uploading chunk {0}/{1}. Size: {2}', index, encrypted.chunks.length - 1, chunk.buffer.byteLength);
                     var dto = {
                         ciphertext: chunk.buffer,
                         chunkNumber: index - 1,//we skip first chunk (file name)
@@ -180,7 +187,9 @@ var Peerio = this.Peerio || {};
                     if (index === 1) dto.header = encrypted.header;
                     return Peerio.Net.uploadFileChunk(dto);
                 });
-
+            })
+            .then(() => {
+                setState(UL_STATE.UPLOADED);
             })
             .catch(function (e) {
                 L.error('Upload failed. {0}', e);
@@ -242,11 +251,6 @@ var Peerio = this.Peerio || {};
     }
 
 
-    var DL_STATE = {DOWNLOADING: 0, DECRYPTING: 1, SAVING: 2};
-    // locale resource names
-    var DLStateNames = {0: 'fileState_downloading', 1: 'fileState_decrypting', 2: 'fileState_saving'};
-    var UL_STATE = {READING: 0, ENCRYPTING: 1, UPLOADING_META: 2, UPLOADING_CHUNKS: 3};
-    var ULStateNames = {0: 'fileState_reading', 1: 'fileState_encrypting', 2: 'fileState_uploadingMetadata', 3: 'fileState_uploading'};
     //-- PUBLIC API ------------------------------------------------------------------------------------------------------
     /**
      * Call Peerio.File() to create empty file object

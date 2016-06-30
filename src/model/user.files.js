@@ -36,7 +36,7 @@ Peerio.User.addFilesModule = function (user) {
         }
 
         user.filesVersion = Math.max(user.filesVersion, version);
-        Peerio.TinyDB.saveItem('filesVersion', user.filesVersion, user.username, user.keyPair.secretKey)
+        Peerio.TinyDB.saveItem('filesVersion', user.filesVersion, user.username, user.keyPair.secretKey);
         Peerio.Action.filesUpdated();
     }
 
@@ -117,12 +117,14 @@ Peerio.User.addFilesModule = function (user) {
 
     user.uploadFile = function (fileData) {
         var file = Peerio.File();
+        file.isGhost = fileData.isGhost;
         Peerio.user.uploads.push(file);
-        return file.upload(fileData.fileUrl, fileData.fileName)
+        return file.upload(fileData.fileUrl, fileData.fileName, fileData.isGhost)
             .finally(function () {
                 _.pull(Peerio.user.uploads, file);
                 Peerio.Action.filesUpdated();
-            });
+            })
+            .then(() => file);
     }.bind(user);
 };
 
