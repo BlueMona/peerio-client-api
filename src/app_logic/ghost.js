@@ -28,8 +28,12 @@ Peerio.Ghost.init = function () {
         };
 
         g.addFile = function (file) {
+            if(!file.ghostFileID) {
+                L.error('No server ghost file id');
+                return;
+            }
             // TODO: support video types
-            g.files.push({id: file.id, name: file.name, size: file.size, type: 'image'});
+            g.files.push({id: file.ghostFileID, name: file.name, size: file.size, type: 'image'});
         };
 
         return g;
@@ -42,7 +46,7 @@ Peerio.Ghost.init = function () {
             lifeSpanInSeconds: 60*60*24*(g.days ? g.days : 1),
             recipients: [g.recipient],
             version: '1.0.0',
-            files: g.files,
+            files: g.files.map(f => f.id),
             header: encryptedMsg.header,
             body: encryptedMsg.body
         };

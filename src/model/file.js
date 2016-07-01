@@ -186,10 +186,13 @@ var Peerio = this.Peerio || {};
                     };
                     //attaching header to first chunk
                     if (index === 1) dto.header = encrypted.header;
-                    return Peerio.Net.uploadFileChunk(dto);
+                    return Peerio.Net.uploadFileChunk(dto)
+                        .then(data => {
+                            if(data && data.id) this.ghostFileID = data.id;
+                        });
                 });
             })
-            .then(() => {
+            .then(lastChunkData => {
                 setState(UL_STATE.UPLOADED);
             })
             .catch(function (e) {
