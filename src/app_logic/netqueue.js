@@ -24,7 +24,7 @@ Peerio.NetQueue.init = function () {
         });
         api.arr.push(item);
 
-        if(Peerio.AppState.connected) 
+        if(Peerio.AppState.authenticated) 
             api.executeWatcher();
 
         return item.promise;
@@ -49,5 +49,5 @@ Peerio.NetQueue.init = function () {
         api.watcher = window.setTimeout(api.executeWatcher, watcherTimeout);
     };
 
-    Peerio.Dispatcher.onConnected(api.executeWatcher);
+    Peerio.Dispatcher.onAuthenticated(api.executeWatcher);
 };
