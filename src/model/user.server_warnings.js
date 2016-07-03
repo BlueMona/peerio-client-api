@@ -14,7 +14,7 @@ var Peerio = this.Peerio || {};
             if(Peerio.Translator.has(warning.msg))
                 Peerio.Action.serverWarning(warning);
             else {
-                L.error('warning string locale not found');
+                L.error('warning string locale not found: {0}', warning.msg);
                 Peerio.Net.clearWarning(warning.token);
             }
         });
