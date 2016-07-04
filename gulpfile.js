@@ -104,7 +104,7 @@ gulp.task('build-api', function () {
         'src/polyfill.js',
         'src/collection.js',
         'src/queue.js',
-        'src/translator.js',
+        'node_modules/peerio-translator/translator.js',
         'src/crypto/base64shim.js',
         'bower_components/tweetnacl-util/nacl-util.js',
         'bower_components/tweetnacl/nacl-fast.js', // todo: can we move it to ext lib?

@@ -13,6 +13,8 @@ window.hasProp = Function.call.bind(Object.prototype.hasOwnProperty);
  */
 Peerio.initAPI = function () {
 
+    Peerio.Translator = window.Translator;
+
     Promise.config({
         warnings: false,
         longStackTraces: true,

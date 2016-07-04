@@ -28,6 +28,7 @@
     "karma-safari-launcher": "*",
     "karma-verbose-reporter": "*",
     "node-libs-browser": "*",
+    "peerio-translator": "git+https://github.com/PeerioTechnologies/peerio-translator.git",
     "run-sequence": "*"
   },
   "scripts": {},
