@@ -119,7 +119,7 @@ Peerio.User.addFilesModule = function (user) {
         var file = Peerio.File();
         file.isGhost = fileData.isGhost;
         Peerio.user.uploads.push(file);
-        return file.upload(fileData.fileUrl, fileData.fileName, fileData.isGhost)
+        return file.upload(fileData.fileUrl, fileData.fileName, fileData.ghostPublicKey)
             .finally(function () {
                 _.pull(Peerio.user.uploads, file);
                 Peerio.Action.filesUpdated();

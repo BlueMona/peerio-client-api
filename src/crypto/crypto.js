@@ -359,10 +359,12 @@ Peerio.Crypto.init = function () {
      * @param {User} [sender]
      * @returns {Promise<object>} fileName(base64 encoded), header, body and failedRecipients parameters.
      */
-    api.encryptFile = function (file, name, recipients, sender) {
+    api.encryptFile = function (file, name, recipients, sender, customKey) {
         sender = sender || defaultUser;
         return new Promise(function (resolve, reject) {
-            var validatedRecipients = validateRecipients(recipients || [], sender);
+            // for ghost file uploads - if we specify custom key, use it
+            var validatedRecipients = customKey ? { publicKeys: [customKey] } : 
+                validateRecipients(recipients || [], sender);
 
             file = new Blob([file], {type: 'application/octet-stream'});
             file.name = name;

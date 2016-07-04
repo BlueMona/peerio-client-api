@@ -16,16 +16,17 @@ Peerio.Ghost.init = function () {
         g.id = Base58.encode(nacl.randomBytes(32));
         g.files = [];
 
-        g.usePassphrase = function (passphrase) {
-            g.passphrase = passphrase;
-
+        g.derivePassphrase = function (passphrase, phraseField, publicKeyField) {
             return Peerio.Crypto.getKeyPair(g.id, g.passphrase)
                 .then(keyPair => Peerio.Crypto.getPublicKeyString(keyPair.publicKey))
-                .then(pk => {
-                    g.publicKey = pk;
-                    return g;
+                .then(pk => { 
+                    g[phraseField] = passphrase;
+                    g[publicKeyField] = pk;
                 });
         };
+
+        g.usePassphrase = p => g.derivePassphrase(p, 'passphrase', 'publicKey');
+        g.useFilePassphrase = p => g.derivePassphrase(p, 'filePassphrase', 'filePublicKey');
 
         g.addFile = function (file) {
             if(!file.ghostFileID) {
@@ -60,7 +61,8 @@ Peerio.Ghost.init = function () {
             files: g.files,
             id: g.id,
             timestamp: Date.now(),
-            passphrase: g.passphrase
+            passphrase: g.passphrase,
+            filePassphrase: g.filePassphrase,
         };
 
         return Peerio.Crypto.encryptMessage(ghostMsg, g.publicKey)
