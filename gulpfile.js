@@ -4,6 +4,7 @@ var clean = require('gulp-clean');
 var karma = require('karma').server;
 var runSequence = require('run-sequence');
 var babel = require('gulp-babel');
+var shell = require('gulp-shell');
 
 var outputDir = './dist/';
 var dictDir = outputDir + 'dict/';
@@ -42,6 +43,11 @@ gulp.task('help', function () {
     console.log();
 });
 //----------------------------------------------------------------------------------------------------------------------
+gulp.task('update', shell.task([
+  'git pull',
+  'npm install',
+  'npm update'
+]));
 
 gulp.task('build', function (callback) {
     runSequence('build-clean',
