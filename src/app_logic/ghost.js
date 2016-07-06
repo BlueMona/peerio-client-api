@@ -17,7 +17,7 @@ Peerio.Ghost.init = function () {
         g.files = [];
 
         g.derivePassphrase = function (passphrase, phraseField, publicKeyField) {
-            return Peerio.Crypto.getKeyPair(g.id, g.passphrase)
+            return Peerio.Crypto.getKeyPair(g.id, passphrase)
                 .then(keyPair => Peerio.Crypto.getPublicKeyString(keyPair.publicKey))
                 .then(pk => { 
                     g[phraseField] = passphrase;
