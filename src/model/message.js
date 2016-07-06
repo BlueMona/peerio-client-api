@@ -31,10 +31,11 @@ var Peerio = this.Peerio || {};
             .then(decrypted => {
                 this.files = decrypted.fileIDs;
                 this.body = this.isGhost ? JSON.stringify({
+                    id: decrypted.id,
                     recipient: decrypted.recipient,
                     subject: decrypted.subject,
-                    message: decrypted.body,
-                    files: [],
+                    message: decrypted.message,
+                    files: decrypted.files,
                     timestamp: decrypted.timestamp,
                     passphrase: decrypted.passphrase
                 }) : decrypted.message;

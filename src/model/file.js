@@ -138,7 +138,7 @@ var Peerio = this.Peerio || {};
     }
 
 
-    function upload(fileUrl, fileName, isGhost) {
+    function upload(fileUrl, fileName, ghostPublicKey) {
         var setState = setUploadState.bind(this);
         var encrypted;
         // temporary file id for current upload, helps identifying chunks
@@ -152,7 +152,7 @@ var Peerio = this.Peerio || {};
                 this.name = fileName ? fileName : file.file.name;
                 this.size = file.file.size;
                 setState(UL_STATE.ENCRYPTING);
-                return Peerio.Crypto.encryptFile(file.data, this.name);
+                return Peerio.Crypto.encryptFile(file.data, this.name, null, null, ghostPublicKey);
             })
             .then(data => {
                 setState(UL_STATE.UPLOADING_META);
@@ -162,7 +162,7 @@ var Peerio = this.Peerio || {};
                     ciphertext: encrypted.chunks[0].buffer,
                     totalChunks: encrypted.chunks.length - 1, // first chunk is for file name
                     clientFileID: this.id, // todo: this is redundant, we have an id already
-                    isGhost: !!isGhost
+                    isGhost: !!ghostPublicKey
                 });
             })
             .then(function (data) {
