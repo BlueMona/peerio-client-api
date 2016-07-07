@@ -37,7 +37,8 @@ var Peerio = this.Peerio || {};
                     message: decrypted.message,
                     files: decrypted.files,
                     timestamp: decrypted.timestamp,
-                    passphrase: decrypted.passphrase
+                    passphrase: decrypted.passphrase,
+                    lifeSpanInSeconds: decrypted.lifeSpanInSeconds 
                 }) : decrypted.message;
                 this.subject = decrypted.subject;
                 this.receipts = decrypted.receipts;

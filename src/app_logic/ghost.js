@@ -40,11 +40,21 @@ Peerio.Ghost.init = function () {
         return g;
     };
 
+    api.getLifeSpanInSeconds = function (days) {
+        return 60*60*24*(days ? days : 1);
+    };
+
+    // g is unencrypted ghost body (as in formatGhost)
+    api.expired = function(g) {
+        var timeFromCreationInSeconds = Math.floor((Date.now() - g.timestamp) / 1000);
+        return timeFromCreationInSeconds > g.lifeSpanInSeconds ? (g.timestamp + g.lifeSpanInSeconds * 1000) : false;
+    };
+
     api.formatGhost = function (g, encryptedMsg) {
         return {
             ghostID: g.id,
             publicKey: g.publicKey,
-            lifeSpanInSeconds: 60*60*24*(g.days ? g.days : 1),
+            lifeSpanInSeconds: api.getLifeSpanInSeconds(g.days),
             recipients: [g.recipient],
             version: '1.0.0',
             files: g.files.map(f => f.id),
@@ -63,6 +73,7 @@ Peerio.Ghost.init = function () {
             timestamp: Date.now(),
             passphrase: g.passphrase,
             filePassphrase: g.filePassphrase,
+            lifeSpanInSeconds: api.getLifeSpanInSeconds(g.days)
         };
 
         return Peerio.Crypto.encryptMessage(ghostMsg, g.publicKey)
