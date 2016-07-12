@@ -32,7 +32,7 @@ var Peerio = this.Peerio || {};
                 this.files = decrypted.fileIDs;
                 this.body = this.isGhost ? JSON.stringify({
                     id: decrypted.id,
-                    recipient: decrypted.recipient,
+                    recipients: decrypted.recipients,
                     subject: decrypted.subject,
                     message: decrypted.message,
                     files: decrypted.files,

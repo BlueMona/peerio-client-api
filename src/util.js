@@ -278,4 +278,13 @@ Peerio.Util.init = function () {
             }
         }
     };
+
+    api.filterFirst = function(arr, pred, max) { 
+        var r = []; 
+        for(i = 0; i < arr.length; ++i) { 
+            if(r.length >= max) break; 
+            if(pred(arr[i], i)) r.push(arr[i]); 
+        }
+        return r; 
+    };
 };

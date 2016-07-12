@@ -55,7 +55,7 @@ Peerio.Ghost.init = function () {
             ghostID: g.id,
             publicKey: g.publicKey,
             lifeSpanInSeconds: api.getLifeSpanInSeconds(g.days),
-            recipients: [g.recipient],
+            recipients: g.recipients,
             version: '1.0.0',
             files: g.files.map(f => f.id),
             header: encryptedMsg.header,
@@ -65,7 +65,7 @@ Peerio.Ghost.init = function () {
 
     api.send = function (g) {
         var ghostMsg = {
-            recipient: g.recipient,
+            recipients: g.recipients,
             subject: g.subject,
             message: g.body,
             files: g.files,
