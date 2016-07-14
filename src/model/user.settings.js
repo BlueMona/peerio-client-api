@@ -23,6 +23,7 @@ var Peerio = this.Peerio || {};
             user.lastName = settings.lastName;
             user.paymentPlan = settings.paymentPlan;
             user.quota = settings.quota;
+            user.paywall = settings.paywall;
             user.subscriptions = settings.subscriptions || [];
             user.buildProperties();
             var thisUser = user.contacts && user.contacts.arr 
