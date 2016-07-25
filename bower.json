@@ -38,7 +38,8 @@
     "scrypt-async": "~1.2.0",
     "socket.io-client": "~1.4.4",
     "peerio-log": "~1.2.0",
-    "is_js": "*"
+    "is_js": "*",
+    "semver": "*"
   },
   "private": true,
   "resolutions": {
