@@ -25,7 +25,7 @@ Peerio.User.addAuthModule = function (user) {
                 user.keyPair = keys.keyPair;
                 user.localEncryptionKey = Base58.encode(user.keyPair.secretKey);
             })
-            .then(() => Peerio.Crypto.setDefaultUserData(user.username, user.keyPair, user.publicKey))
+            .then(() => Peerio.Crypto.setDefaultUserData(user.username, user.keyPair, user.publicKey));
     }
 
     function waitForNetLogin() {
@@ -70,7 +70,7 @@ Peerio.User.addAuthModule = function (user) {
                 cacheAvailable = true;
             })
             .catch(err=> {
-                L.info("Offline login is not possible. {0}", err);
+                L.info('Offline login is not possible. {0}', err);
             })
             .then(()=>[isOfflineLogin, cacheAvailable]);
     }
@@ -105,7 +105,6 @@ Peerio.User.addAuthModule = function (user) {
             .then(initDatabases)
             .then(() => Peerio.Auth.getPinForUser(user.username).then(pin => user.PINIsSet = !!pin))
             .then(() => {
-
                 if (!cacheAvailable) return;
                 L.info('Loading offline caches');
                 return user.loadContactsCache().then(user.loadFilesCache);
