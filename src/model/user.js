@@ -53,7 +53,6 @@ var Peerio = this.Peerio || {};
             var cancelEvent = window.setTimeout(()=>Peerio.Action.outOfSync(true), 3000);
             Peerio.Action.syncStarted();
 
-
             runningPromise = user.loadContacts()
                 .then(user.resumeContactEvents)
                 .then(user.loadFiles)
@@ -61,11 +60,13 @@ var Peerio = this.Peerio || {};
                 .then(Peerio.Sync.syncMessages)
                 .then(() => {
                     window.clearTimeout(cancelEvent);
+                    cancelEvent = null;
                     Peerio.TinyDB.saveItem('outOfSync', false, Peerio.user.username);
                     Peerio.Action.outOfSync(false);
                 })
                 .finally(()=> {
                     Peerio.Action.syncEnded();
+                    cancelEvent && window.clearTimeout(cancelEvent);
                     running = false;
                     runningPromise = null;
                     if (resyncRequested) {
