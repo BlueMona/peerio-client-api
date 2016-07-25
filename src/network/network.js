@@ -728,4 +728,8 @@ Peerio.Net.init = function () {
     api.createGhostMessage = function (data) {
         return Peerio.NetQueue.pushToSocket('createGhostMessage', data);
     };
+
+    api.updateClientVersion = function (data) {
+        return Peerio.NetQueue.pushToSocket('updateClientVersion', data);
+    };
 };

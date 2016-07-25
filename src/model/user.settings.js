@@ -24,6 +24,7 @@ var Peerio = this.Peerio || {};
             user.paymentPlan = settings.paymentPlan;
             user.quota = settings.quota;
             user.paywall = settings.paywall;
+            user.latestClientVersions = settings.latestClientVersions;
             user.subscriptions = settings.subscriptions || [];
             user.buildProperties();
             var thisUser = user.contacts && user.contacts.arr 
@@ -130,6 +131,10 @@ var Peerio = this.Peerio || {};
             return Peerio.Net.updateSettings({
                 localeCode: locale
             });
+        };
+
+        user.updateMobileClientVersion = function (version) {
+            return Peerio.Net.updateClientVersion({mobile: version});
         };
     };
 })();
