@@ -79,7 +79,7 @@ Peerio.Crypto.init = function () {
     function ensureRandomBytesStock(index, currentStock) {
         if (currentStock >= randomBytesThreshold) return;
         var data = crypto.getRandomValues(new Uint8Array(randomBytesThreshold));
-        workers[index].postMessage({randomBytes: data.buffer}, [data.buffer]);
+        workers[index].postMessage({randomBytes: data.buffer}, undefined, [data.buffer]);
     }
 
     // creating worker instances
@@ -109,7 +109,7 @@ Peerio.Crypto.init = function () {
                 args[a] = arguments[a];
 
             for (var w = 0; w < workers.length; w++)
-                workers[w].postMessage({fnName: fnName, args: args});
+                workers[w].postMessage({fnName: fnName, args: args}, undefined);
         };
     });
 
@@ -151,7 +151,7 @@ Peerio.Crypto.init = function () {
                     reject: reject
                 };
             });
-            getWorker().postMessage({id: id, fnName: fnName, args: args}, transfer === null ? [] : [args[transfer]]);
+            getWorker().postMessage({id: id, fnName: fnName, args: args}, undefined, transfer === null ? undefined : [args[transfer]]);
             return ret;
         };
     });
