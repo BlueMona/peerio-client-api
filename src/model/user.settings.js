@@ -134,7 +134,7 @@ var Peerio = this.Peerio || {};
         };
 
         user.updateMobileClientVersion = function (version) {
-            return Peerio.Net.updateClientVersion({mobile: version});
+            return Peerio.Net.updateClientVersion({mobile: version}).then(user.loadSettings);
         };
     };
 })();
