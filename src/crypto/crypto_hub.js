@@ -151,7 +151,7 @@ Peerio.Crypto.init = function () {
                     reject: reject
                 };
             });
-            getWorker().postMessage({id: id, fnName: fnName, args: args}, transfer === null ? null : [args[transfer]]);
+            getWorker().postMessage({id: id, fnName: fnName, args: args}, transfer === null ? [] : [args[transfer]]);
             return ret;
         };
     });
