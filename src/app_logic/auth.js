@@ -33,7 +33,9 @@ var Peerio = this.Peerio || {};
         removePIN: removePIN,
         saveLogin: saveLogin,
         getSavedLogin: getSavedLogin,
-        clearSavedLogin: clearSavedLogin
+        clearSavedLogin: clearSavedLogin,
+        savePinnedPassphrase: savePinnedPassphrase,
+        hasPinnedPassphrase: hasPinnedPassphrase
     };
     //--------------------------------------------------------------------------------------------------------------------
 
@@ -146,7 +148,7 @@ var Peerio = this.Peerio || {};
         return Peerio.Crypto.getKeyFromPIN(PIN, username)
             .then(function (PINkey) {
                 L.info('Encrypting keys.');
-                var obj = {
+                var obj = keyPair.isCustomKey ? keyPair : {
                     publicKey: Base58.encode(keyPair.publicKey),
                     secretKey: Base58.encode(keyPair.secretKey)
                 };
@@ -229,7 +231,8 @@ var Peerio = this.Peerio || {};
     function decryptKeysAndGetObject(username, PIN, encryptedKeys) {
         var keys = null;
         return decryptKeys(username, PIN, encryptedKeys)
-            .then(k=> {
+            .then(k => {
+                if (k.isCustomKey) return k;
                 keys = {
                     keyPair: {
                         publicKey: Base58.decode(k.publicKey),
@@ -240,6 +243,7 @@ var Peerio = this.Peerio || {};
                 return Peerio.Crypto.getPublicKeyString(keys.keyPair.publicKey);
             })
             .then(pk => {
+                if (pk.isCustomKey) return pk;
                 keys.publicKey = pk;
                 return keys;
             });
@@ -302,4 +306,16 @@ var Peerio = this.Peerio || {};
             });
     }
 
+    function savePinnedPassphrase(username, pin, passphrase) {
+        return Peerio.Auth.setPIN(
+            pin,
+            username,
+            { isCustomKey: true, publicKey: 'v3', secretKey: passphrase },
+            false)
+                .then(() => Peerio.TinyDB.saveItem('hasPinnedPassphrase', true, username));
+    }
+
+    function hasPinnedPassphrase(username) {
+        return Peerio.TinyDB.getItem('hasPinnedPassphrase', username);
+    }
 })();

@@ -14,6 +14,9 @@ Peerio.User.addAuthModule = function (user) {
     function setKeys(passphraseOrPIN, isSystemPin) {
         return Peerio.Auth.getSavedKeys(user.username, passphraseOrPIN, isSystemPin)
             .then(keys => {
+                if (keys.isCustomKey && keys.publicKey === 'v3') {
+                    return Peerio.Auth.generateKeys(user.username, keys.secretKey);
+                }
                 if (keys === true || keys === false) {
                     return Peerio.Auth.generateKeys(user.username, passphraseOrPIN);
                 }

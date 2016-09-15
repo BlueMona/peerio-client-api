@@ -68,10 +68,11 @@ Peerio.Util.init = function () {
         };
 
         deviceContacts.forEach(function (contact) {
+            if(!contact.name) L.error(contact);
             parsedContacts.push({
                 id: 'contact-' + contact.id,
                 emails: _.filter(contact.emails, validateEmail),
-                name: contact.name.formatted,
+                name: contact.name && contact.name.formatted,
                 phones: _.filter(contact.phoneNumbers, validatePhone)
             });
         });
@@ -286,5 +287,11 @@ Peerio.Util.init = function () {
             if(pred(arr[i], i)) r.push(arr[i]); 
         }
         return r; 
+    };
+
+    api.pinEntropyCheck = function (pin) {
+        if (pin.match(/0{6}|1{6}|2{6}|3{6}|4{6}|5{6}|6{6}|7{6}|8{6}|9{6}/)
+            || pin.match(/012345|123456|234567|345678|456789|543210|654321|765432|876543|98765/)) return false;
+        return true;
     };
 };
