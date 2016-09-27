@@ -17,7 +17,7 @@ Peerio.Util.init = function () {
      */
     api.hasProp = Function.call.bind(Object.prototype.hasOwnProperty);
 
-    var emailExp = new RegExp('^([-0-9a-zA-Z.+_]+@[-0-9a-zA-Z.+_]+\\.[a-zA-Z]{2,20})$');
+    var emailExp = new RegExp(/^[^ ]+@[^ ]+/i);
     var phoneExp = new RegExp('^\\+?(\\d|\\s|\\-|\\(|\\)){6,20}$');
 
     /**
