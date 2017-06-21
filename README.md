@@ -1,8 +1,8 @@
 
 
-# peerio-client-api
+# (Legacy) Peerio client API library
 
-This repository contains code shared between all Peerio clients.
+This repository contains core code used by "legacy" Peerio mobile clients.
 
 Components:
 
